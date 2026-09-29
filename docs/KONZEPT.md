@@ -524,3 +524,14 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   schaltet es bewusst ein.
 * Test-Doppel der Föderation auf den Ports 2530/2531 (`localhost`), damit die E2E-Tests neben denen von Seating
   (2528/2529) laufen können. (Annahme)
+* Anbindung an rsvp-app (Phase 7b), Zeitplan-Seite: Verknüpfung in `Event.rsvpLink` als `{ "rsvpEventId": … }`
+  (vorhandenes Feld, kein Schemawechsel). Env hier `RSVP_TIMELINE_SECRET`, in rsvp-app `TIMELINE_SECRET` und
+  `TIMELINE_BASE_URL` (wie `SEATING_*`). Link-Form `<Zeitplan>/rsvp/<Event-id>`, Einstieg `?t=<Token>` als Route
+  Handler (legt nach vollständiger Prüfung die Gast-Sitzung an und leitet zur Gästeansicht), Webhook
+  `/api/rsvp-webhook`. Jede Nachricht trägt `rsvpId`; `rsvp-change` zusätzlich `attending`. Nachrichten gelten
+  höchstens eine Stunde. Ungültige Links landen auf `/rsvp?ungueltig=1`. Ist der Link echt, das Event aber nicht auf
+  `RSVP`, geht es ohne Sitzung zur Gästeansicht. (Annahme)
+* Absage per Webhook beendet nur Gast-Sitzungen dieser Zusage, die bis zum Ende der Sekunde von `iat` entstanden sind
+  – eine verspätet zugestellte alte Absage beendet keinen Zugang nach erneuter Zusage. `attending: true` legt nichts
+  an. Ändern sich Zugang oder verknüpfter Termin, enden alle Gast-Sitzungen. (Annahme)
+* Test-Doppel von rsvp-app auf Port 2532 (`localhost`) – Seatings Doppel belegen 2526–2529. (Annahme)

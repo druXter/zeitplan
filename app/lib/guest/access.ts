@@ -5,7 +5,7 @@ import type { EventStatus, GuestAccess } from '@prisma/client'
  *
  * - public:    jede*r mit Link - veröffentlicht, live oder beendet (Rückblick) und Zugang PUBLIC.
  * - guest:     wie public, aber für ein geschütztes Event mit gültigem Zugang (guestAccess): Gast-Sitzung nach
- *              Zugangscode (bzw. rsvp-Link, Phase 7b), bei Zugang ACCOUNT jedes angemeldete Konto, auf Tafel und
+ *              Zugangscode bzw. Link aus rsvp-app, bei Zugang ACCOUNT jedes angemeldete Konto, auf Tafel und
  *              Endpunkt auch ein gültiger Tafel-Link.
  * - preview:   nur für Konten mit Zugriff aufs Event, mit Hinweis - Entwürfe, Archiv und geschützte Events.
  * - protected: veröffentlicht, aber mit Zugang CODE/ACCOUNT/RSVP und ohne gültigen Zugang: KEIN Inhalt (auch
@@ -40,8 +40,8 @@ export function guestVisibility(event: { status: EventStatus; access: GuestAcces
 
 /**
  * Gilt eine Gast-Sitzung für den aktuellen Zugang des Events? Sitzungen nach Zugangscode (ohne rsvpId) nur bei
- * CODE, Sitzungen aus rsvp-app (mit rsvpId, Phase 7b) nur bei RSVP - wechselt der Zugang, gilt keine alte
- * Sitzung mehr, auch wenn sie noch in der Datenbank steht.
+ * CODE, Sitzungen aus rsvp-app (mit rsvpId, app/rsvp/[eventId]/route.ts) nur bei RSVP - wechselt der Zugang, gilt
+ * keine alte Sitzung mehr, auch wenn sie noch in der Datenbank steht.
  */
 export function sessionMatchesAccess(access: GuestAccess, session: { rsvpId: string | null }): boolean {
   if (access === 'CODE') return session.rsvpId === null

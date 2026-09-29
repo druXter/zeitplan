@@ -10,8 +10,8 @@ import Notice from '../ui/notice'
 const noSubscription = () => () => {}
 
 /**
- * Weg hinein bei geschütztem Zugang (docs/KONZEPT.md Abschnitt 6): Zugangscode, Anmeldung mit Konto oder (Phase
- * 7b) der Link aus rsvp-app. Zeigt nichts vom Ablauf - den gibt es erst mit gültigem Zugang.
+ * Weg hinein bei geschütztem Zugang (docs/KONZEPT.md Abschnitt 6): Zugangscode, Anmeldung mit Konto oder der Link
+ * aus rsvp-app (app/rsvp/[eventId]). Zeigt nichts vom Ablauf - den gibt es erst mit gültigem Zugang.
  *
  * Eingebettet (iFrame auf der Hochzeits-Website) kommt das Cookie der Gast-Sitzung bzw. der Anmeldung als
  * Drittanbieter-Cookie meist nicht an. Dort deshalb nur ein Link, der den Ablauf in einem neuen Tab öffnet.

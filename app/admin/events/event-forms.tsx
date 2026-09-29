@@ -6,6 +6,7 @@ import { createEvent, duplicateEvent, importEvent, updateEventOptions, updateEve
 import { suggestSlug, SLUG_MAX_LENGTH } from '../../lib/slugs'
 import { DESCRIPTION_MAX_LENGTH, OPTION_BOUNDS, TITLE_MAX_LENGTH, type EventOptions } from '../../lib/events/settings'
 import SubmitButton from '../../ui/submit-button'
+import CopyableField from '../../ui/copyable-field'
 import Notice from '../../ui/notice'
 
 export function Feedback({ state }: { state: FormState }) {
@@ -217,7 +218,8 @@ export function EventOptionsForm({ eventId, options, modsMayEditPlan, modsMayIns
 const ACCESS_OPTIONS = [
   { value: 'PUBLIC', label: 'Öffentlich', hint: 'Jede*r mit Link sieht den Ablauf.' },
   { value: 'CODE', label: 'Mit Zugangscode', hint: 'Gäste geben einmal den Code von der Einladung ein; ihr Browser merkt sich den Zugang bis einen Tag nach dem Event.' },
-  { value: 'ACCOUNT', label: 'Nur mit Konto', hint: 'Nur wer mit einem Konto dieses Tools angemeldet ist.' }
+  { value: 'ACCOUNT', label: 'Nur mit Konto', hint: 'Nur wer mit einem Konto dieses Tools angemeldet ist.' },
+  { value: 'RSVP', label: 'Nur mit Zusage in rsvp-app', hint: 'Gäste öffnen den Zeitplan über „Zeitplan“ bei ihrer Zusage; eine Absage beendet den Zugang.' }
 ] as const
 
 /**
@@ -225,8 +227,10 @@ const ACCESS_OPTIONS = [
  * zeigt die Seite ihn ein einziges Mal an, danach nicht mehr. suggestion: frisch auf dem Server erzeugter
  * Vorschlag (app/lib/guest/tokens.ts suggestAccessCode).
  */
-export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConfigured, activeSessions }: {
+export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConfigured, activeSessions, rsvp }: {
   eventId: string; access: string; hasCode: boolean; suggestion: string; codeConfigured: boolean; activeSessions: number
+  /** Anbindung an rsvp-app: eingerichtet (RSVP_TIMELINE_SECRET), verknüpfter Termin, Link zum Eintragen dort. */
+  rsvp: { configured: boolean; rsvpEventId: string; timelineLink: string }
 }) {
   const [state, action, pending] = useActionState(updateGuestAccess, null)
   const [selected, setSelected] = useState(access)
@@ -237,14 +241,40 @@ export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConf
       <Feedback state={state} />
       <fieldset className="space-y-2">
         <legend className="sr-only">Zugang</legend>
-        {ACCESS_OPTIONS.map(option => (
-          <label key={option.value} className="flex items-start gap-2 text-sm">
-            <input type="radio" name="access" value={option.value} checked={selected === option.value} onChange={() => setSelected(option.value)} className="mt-1" />
-            <span>{option.label}<span className="block text-xs text-gray-600">{option.hint}</span></span>
-          </label>
-        ))}
-        <p className="text-xs text-gray-600">Zugang über die Zusage in rsvp-app kommt mit der Anbindung an rsvp-app.</p>
+        {ACCESS_OPTIONS.map(option => {
+          const unavailable = option.value === 'RSVP' && !rsvp.configured && access !== 'RSVP'
+          return (
+            <label key={option.value} className={`flex items-start gap-2 text-sm ${unavailable ? 'text-gray-500' : ''}`}>
+              <input
+                type="radio" name="access" value={option.value} checked={selected === option.value} disabled={unavailable}
+                onChange={() => setSelected(option.value)} className="mt-1"
+              />
+              <span>
+                {option.label}
+                <span className="block text-xs text-gray-600">
+                  {unavailable ? 'Erst verfügbar, wenn auf dem Server RSVP_TIMELINE_SECRET eingerichtet ist (siehe README).' : option.hint}
+                </span>
+              </span>
+            </label>
+          )
+        })}
       </fieldset>
+      {selected === 'RSVP' && (
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="rsvp-event-id" className={labelClass}>Termin in rsvp-app (id)</label>
+            <input
+              id="rsvp-event-id" name="rsvpEventId" required defaultValue={rsvp.rsvpEventId} maxLength={40} pattern="[a-z0-9]{10,40}"
+              autoComplete="off" spellCheck={false} className={`${input} font-mono text-sm`} placeholder="z. B. cm1a2b3c4d5e6f7g8h9"
+            />
+          </div>
+          <CopyableField label="Zeitplan-Link – in rsvp-app beim Termin eintragen" value={rsvp.timelineLink} />
+          <p className="text-xs text-gray-600">
+            Die Verknüpfung gilt erst, wenn beide Seiten die jeweils andere eingetragen haben. rsvp-app erfährt dabei nichts
+            über den Ablauf, und Zeitplan bekommt keine Namen oder Adressen – nur „diese Zusage gilt“.
+          </p>
+        </div>
+      )}
       {selected === 'CODE' && (
         codeConfigured ? (
           <div>

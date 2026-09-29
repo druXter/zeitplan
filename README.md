@@ -19,7 +19,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 4 | Live-Steuerung | ✅ umgesetzt |
 | 5 | Zugang per Code und Konto, Gast-Sitzungen, Tafel-Link | ✅ umgesetzt |
 | 6 | Konto-Föderation über `suite-kit`: mit Konten anderer Tools anmelden, für andere Tools bestätigen | ✅ umgesetzt |
-| 7 | Anbindung an rsvp-app (Zugang `RSVP`) | offen |
+| 7 | Anbindung an rsvp-app (Zugang `RSVP`): 7a Anbindungen in rsvp-app verallgemeinern, 7b Link, Gast-Sitzung, Webhook | 7a ✅, 7b ✅ auf Zeitplan-Seite (rsvp-app: Button, Weiterleitung, Webhook offen) |
 | 8 | Abschluss, Test auf echtem Handy und Fernseher, Lasttest | offen |
 
 Bisher gibt es das Gerüst (Anmelden, Konten einladen, Events anlegen und freigeben), den rechnerischen Kern der
@@ -27,7 +27,7 @@ Prognose, die Planung (Programmpunkte, Spuren, geheime Punkte, Reihen, Import/Ex
 Ansichten (Gästeansicht mit Prognose, Anzeigetafel, Reihen-Übersicht, QR-Code, Team-Ansicht) und die Live-Steuerung
 fürs Handy (Weiter, Verspätung, Tauschen, Zurückstellen, Ausfall, Einschub, Rückgängig, Verlauf) sowie geschützte
 Events mit Zugangscode oder Konto samt eigenem Tafel-Link und die optionale Anmeldung mit Konten anderer Tools der Suite
-(Föderation). Als Nächstes folgt die Anbindung an rsvp-app.
+(Föderation) sowie der Zugang über eine Zusage in rsvp-app (Zeitplan-Seite; der Teil in rsvp-app folgt dort).
 
 ## Konten
 
@@ -210,7 +210,7 @@ Pro Event unter „Zugang für Gäste“ (nur Besitzer\*in oder Admin):
 | **Öffentlich** (Standard) | jede\*r mit Link |
 | **Mit Zugangscode** | wer einmal den Code eingibt (z. B. von der Einladung); der Browser merkt sich den Zugang |
 | **Nur mit Konto** | jedes angemeldete Konto dieses Tools, auch per Föderation angemeldet (siehe oben) |
-| Zusage in rsvp-app | kommt mit Phase 7 |
+| **Nur mit Zusage in rsvp-app** | wer beim verknüpften Termin in rsvp-app zugesagt hat und den Zeitplan dort über „Zeitplan“ öffnet (siehe unten) |
 
 * **Zugangscode:** frei wählbar oder per „Vorschlag“ (z. B. `K7QM-4XPA`), mindestens 8 Buchstaben oder Ziffern.
   Groß-/Kleinschreibung, Leerzeichen und Bindestriche sind für Gäste egal. Gespeichert wird nur ein HMAC (an das
@@ -231,6 +231,30 @@ Pro Event unter „Zugang für Gäste“ (nur Besitzer\*in oder Admin):
   geschütztes Event zeigt dort deshalb nur „Ablauf in neuem Tab öffnen“ statt Code-Eingabe oder Anmeldung.
 * **Ohne Secrets** (`ACCESS_CODE_SECRET`, `DISPLAY_LINK_SECRET`, je mindestens 32 Zeichen) gibt es keinen Zugangscode
   bzw. keinen Tafel-Link – bewusst ohne Rückfall auf einen Standardwert; die Verwaltung weist darauf hin.
+
+### Anbindung an rsvp-app (Zugang „nur mit Zusage“)
+
+Eigener Vertrag nach dem Muster von Seating (`app/lib/rsvp/token.ts`), mit **eigenem Secret**
+(`RSVP_TIMELINE_SECRET` hier = `TIMELINE_SECRET` in rsvp-app, mindestens 32 Zeichen, nie aus einer anderen Anbindung
+übernehmen). Nachrichten: `base64url(JSON).base64url(HMAC-SHA256)` mit `typ`, `aud` (Adresse von Zeitplan), `iat`/`exp`
+(höchstens eine Stunde), `timelineEventId`, `rsvpEventId` und `rsvpId` – **keine Namen, keine Adressen**.
+
+* **Verknüpfen:** In Zeitplan unter „Zugang für Gäste“ „Nur mit Zusage in rsvp-app“ wählen und die id des Termins in
+  rsvp-app eintragen; dort beim Termin den angezeigten Zeitplan-Link (`<Zeitplan>/rsvp/<Event-id>`) eintragen. Die
+  Verknüpfung gilt erst, wenn beide Seiten die andere eingetragen haben (gespeichert in `Event.rsvpLink`).
+* **Einstieg:** „Zeitplan“ bei der Zusage in rsvp-app erzeugt bei jedem Klick **frisch** einen kurz gültigen Link
+  (`typ: "timeline-link"`) und leitet zu `/rsvp/<Event-id>?t=…` weiter. Zeitplan prüft Signatur, Art, Empfänger,
+  Frist und Verknüpfung und legt erst dann eine Gast-Sitzung mit `rsvpId` an (Cookie wie beim Zugangscode, nur als
+  Hash). Ungültige Links landen auf `/rsvp?ungueltig=1` – ob es das Event gibt, verrät das nicht. Mails von rsvp-app
+  verlinken auf die Weiterleitung, nie auf das Token selbst.
+* **Absage:** Der Webhook `POST /api/rsvp-webhook` (`typ: "rsvp-change"`) mit `attending: false` beendet die
+  Gast-Sitzungen dieser Zusage – nur solche, die vor der Meldung entstanden sind, damit eine verspätete alte Absage
+  keinen neuen Zugang beendet. Eine Zusage legt nichts an. Ungültige Nachrichten: `401`, nicht verknüpft: `200` ohne
+  Wirkung.
+* Ändern sich Zugang oder verknüpfter Termin, enden alle Gast-Sitzungen des Events.
+* In rsvp-app nötig (Phase 7b dort): Tool-Typ `timeline` (Adresse `TIMELINE_BASE_URL`, Secret `TIMELINE_SECRET`,
+  Link-Form `<Zeitplan>/rsvp/<id>`, Webhook `/api/rsvp-webhook`), Feld „Zeitplan-Link“ im Termin, Button
+  „Zeitplan“ in der Gästeansicht mit Weiterleitung und der Webhook `rsvp-change`.
 
 Regeln und Tokens stehen in `app/lib/guest/access.ts` (Sichtbarkeit, rein) und `app/lib/guest/tokens.ts` (Code und
 Tafel-Link), Sitzungen in `app/lib/guest/session.ts`, die Code-Eingabe in `app/[slug]/actions.ts`.
@@ -401,7 +425,8 @@ npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, For
                     # Gästeansicht (tests/unit/guest: Sichtbarkeit, Payload), Abschnitte Jetzt/Als Nächstes/Vorbei,
                     # Live-Steuerung (tests/unit/schedule/live.test.ts, tests/unit/live: Verlauf und Rückgängig),
                     # Zugang (tests/unit/guest: Sichtbarkeit mit Sitzung/Konto/Tafel-Link, Zugangscode, Tafel-Link),
-                    # Föderation (tests/unit/suite.test.ts: Rollen, Zwischenseite, state-Cookie, Konfiguration)
+                    # Föderation (tests/unit/suite.test.ts: Rollen, Zwischenseite, state-Cookie, Konfiguration),
+                    # Vertrag mit rsvp-app (tests/unit/rsvp: Signatur, Art, Empfänger, Frist, Verknüpfung)
 npm run test:e2e    # Playwright gegen eine frisch gebaute Instanz auf http://127.0.0.1:3801
 npm run build
 npm run lint
@@ -470,7 +495,16 @@ gefälschtem Formular), Wiedergabe der Bestätigung im selben und in einem fremd
 Signatur/Empfänger/`nonce`/Anbieter, unbekannter Schlüssel, nicht konfigurierter Anbieter, Fehlermeldung je nach
 Sitzung auf Konto- oder Login-Seite; als Anbieter: Discovery, nicht freigegebenes Tool, Login mit Fortsetzung über die
 Zwischenseite und gültiger Bestätigung, keine Ketten, Zwischenseite nur zum eigenen Endpunkt. Dazu Zeitplan-eigen: Zugang
-„nur mit Konto“ – Anmelden auf der Gästeansicht über Tool A führt zurück zum Ablauf, ohne Vorschau und ohne Verwaltung. Installierbare App: Manifest,
+„nur mit Konto“ – Anmelden auf der Gästeansicht über Tool A führt zurück zum Ablauf, ohne Vorschau und ohne Verwaltung.
+Anbindung an rsvp-app (`tests/e2e/rsvp.spec.ts` gegen das Test-Doppel `tests/e2e/rsvp-server.ts`, das wie rsvp-app beim
+Klick frisch signiert und weiterleitet): Einstieg ergibt Gast-Sitzung mit `rsvpId` nur als Hash (erneuter Klick ersetzt
+sie), Header von Einstieg und Fehlerseite; anderes Secret, anderer Empfänger, abgelaufen, zu lange gültig, nicht
+verknüpfter Termin, anderes Event in der Adresse, manipulierte Zusage und Webhook-Token als Link – jeweils keine Sitzung
+(Positivkontrolle mit gültigem Link); Entwurf und Zugang per Code ohne Sitzung; Webhook: ungültige Signatur, anderer
+Empfänger, abgelaufen → `401`, fremder Termin und Zusage ohne Wirkung, verspätete alte Absage beendet keinen neueren
+Zugang, zu großer Body `413`, echte Absage beendet genau diese Zusage (die andere bleibt), danach neuer Zugang per
+frischem Link; Verwaltung: Termin-id und Zeitplan-Link, ungültige id abgelehnt, neuer Termin beendet alte Sitzungen und
+alte Links, Moderator\*in ändert nichts. Installierbare App: Manifest,
 Icons, `sw.js`-Header, Worker speichert nur die Offline-Seite.
 
 Mails fängt ein Test-SMTP ab (`tests/e2e/mail-server.ts`, Port 2527, Pakete `smtp-server` und `mailparser`, nur für die
@@ -510,6 +544,7 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | `CRON_SECRET` | Schutz des Aufräum-Endpunkts |
 | `ACCESS_CODE_SECRET` | Schlüssel für Zugangscodes (HMAC), mindestens 32 Zeichen; leer = kein Zugang per Code |
 | `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events; der vorherige hält alte Links beim Wechsel gültig |
+| `RSVP_TIMELINE_SECRET` | optional: eigenes Secret der Anbindung an rsvp-app (dort `TIMELINE_SECRET`), mindestens 32 Zeichen; leer = kein Zugang „nur mit Zusage“ |
 | `SUITE_IDPS`, `SUITE_SIGNING_KEY`, `SUITE_SIGNING_KEY_PREVIOUS`, `SUITE_TRUSTED_APPS`, `SUITE_APP_NAME` | optional: Konto-Föderation (siehe „Anmelden mit einem Konto aus einem anderen Tool“) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mailversand für Einladungen und Passwort-Reset (optional) |
 | `IMPRESSUM_*` | Angaben für Impressum und Datenschutzerklärung |
@@ -522,4 +557,5 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | E2E-Testinstanz | 3801 (`127.0.0.1`) |
 | Test-SMTP der E2E-Tests | 2527 |
 | Test-Doppel anderer Tools der Suite (E2E) | 2530, 2531 (`localhost`) |
+| Test-Doppel von rsvp-app (E2E) | 2532 (`localhost`) |
 | Docker (Host) | 3008 |

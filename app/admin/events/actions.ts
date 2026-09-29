@@ -17,6 +17,7 @@ import { bumpLiveVersion, loadPlan } from '../../lib/planning/store'
 import { SLUG_TAKEN, SlugTakenError, slugTaken } from '../../lib/planning/slug-store'
 import { daysBetween, shiftDays, utcToZonedDate } from '../../lib/timezone'
 import { accessCodeConfigured, accessCodeHmac, displayLinkConfigured, validateAccessCode } from '../../lib/guest/tokens'
+import { linkedRsvpEventId, REMOTE_ID, rsvpConfigured } from '../../lib/rsvp/token'
 
 // Die Berechtigung prüft JEDE Aktion selbst (über loadEventForUser -> eventLevel), nie nur die Seite.
 // owner: Besitzer*in oder Admin - Einstellungen, Schalter, Status, Freigaben, Löschen (canManageEvent).
@@ -175,13 +176,13 @@ export async function updateEventOptions(_previous: FormState, formData: FormDat
   return { errors: [], message: 'Einstellungen gespeichert.' }
 }
 
-// Zugang RSVP kommt mit der Anbindung an rsvp-app (Phase 7b).
-const SELECTABLE_ACCESS: GuestAccess[] = ['PUBLIC', 'CODE', 'ACCOUNT']
+const SELECTABLE_ACCESS: GuestAccess[] = ['PUBLIC', 'CODE', 'ACCOUNT', 'RSVP']
 
 /**
  * Zugang der Gäste (docs/KONZEPT.md Abschnitt 6). Nur owner. Der Zugangscode wird nur als HMAC gespeichert und
- * danach nie wieder angezeigt; ein leeres Feld behält den bisherigen. Ändern sich Zugang oder Code, enden alle
- * Gast-Sitzungen des Events - wer den alten Code hatte, muss den neuen eingeben.
+ * danach nie wieder angezeigt; ein leeres Feld behält den bisherigen. RSVP braucht die id des Termins in rsvp-app
+ * (Event.rsvpLink) - dort trägt die Besitzer*in umgekehrt den Zeitplan-Link ein. Ändern sich Zugang, Code oder
+ * verknüpfter Termin, enden alle Gast-Sitzungen des Events - wer den alten Zugang hatte, braucht den neuen.
  */
 export async function updateGuestAccess(_previous: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser('/admin/events')
@@ -206,9 +207,20 @@ export async function updateGuestAccess(_previous: FormState, formData: FormData
     return { errors: ['Zugangscode: Einen Code gibt es nur beim Zugang „mit Zugangscode“.'] }
   }
 
-  const changed = access !== event.access || codeHmac !== event.accessCodeHmac
+  const previousRsvpEventId = linkedRsvpEventId(event.rsvpLink)
+  let rsvpEventId = previousRsvpEventId
+  if (access === 'RSVP') {
+    if (!rsvpConfigured()) return { errors: ['rsvp-app: Auf dem Server fehlt RSVP_TIMELINE_SECRET (siehe .env.example).'] }
+    rsvpEventId = formString(formData, 'rsvpEventId', 60)
+    if (!REMOTE_ID.test(rsvpEventId)) return { errors: ['Termin in rsvp-app: Bitte gib die id des Termins ein (steht dort in den Einstellungen des Termins).'] }
+  }
+
+  const changed = access !== event.access || codeHmac !== event.accessCodeHmac || rsvpEventId !== previousRsvpEventId
   await prisma.$transaction(async tx => {
-    await tx.event.update({ where: { id: event.id }, data: { access, accessCodeHmac: codeHmac } })
+    await tx.event.update({
+      where: { id: event.id },
+      data: { access, accessCodeHmac: codeHmac, ...(rsvpEventId !== previousRsvpEventId ? { rsvpLink: { rsvpEventId } } : {}) }
+    })
     if (changed) await tx.guestSession.deleteMany({ where: { eventId: event.id } })
   })
   revalidatePath(`/admin/events/${event.id}`)

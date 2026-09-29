@@ -5,7 +5,7 @@ import { expect, test } from '@playwright/test'
 // Gästeansicht bzw. Reihen-Übersicht /<slug> ist einbettbar, alles andere nicht.
 
 const PUBLIC = ['/', '/impressum', '/datenschutz']
-const PRIVATE = ['/login', '/login/continue', '/forgot-password', '/reset-password', '/account', '/admin', '/admin/users', '/admin/events', '/admin/events/new', '/admin/events/x',
+const PRIVATE = ['/login', '/login/continue', '/rsvp', '/rsvp/x', '/forgot-password', '/reset-password', '/account', '/admin', '/admin/users', '/admin/events', '/admin/events/new', '/admin/events/x',
   '/admin/events/import', '/admin/events/x/plan', '/admin/events/x/items/new', '/admin/events/x/export', '/admin/events/x/team', '/admin/events/x/live',
   '/admin/events/x/qr', '/admin/series', '/admin/series/x']
 // Einbettbar: nur /<slug> (Gästeansicht, Reihen-Übersicht).

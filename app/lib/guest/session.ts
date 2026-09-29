@@ -34,14 +34,14 @@ export async function hasGuestSession(event: { id: string; access: GuestAccess }
 }
 
 /**
- * Legt nach richtigem Zugangscode eine Gast-Sitzung an und setzt das Cookie (nur aus Server Actions). Eine
- * vorhandene Sitzung dieses Browsers fürs Event wird verworfen (keine Session-Fixation), abgelaufene gleich mit
- * aufgeräumt. Gültig bis Eventende + 1 Tag.
+ * Legt nach richtigem Zugangscode (rsvpId null) bzw. gültigem Link aus rsvp-app (rsvpId = die Zusage) eine
+ * Gast-Sitzung an. Eine vorhandene Sitzung dieses Browsers fürs Event wird verworfen (keine Session-Fixation),
+ * abgelaufene gleich mit aufgeräumt. Gültig bis Eventende + 1 Tag. Gibt Cookie-Name, Token und Laufzeit zurück -
+ * setzen muss es der Aufrufer (Server Action: startGuestSession, Route Handler: an seiner Antwort).
  */
-export async function startGuestSession(event: { id: string; date: Date }, now: Date): Promise<void> {
-  const cookieStore = await cookies()
+export async function issueGuestSession(event: { id: string; date: Date }, now: Date, rsvpId: string | null = null) {
   const name = guestCookieName(event.id)
-  const previous = cookieStore.get(name)?.value
+  const previous = (await cookies()).get(name)?.value
   if (previous) await prisma.guestSession.deleteMany({ where: { tokenHash: hashToken(previous) } })
   await prisma.guestSession.deleteMany({ where: { expiresAt: { lt: now } } })
 
@@ -52,6 +52,23 @@ export async function startGuestSession(event: { id: string; date: Date }, now: 
   const expiresAt = guestSessionExpiresAt(autoEndAt(items.map(item => ({ ...item, waitsFor: [] })), event.date), now)
 
   const token = generateToken()
-  await prisma.guestSession.create({ data: { eventId: event.id, tokenHash: hashToken(token), expiresAt } })
-  cookieStore.set(name, token, cookieOptions(Math.floor((expiresAt.getTime() - now.getTime()) / 1000)))
+  await prisma.guestSession.create({ data: { eventId: event.id, tokenHash: hashToken(token), rsvpId, expiresAt } })
+  return { name, token, options: cookieOptions(Math.floor((expiresAt.getTime() - now.getTime()) / 1000)) }
+}
+
+/** Für Server Actions (Zugangscode): Sitzung anlegen UND das Cookie setzen. */
+export async function startGuestSession(event: { id: string; date: Date }, now: Date): Promise<void> {
+  const { name, token, options } = await issueGuestSession(event, now)
+  ;(await cookies()).set(name, token, options)
+}
+
+/**
+ * Absage in rsvp-app (Webhook rsvp-change mit attending false): beendet die Gast-Sitzungen dieser Zusage - nur
+ * die, die vor der Meldung entstanden sind. Eine verspätet zugestellte alte Absage beendet so keinen Zugang, den
+ * die Person nach einer erneuten Zusage über einen frischen Link bekommen hat. iat hat nur Sekunden - im Zweifel
+ * (dieselbe Sekunde) wird beendet.
+ */
+export async function endRsvpSessions(eventId: string, rsvpId: string, iat: number): Promise<number> {
+  const deleted = await prisma.guestSession.deleteMany({ where: { eventId, rsvpId, createdAt: { lt: new Date((iat + 1) * 1000) } } })
+  return deleted.count
 }

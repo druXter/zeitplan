@@ -8,6 +8,7 @@ import { allowedStatusChanges, STATUS_LABELS } from '../../../lib/events/setting
 import { isGuestVisibleStatus } from '../../../lib/guest/access'
 import { formatDate, utcToZonedDate } from '../../../lib/timezone'
 import { accessCodeConfigured, displayLinkConfigured, displayToken, suggestAccessCode } from '../../../lib/guest/tokens'
+import { linkedRsvpEventId, rsvpConfigured, timelineLinkFor } from '../../../lib/rsvp/token'
 import { changeEventStatus, deleteEvent, regenerateDisplayLink, shareEvent, unshareEvent } from '../actions'
 import { EventOptionsForm, EventSettingsForm, GuestAccessForm } from '../event-forms'
 import ConfirmForm from '../../../ui/confirm-form'
@@ -167,6 +168,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
                 suggestion={suggestAccessCode()}
                 codeConfigured={accessCodeConfigured()}
                 activeSessions={activeGuestSessions}
+                rsvp={{ configured: rsvpConfigured(), rsvpEventId: linkedRsvpEventId(event.rsvpLink) ?? '', timelineLink: timelineLinkFor(event.id) }}
               />
             </div>
 

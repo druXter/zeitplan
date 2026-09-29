@@ -76,6 +76,12 @@ const nextConfig: NextConfig = {
       { source: "/login/:path*", headers: PRIVATE_PAGE },
       { source: "/forgot-password", headers: PRIVATE_PAGE },
       {
+        // Einstieg aus rsvp-app (/rsvp/<eventId>?t=...) und dessen Fehlerseite /rsvp: Der signierte Link steht
+        // in der URL - kein Referer, kein Cache, nicht einbettbar. `/rsvp/:path*` umfasst auch `/rsvp`.
+        source: "/rsvp/:path*",
+        headers: [...PRIVATE_PAGE, { key: "Referrer-Policy", value: "no-referrer" }],
+      },
+      {
         // Der Einmal-Link steht in der URL - er darf weder per Referer weitergegeben
         // noch zwischengespeichert werden.
         source: "/reset-password",

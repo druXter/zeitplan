@@ -7,8 +7,8 @@ import Link from 'next/link'
 // Einladungen, Events mit Freigaben, Programmpunkte mit internen Notizen und geheimen Punkten, Reihen,
 // Export/Import, Drosselung, Löschfristen, installierbare App mit Service Worker, Gästeansicht und Tafel mit
 // Offline-Stand im Browser, Phase 4: Live-Steuerung mit Verlauf, Phase 5: Zugangscode mit Gast-Sitzung und
-// Drosselung, Zugang per Konto, Tafel-Link, Phase 6: Anmeldung mit Konten anderer Tools der Suite). Mit
-// Phase 7 kommt die Anbindung an rsvp-app dazu - dann hier ergänzen.
+// Drosselung, Zugang per Konto, Tafel-Link, Phase 6: Anmeldung mit Konten anderer Tools der Suite, Phase 7:
+// Zugang über eine Zusage in rsvp-app).
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -143,6 +143,12 @@ export default function DatenschutzPage() {
             Veranstaltungen, die nur mit Konto sichtbar sind, gilt deine Anmeldung (Punkt 3).
           </p>
           <p className="mt-2">
+            Ist der Ablauf mit einer Veranstaltung in <strong>rsvp-app</strong> verknüpft, öffnest du ihn über deine
+            Zusage dort. rsvp-app übermittelt uns dabei nur eine Kennung deiner Zusage und der Veranstaltung (kein Name,
+            keine E-Mail-Adresse); wir speichern sie zu deinem Zugang wie oben. Sagst du in rsvp-app ab, meldet rsvp-app
+            uns das mit derselben Kennung, und wir beenden deinen Zugang.
+          </p>
+          <p className="mt-2">
             Damit du den Ablauf auch bei schlechtem Empfang siehst, merkt sich dein Browser den zuletzt geladenen Stand
             im <strong>lokalen Speicher</strong> (localStorage) deines Geräts – nur den Ablauf, wie ihn alle Gäste
             sehen, für höchstens fünf Veranstaltungen, keine personenbezogenen Daten. Diese Daten verlassen dein Gerät
@@ -207,6 +213,11 @@ export default function DatenschutzPage() {
             <strong>E-Mail-Versand:</strong> Einladungs- und Passwort-Reset-Mails versenden wir über den E-Mail-Server{' '}
             <code>{smtpHost}</code>. Mit dem Betreiber dieses Servers besteht, soweit es sich um einen externen Anbieter
             handelt, ein Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO.
+          </p>
+          <p className="mt-2">
+            <strong>rsvp-app:</strong> Bei Abläufen, die mit einer Veranstaltung in rsvp-app verknüpft sind, schickt
+            rsvp-app uns die unter Punkt 5 genannten Kennungen und ob deine Zusage noch gilt (signiert, über eine
+            verschlüsselte Verbindung). Wir schicken rsvp-app nichts.
           </p>
           <p className="mt-2">
             <strong>Andere Tools der Suite:</strong> Meldest du dich über ein anderes Tool an oder mit deinem Konto von hier

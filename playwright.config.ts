@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 import { SMTP_PORT } from './tests/e2e/mail-server'
 import { TEST_SUITE_IDPS, TEST_SUITE_TRUSTED_APPS, TEST_ZEITPLAN_SIGNING_KEY } from './tests/e2e/suite-server'
+import { TEST_RSVP_TIMELINE_SECRET } from './tests/e2e/rsvp-server'
 
 // E2E-Tests gegen eine echte, frisch gebaute Instanz (next build + next start) mit eigener
 // Datenbank (prisma/test.db) - nie gegen die Entwicklungs- oder Produktivdatenbank.
@@ -61,6 +62,8 @@ export default defineConfig({
       SUITE_TRUSTED_APPS: TEST_SUITE_TRUSTED_APPS,
       SUITE_SIGNING_KEY: TEST_ZEITPLAN_SIGNING_KEY,
       SUITE_APP_NAME: 'Zeitplan Test',
+      // Anbindung an rsvp-app (Phase 7b): Test-Doppel aus tests/e2e/rsvp-server.ts.
+      RSVP_TIMELINE_SECRET: TEST_RSVP_TIMELINE_SECRET,
       // Test-SMTP aus tests/e2e/mail-server.ts (in global-setup gestartet). Empfänger @nomail.test
       // lehnt er ab - dann greift der angezeigte Einladungslink.
       SMTP_HOST: '127.0.0.1',

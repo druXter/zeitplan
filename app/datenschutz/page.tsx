@@ -3,11 +3,11 @@ import Link from 'next/link'
 
 // ENTWURF: Beschreibt, was dieses Tool tatsächlich speichert und verarbeitet. Er ersetzt keine
 // Rechtsberatung - vor dem Einsatz mit Externen bitte einmal prüfen lassen und bei jeder
-// Änderung der Datenverarbeitung mitpflegen. Stand: Phase 3 (Konten für Planung und Moderation,
+// Änderung der Datenverarbeitung mitpflegen. Stand: Phase 4 (Konten für Planung und Moderation,
 // Einladungen, Events mit Freigaben, Programmpunkte mit internen Notizen und geheimen Punkten, Reihen,
 // Export/Import, Drosselung, Löschfristen, installierbare App mit Service Worker, Gästeansicht und Tafel mit
-// Offline-Stand im Browser). Mit den folgenden Phasen kommen Live-Steuerung mit Verlauf, Gast-Sitzungen,
-// Föderation und die Anbindung an rsvp-app dazu - dann hier ergänzen.
+// Offline-Stand im Browser, Phase 4: Live-Steuerung mit Verlauf). Mit den folgenden Phasen kommen
+// Gast-Sitzungen, Föderation und die Anbindung an rsvp-app dazu - dann hier ergänzen.
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -90,6 +90,13 @@ export default function DatenschutzPage() {
             nur Zeit und Dauer. Gegenüber dem Betreiber der Anwendung, der Zugriff auf die Datenbank hat, sind auch geheime
             Punkte nicht verborgen. Mehrere Veranstaltungen lassen sich zu einer <strong>Reihe</strong> mit Titel und
             Adresse bündeln.
+          </p>
+          <p className="mt-2">
+            Während der Veranstaltung melden Moderator*innen den Ablauf (Beginn, Ende, Verspätungen, Änderungen). Jede
+            solche Meldung speichern wir im <strong>Verlauf</strong> mit dem Konto, das sie gemacht hat, dem Zeitpunkt
+            und dem Stand vorher und nachher - damit das Team nachvollziehen und Meldungen rückgängig machen kann. Den
+            Verlauf sehen nur Konten mit Zugriff auf die Veranstaltung; er wird mit ihr gelöscht. Wird ein Konto
+            gelöscht, bleibt der Eintrag ohne Zuordnung zum Konto stehen.
           </p>
           <p className="mt-2">
             Ein <strong>Export</strong> als Datei enthält den Ablauf mit internen Notizen, aber keine Konten, E-Mail-Adressen
@@ -184,7 +191,7 @@ export default function DatenschutzPage() {
           </p>
           <p className="mt-2">
             Veranstaltungen werden <strong>18 Monate nach ihrem Ende</strong> automatisch gelöscht, samt Ablauf,
-            internen Notizen und Freigaben.
+            internen Notizen, Freigaben und Verlauf.
           </p>
         </div>
 

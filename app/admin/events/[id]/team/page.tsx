@@ -21,17 +21,20 @@ type TeamItem = Projected<PlanItem>
  * Team-Ansicht (docs/KONZEPT.md Abschnitt 5), nur lesen: wie die Gästeansicht, aber mit Team-Punkten, geheimen
  * Punkten (Inhalt nur mit Eintrag, sonst "Geheimer Punkt" mit Zeit und Dauer), internen Notizen, Konflikten und
  * minutengenauer Prognose. Alle Punkte kommen aus loadPlan (SECRET-Regel), die Prognose aus dem Kern. Lädt sich
- * alle 30 s selbst neu. Zu jedem öffentlichen Punkt steht, welche Zeit Gäste gerade sehen, wenn sie abweicht.
+ * alle 30 s selbst neu. Zu jedem öffentlichen Punkt steht, welche Zeit Gäste gerade sehen, wenn sie abweicht, und
+ * der Ursprungsplan (beim Live-Schalten eingefroren), wenn der Punkt seitdem verlegt wurde.
  */
 export default async function TeamPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const user = await requireUser(`/admin/events/${id}/team`)
   const event = await loadEventOr404(id, user)
   const now = new Date()
-  const [{ tracks, items }, shownRows] = await Promise.all([
+  const [{ tracks, items }, shownRows, lastAction] = await Promise.all([
     loadPlan(event.id, user.id),
-    prisma.item.findMany({ where: { eventId: event.id }, select: { id: true, guestShownStart: true } })
+    prisma.item.findMany({ where: { eventId: event.id }, select: { id: true, guestShownStart: true, originalStart: true } }),
+    prisma.liveAction.findFirst({ where: { eventId: event.id, actorId: { not: null } }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } })
   ])
+  const originals = new Map(shownRows.map(row => [row.id, row.originalStart]))
 
   let projection = project(items, now, event)
   const loop = !projection.ok
@@ -62,6 +65,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
       item={item}
       track={trackById.get(item.trackId)}
       guest={guestItems.get(item.id)}
+      original={originals.get(item.id) ?? null}
       waitsFor={item.waitsFor.map(other => itemById.get(other)?.title).filter((t): t is string => t !== undefined)}
       clock={clock}
       highlight={highlight}
@@ -76,7 +80,9 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
           <p className="text-sm"><Link href={`/admin/events/${event.id}`} className="text-blue-700 hover:underline">{event.title}</Link></p>
           <h1 className="text-2xl font-bold">Team-Ansicht <StatusBadge status={event.status} /></h1>
           <p className="text-sm text-gray-600">
-            Stand {clock(now)} Uhr, minutengenau. Aktualisiert sich alle 30 Sekunden.{' '}
+            Stand {clock(now)} Uhr, minutengenau{lastAction ? `, letzte Meldung vor ${formatDuration(Math.max(0, Math.round((now.getTime() - lastAction.createdAt.getTime()) / 60_000)))}` : ''}.
+            Aktualisiert sich alle 30 Sekunden.{' '}
+            <Link href={`/admin/events/${event.id}/live`} className="text-blue-700 hover:underline">Live-Steuerung</Link>{' · '}
             <Link href={`/admin/events/${event.id}/plan`} className="text-blue-700 hover:underline">Planung</Link>{' · '}
             <Link href={`/${event.slug}`} className="text-blue-700 hover:underline">Gästeansicht</Link>{' · '}
             <Link href={`/${event.slug}/tafel`} className="text-blue-700 hover:underline">Tafel</Link>
@@ -120,10 +126,11 @@ function List({ children }: { children: React.ReactNode }) {
   return <ul className="bg-white rounded-lg shadow divide-y divide-gray-200">{children}</ul>
 }
 
-function TeamRow({ item, track, guest, waitsFor, clock, highlight }: {
+function TeamRow({ item, track, guest, original, waitsFor, clock, highlight }: {
   item: TeamItem
   track: PlanTrack | undefined
   guest: GuestItem | undefined
+  original: Date | null
   waitsFor: string[]
   clock: (date: Date) => string
   highlight: boolean
@@ -159,6 +166,9 @@ function TeamRow({ item, track, guest, waitsFor, clock, highlight }: {
         </div>
         {item.status === 'CANCELLED' && item.cancelReason && <p className="text-sm text-gray-700">Grund: {item.cancelReason}</p>}
         {guest?.approximate && <p className="text-xs text-gray-600">Gäste sehen: ca. {clock(guest.shownStart)}</p>}
+        {original && original.getTime() !== item.plannedStart.getTime() && (
+          <p className="text-xs text-gray-600">Ursprünglich geplant: {clock(original)} (Fahrplanänderung)</p>
+        )}
         {item.location && <p className="text-sm text-gray-700">{item.location}</p>}
         {item.description && <p className="text-sm text-gray-700 whitespace-pre-line">{item.description}</p>}
         {item.internalNote && <p className="text-sm text-amber-900 bg-amber-50 rounded px-2 py-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}

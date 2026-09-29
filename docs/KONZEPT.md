@@ -454,3 +454,40 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   Phase 4. (Annahme)
 * QR-Code zur Gästeansicht als SVG, serverseitig erzeugt (Paket `qrcode` wie in rsvp-app), auf einer Druckseite in der
   Verwaltung mit Download – für alle Konten mit Zugriff. (Annahme)
+* Live-Aktionen laufen in einer Transaktion, die zuerst schreibt (`liveVersion` + 1) und so die Schreibsperre von
+  SQLite hält: Gleichzeitige Aktionen laufen nacheinander, die zweite sieht den Stand nach der ersten. Scheitert eine
+  Transaktion an einem Schreibkonflikt, wird sie mit frisch gelesenem Stand wiederholt. Live-Aktionen erhöhen
+  `Item.version` der geänderten Punkte. (Annahme)
+* "Weiter" nennt den beendeten und den gestarteten Punkt; gestartet wird nur der nächste nicht begonnene aktive Punkt
+  nach dem beendeten. Ist das schon geschehen, ändert sich nichts ("Das ist schon passiert", aktueller Stand).
+  Ohne laufenden Punkt heißt der Knopf "Start: …". Mit dem Beginn entfällt eine vorher gemeldete Verspätung. (Annahme)
+* "Gestartet vor …" nicht vor dem Beginn eines früheren Punkts derselben Spur, "Beendet vor …" nicht vor dem eigenen
+  Beginn, höchstens 180 Minuten zurück. Ein Punkt wird nur beendet, wenn er begonnen hat. (Annahme)
+* Verspätung: Das Formular schickt die gesehene bisherige Abweichung und die Minuten; gespeichert wird der Zielwert
+  (höchstens 600). Zwei Handys, die dasselbe sehen und "+5" drücken, melden so einmal "+5". (Annahme)
+* Zurückstellen und Ausfall nur vor dem Beginn; Wiederherstellen setzt den Punkt an seine alte Stelle. "Als Nächstes"
+  reiht einen zurückgestellten Punkt direkt nach dem laufenden (bzw. zuletzt begonnenen) Punkt seiner Spur ein, mit
+  Beginn wie beim Einschub – nicht für Anker. (Annahme)
+* Tauschen live wie in der Planung (`swapAdjacent`); das Formular trägt die Versionen beider Punkte, ein veralteter
+  Stand wird abgelehnt. (Annahme)
+* Einschub live: Titel, Dauer (1–600 Min), Sichtbarkeit öffentlich oder Team – geheime Punkte (mit Kontenliste) legt
+  die Planung an. Er kommt nach dem laufenden bzw. zuletzt begonnenen Punkt der gewählten Spur. Entfernen lassen sich
+  live nur eingeschobene Punkte, die noch nicht begonnen haben; alles andere löscht die Planung. (Annahme)
+* Rückgängig gibt es für jede Aktion an Punkten: als Leiste unten (12 Sekunden, eigene Aktion) und im Verlauf (jede
+  Aktion, jedes Konto mit Zugriff – mit denselben Prüfungen für SECRET und Schalter). Es wirkt nur, solange alle
+  betroffenen Punkte noch genau so sind wie nach der Aktion; sonst "geht nicht mehr". Ein entfernter Einschub kommt
+  mit id, Inhalt, Abhängigkeiten, SECRET-Liste und Anlagezeit zurück. Live schalten und Beenden sind nicht rückgängig
+  zu machen. (Annahme)
+* Live schalten geht nur aus `PUBLISHED`, Beenden nur aus `LIVE` – beides dürfen Besitzer*in, Admin und freigegebene
+  Moderator*innen (der Trauzeuge schaltet am Tag selbst live). (Annahme)
+* Automatisch `ENDED`: sechs Stunden nach dem Ende des letzten aktiven Punkts (tatsächlich, sonst geplant), ohne
+  Punkte zwei Tage nach dem Eventtag; gilt für `PUBLISHED` und `LIVE`. Geprüft beim Öffnen der Live-Steuerung, bei
+  jeder Live-Aktion und im täglichen Cron; im Verlauf als "Event automatisch beendet". (Annahme)
+* Geheime Punkte live: Jede Aktion prüft alle genannten Punkte, auch Tauschpartner und den Bezugspunkt eines
+  Einschubs. Wer nicht eingetragen ist, sieht "Geheimer Punkt" ohne Knöpfe; ist der nächste Punkt geheim, bleibt nur
+  "Beendet". (Annahme)
+* Live-Seite unter `/admin/events/<id>/live`: pro Spur ein Tab (Standard: die Spur, in der etwas läuft), "Jetzt" mit
+  "Weiter" ganz oben, "Als Nächstes", "Danach" (Aktionen aufklappbar), Übersprungene, Zurückgestellte, Ausgefallene,
+  Einschub, Vorbei, Verlauf (letzte 30 Aktionen mit Konto und Zeit), Event beenden. Lädt sich alle 15 Sekunden neu,
+  nicht während einer Eingabe. Die Nachfrage "läuft noch?" steht oben mit "+5" und "Beendet". Team-Ansicht zeigt
+  zusätzlich "letzte Meldung vor X Min" und den Ursprungsplan, wenn ein Punkt verlegt wurde. (Annahme)

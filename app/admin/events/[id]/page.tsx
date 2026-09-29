@@ -27,7 +27,7 @@ const STATUS_ACTIONS: Record<string, string> = {
 /**
  * Übersicht eines Events. owner (Besitzer*in, Admin) sieht Status, Einstellungen, Rechte der Moderator*innen,
  * Freigaben und Löschen; freigegebene Konten den Weg zum Ablauf und ihre Rechte. Für alle: Links zu Team-Ansicht,
- * Gästeansicht, Tafel und QR-Code. Die Live-Steuerung kommt mit Phase 4 hierher.
+ * Live-Steuerung, Gästeansicht, Tafel und QR-Code.
  */
 export default async function EventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
   const { id } = await params
@@ -93,7 +93,8 @@ export default async function EventPage({ params, searchParams }: { params: Prom
               : 'Gäste sehen den Ablauf erst, wenn das Event veröffentlicht ist. Bis dahin siehst nur du (und wer Zugriff hat) eine Vorschau.'}
           </p>
           <div className="flex flex-wrap gap-2 text-sm">
-            <Link href={`/admin/events/${event.id}/team`} className="bg-blue-600 text-white font-bold py-2 px-3 rounded hover:bg-blue-700">Team-Ansicht</Link>
+            <Link href={`/admin/events/${event.id}/live`} className="bg-blue-600 text-white font-bold py-2 px-3 rounded hover:bg-blue-700">Live-Steuerung</Link>
+            <Link href={`/admin/events/${event.id}/team`} className="py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">Team-Ansicht</Link>
             <Link href={`/${event.slug}`} className="py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">Gästeansicht</Link>
             <Link href={`/${event.slug}/tafel`} className="py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">Tafel</Link>
             <Link href={`/admin/events/${event.id}/qr`} className="py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">QR-Code zum Ausdrucken</Link>
@@ -106,7 +107,8 @@ export default async function EventPage({ params, searchParams }: { params: Prom
               <h2 className="font-bold">Status: {STATUS_LABELS[event.status]}</h2>
               <p className="text-xs text-gray-600">
                 Entwürfe und archivierte Events sehen nur Konten mit Zugriff. Veröffentlichte Events zeigen jeder*m mit Link
-                den Ablauf. Live und Beendet setzt die Live-Steuerung.
+                den Ablauf. Live schalten und beenden geht in der Live-Steuerung (auch für Moderator*innen); einige Stunden
+                nach dem letzten Punkt endet das Event automatisch.
               </p>
               <div className="flex flex-wrap gap-2">
                 {allowedStatusChanges(event.status).map(target => (
@@ -185,8 +187,8 @@ export default async function EventPage({ params, searchParams }: { params: Prom
           <div className="bg-white rounded-lg shadow p-4 space-y-2">
             <h2 className="font-bold">Freigegeben für dich</h2>
             <p className="text-sm text-gray-700">
-              Dieses Event wurde für dich freigegeben. In der Team-Ansicht siehst du den Ablauf mit Prognose und internen
-              Notizen; die Live-Steuerung folgt in einer späteren Ausbaustufe.
+              Dieses Event wurde für dich freigegeben. In der Live-Steuerung meldest du Beginn, Ende, Verspätungen und
+              Änderungen; die Team-Ansicht zeigt den Ablauf mit Prognose und internen Notizen.
             </p>
             <ul className="text-sm list-disc list-inside text-gray-700">
               <li>Plan bearbeiten: {event.modsMayEditPlan ? 'erlaubt' : 'nicht erlaubt'}</li>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
 import { safeEqual } from '../../../lib/permissions'
+import { endIfOver } from '../../../lib/live/store'
 
 // Suite-weit einheitliche Fristen (siehe suite-kit README "Betrieb"), damit die
 // Datenschutzerklärungen aller Tools dieselben Zeiträume nennen können.
@@ -21,6 +22,8 @@ const EVENT_END_GRACE_MS = 2 * 24 * 60 * 60 * 1000
  *    Events gehören.
  * 3. Räumt Technisches auf: abgelaufene Sitzungen, abgelaufene Einladungs-/Reset-Links,
  *    veraltete Drossel-Zähler. Abgelaufene Gast-Sitzungen kommen mit Phase 5 dazu.
+ * 4. Setzt veröffentlichte und laufende Events nach ihrem Ende auf ENDED (endIfOver, Phase 4) - falls
+ *    niemand mehr die Live-Steuerung geöffnet hat.
  */
 export async function GET(request: Request) {
   const secret = new URL(request.url).searchParams.get('secret')
@@ -32,6 +35,11 @@ export async function GET(request: Request) {
   }
 
   const now = new Date()
+
+  let endedEvents = 0
+  for (const event of await prisma.event.findMany({ where: { status: { in: ['PUBLISHED', 'LIVE'] } }, select: { id: true, date: true, status: true } })) {
+    if (await endIfOver(event, now)) endedEvents++
+  }
 
   const eventCutoff = new Date(now)
   eventCutoff.setMonth(eventCutoff.getMonth() - EVENT_RETENTION_MONTHS)
@@ -55,6 +63,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     deletedEvents: deletedEvents.count,
     deletedUsers: deletedUsers.count,
-    deletedSessions: deletedSessions.count
+    deletedSessions: deletedSessions.count,
+    endedEvents
   })
 }

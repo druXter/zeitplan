@@ -8,3 +8,7 @@ export { project, isActive } from './project'
 export { checkDependencies } from './dependencies'
 export { applyChanges, insertAfter, swapAdjacent, type InsertRefusal, type SwapRefusal } from './plan-changes'
 export { toGuestView, DEFAULT_GUEST_SETTINGS, type GuestItem, type GuestSettings, type GuestSourceItem, type GuestStatus, type GuestTrack, type GuestView } from './guest-view'
+export {
+  applyLiveCommand, applyLivePatches, autoEndAt, currentDelayMin, isRunning, isStarted, liveReference, nextInTrack, LIVE_LIMITS,
+  type LiveCommand, type LivePatch, type LiveRefusal, type LiveResult
+} from './live'

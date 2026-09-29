@@ -16,7 +16,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 1 | Prognose-Kern als reine Funktionen (`project`, `swapAdjacent`, `insertAfter`, `toGuestView`) | ✅ umgesetzt |
 | 2 | Datenmodell komplett und Planung (Punkte, Spuren, Anker, Sichtbarkeit, Reihen, Import/Export, Vorlage) | ✅ umgesetzt |
 | 3 | Gästeansicht, Tafel, Polling-Endpunkt, QR-Code, Reihen-Übersicht, Team-Ansicht | ✅ umgesetzt |
-| 4 | Live-Steuerung | offen |
+| 4 | Live-Steuerung | ✅ umgesetzt |
 | 5 | Zugang per Code und Konto, Gast-Sitzungen, Tafel-Link | offen |
 | 6 | Konto-Föderation über `suite-kit` | offen |
 | 7 | Anbindung an rsvp-app (Zugang `RSVP`) | offen |
@@ -24,8 +24,9 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 
 Bisher gibt es das Gerüst (Anmelden, Konten einladen, Events anlegen und freigeben), den rechnerischen Kern der
 Prognose, die Planung (Programmpunkte, Spuren, geheime Punkte, Reihen, Import/Export, Vorlage „Hochzeit“) und die
-Ansichten (Gästeansicht mit Prognose, Anzeigetafel, Reihen-Übersicht, QR-Code, Team-Ansicht). Die Live-Steuerung folgt
-mit Phase 4 – bis dahin ändert sich die Prognose nur durch die Planung und die Uhr.
+Ansichten (Gästeansicht mit Prognose, Anzeigetafel, Reihen-Übersicht, QR-Code, Team-Ansicht) und die Live-Steuerung
+fürs Handy (Weiter, Verspätung, Tauschen, Zurückstellen, Ausfall, Einschub, Rückgängig, Verlauf). Zugang per Code oder
+Konto für geschützte Events folgt mit Phase 5.
 
 ## Konten
 
@@ -73,7 +74,8 @@ Unter `/admin/events` legen Creator und Admins Events an, Moderator\*innen sehen
   (vorerst immer Europe/Berlin) als UTC-Zeitpunkt. Uhrzeiten stehen nur an den Programmpunkten, ebenfalls als absolute
   Zeitpunkte – nie als „HH:MM“ (Mitternacht, Zeitumstellung). Ein neues Datum verschiebt alle Punkte um dieselbe Zahl
   von Kalendertagen, die Uhrzeiten bleiben (nicht, solange das Event live ist).
-* **Status:** Entwurf ↔ veröffentlicht, archivieren. „Live“ und „Beendet“ setzt die Live-Steuerung (Phase 4).
+* **Status:** Entwurf ↔ veröffentlicht, archivieren. „Live“ und „Beendet“ setzt die Live-Steuerung; einige Stunden nach
+  dem letzten Punkt endet ein Event automatisch.
 * **Ablauf und Gäste:** Rundung, Hysterese, Horizont und „+10 zeigen“ für die Gästeanzeige, Fortschreiben mit
   Nachfrage und Deckel für die Prognose (Standardwerte aus dem Konzept).
 * **Freigaben:** Besitzer\*in oder Admin gibt das Event per E-Mail-Adresse einem bestehenden Konto frei. Freigegebene
@@ -123,6 +125,42 @@ eigener Adresse; unter `/<reihen-adresse>` sehen Gäste Titel, Datum und Link de
 beendeten Events (Entwürfe und Archiv fehlen). Zuordnen lassen sich nur eigene Reihen
 (Admins: alle), in den Einstellungen des Events. Löschen einer Reihe lässt ihre Events stehen.
 
+## Live-Steuerung
+
+Unter `/admin/events/<id>/live` (für alle Konten mit Zugriff aufs Event, gedacht fürs Handy): einhändig bedienbar, große
+Knöpfe, „Weiter“ ganz oben, Rückgängig als Leiste unten.
+
+| Aktion | Wirkung |
+| --- | --- |
+| **Live schalten** | aus „veröffentlicht“; friert den Ursprungsplan ein (Beginn, Dauer, Reihenfolge jedes Punkts) |
+| **Weiter: ‹nächster Punkt›** | beendet den laufenden und startet den nächsten Punkt der Spur (ohne laufenden Punkt: „Start: …“) |
+| Beendet / Beendet vor 5–15 Min | beendet den laufenden Punkt, auch nachträglich (nie vor seinem Beginn) |
+| Schon gestartet vor 5–15 Min | stellt einen vergessenen Start richtig |
+| **+5 / +10 / +15 / eigene Minuten** | Verspätung des nächsten Punkts bzw. „dauert länger“ beim laufenden |
+| Im Plan | nimmt die Meldung zurück |
+| ↑/↓ tauschen | mit dem Nachbarn tauschen (wie in der Planung, mit Versionsprüfung) |
+| Zurückstellen / Als Nächstes / Wiederherstellen | Punkt vorerst heraus, später direkt nach dem laufenden einreihen oder an alter Stelle zurück |
+| Ausfall (mit Grund) | Punkt entfällt, Gäste sehen ihn durchgestrichen |
+| Einschub / Einschub entfernen | neuer Punkt nach dem laufenden; nur mit Recht (Moderator\*innen: Schalter „Einschübe und Löschen“) |
+| **Rückgängig** | letzte eigene Aktion (Leiste) oder jede Aktion im Verlauf – solange die Punkte seitdem unverändert sind |
+| Event beenden | sperrt die Live-Steuerung; Gäste sehen den Rückblick |
+
+* **Zeit ist immer die des Servers**, nie die des Handys; das Formular liefert höchstens „vor N Minuten“.
+* **Mehrere Moderator\*innen:** Aktionen nennen den gemeinten Punkt („beende Trauung, starte Sektempfang“) und sind
+  idempotent. Drücken zwei gleichzeitig „Weiter“, wirkt nur das erste; das zweite zeigt „Das ist schon passiert“ und
+  den aktuellen Stand. Die Transaktion schreibt zuerst und serialisiert so gleichzeitige Aktionen (SQLite).
+* **Nachfrage:** Läuft ein Punkt 5 Minuten über sein Ende, fragt die Seite „läuft noch?“ mit „+5“ und „Beendet“.
+  Punkte, deren Beginn ohne Meldung erreicht ist, stehen als „noch nicht bestätigt“ da.
+* **Verlauf:** jede Aktion mit Konto, Zeit und Vorher/Nachher (`LiveAction`); die Seite zeigt die letzten 30.
+* **Geheime Punkte:** steuern nur eingetragene Konten; alle anderen sehen „Geheimer Punkt“ ohne Knöpfe.
+* **Automatisch beendet** wird ein Event sechs Stunden nach dem Ende seines letzten Punkts (beim Öffnen der
+  Live-Steuerung, bei jeder Aktion und im täglichen Cron).
+
+Die Regeln stehen als reine Funktionen in `app/lib/schedule/live.ts` (`applyLiveCommand`, `nextInTrack`,
+`currentDelayMin`, `autoEndAt`) und `app/lib/live/history.ts` (Momentaufnahmen, Vergleich für Rückgängig,
+Beschreibungen); `app/lib/live/store.ts` schreibt sie in die Datenbank, die Server Action
+`app/admin/events/[id]/live/actions.ts` prüft Rechte, Status und SECRET.
+
 ## Ansichten
 
 | Ansicht | Adresse | Für |
@@ -152,6 +190,7 @@ beendeten Events (Entwürfe und Archiv fehlen). Zuordnen lassen sich nur eigene 
   werden gekürzt, nichts scrollt. Gedacht für einen Browser im Vollbild-/Kiosk-Modus. Bei geschütztem Zugang kommt der
   eigene Tafel-Link mit Phase 5.
 * **Team-Ansicht** (nur lesen): chronologisch wie für Gäste, aber minutengenau mit geplanter und erwarteter Zeit,
+  „letzte Meldung vor X Min“, Ursprungsplan bei verlegten Punkten,
   Abweichung, Team- und geheimen Punkten (Inhalt nur für eingetragene Konten), internen Notizen, Konflikten mit Ankern,
   „nicht bestätigt“, „überzogen“, „unklar“ und „läuft noch?“, zurückgestellten Punkten und der Zeit, die Gäste gerade
   sehen. Lädt sich alle 30 Sekunden neu.
@@ -276,7 +315,8 @@ npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, For
                     # fehlende Routen), Cron-Secret, Zeitzonen (Zeitumstellung, Eventtag, Verschieben), Rechte,
                     # Event-Formular und -Einstellungen, Reihen, Prognose-Kern (tests/unit/schedule), Planung
                     # (tests/unit/planning: Punkt-Formular, SECRET-Filter, Reihenfolge, Export/Import, Vorlage),
-                    # Gästeansicht (tests/unit/guest: Sichtbarkeit, Payload), Abschnitte Jetzt/Als Nächstes/Vorbei
+                    # Gästeansicht (tests/unit/guest: Sichtbarkeit, Payload), Abschnitte Jetzt/Als Nächstes/Vorbei,
+                    # Live-Steuerung (tests/unit/schedule/live.test.ts, tests/unit/live: Verlauf und Rückgängig)
 npm run test:e2e    # Playwright gegen eine frisch gebaute Instanz auf http://127.0.0.1:3801
 npm run build
 npm run lint
@@ -317,7 +357,15 @@ ohne Inhalt, auch per Endpunkt; Prognose mit „ca.“ und gespeichertem gezeigt
 Stand; Tafel ohne Scrollen bei 1920×1080 und 1280×720; Reihen-Übersicht; QR-Code; Team-Ansicht mit Konflikten;
 Einbetten (eine fremde Website auf eigenem Port bindet die Gästeansicht per iFrame ein, Tafel und Anmeldung blockiert
 der Browser).
-Installierbare App: Manifest, Icons, `sw.js`-Header, Worker speichert nur die Offline-Seite.
+Für die Live-Steuerung (`tests/e2e/live.spec.ts`): Live schalten friert den Ursprungsplan ein (auch nach einem Tausch
+unverändert); Start und Weiter mit Serverzeit bei falscher Handy-Uhr und gefälschtem Zeitfeld; drei gleichzeitige
+„Weiter“ überspringen nur einen Punkt; veraltete Tauschaktion abgelehnt, aktuelle wirkt; Rückgängig stellt jede
+Aktion exakt her (Verspätung, Dauert länger, Tauschen, Zurückstellen, Ausfall, Weiter, Beendet vor, Einschub,
+Entfernen samt Abhängigkeiten) und nie über eine spätere Änderung hinweg; Moderator\*in ohne Schalter und ohne
+SECRET-Eintrag – nachgespielte Einschübe, Weiter, Verspätung, Ausfall, Zurückstellen und Tauschen wirkungslos, mit
+Schalter bzw. als Eingetragene wirksam; Bedienung bei 390 px (nichts ragt heraus, Knöpfe mindestens 44 px,
+Rückgängig unten erreichbar, Nachfrage bei Überziehen); automatisches Beenden per Cron und beim Öffnen, danach
+gesperrt. Installierbare App: Manifest, Icons, `sw.js`-Header, Worker speichert nur die Offline-Seite.
 
 Mails fängt ein Test-SMTP ab (`tests/e2e/mail-server.ts`, Port 2527, Pakete `smtp-server` und `mailparser`, nur für die
 Tests), der sie als `.eml` in `data/test-mails` ablegt; Empfänger unter `@nomail.test` lehnt er ab (gescheiterter

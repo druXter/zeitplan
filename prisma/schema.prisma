@@ -84,10 +84,9 @@ model LoginThrottle {
   windowStart DateTime
 }
 
-// DRAFT: nur für Konten mit Zugriff. PUBLISHED: Gästeansicht mit Planzeiten, Ursprungsplan
-// eingefroren. LIVE: Live-Steuerung aktiv. ENDED: nach Eventende, Rückblick ohne Live-Steuerung.
-// ARCHIVED: nicht mehr öffentlich (docs/KONZEPT.md Abschnitt 4). In Phase 0 nur gespeichert und
-// angezeigt - die Übergänge und ihre Wirkung kommen mit Phase 2 bis 4.
+// DRAFT: nur für Konten mit Zugriff. PUBLISHED: Gästeansicht mit Prognose. LIVE: Live-Steuerung aktiv,
+// Ursprungsplan beim Live-Schalten eingefroren. ENDED: nach Eventende (auch automatisch, app/lib/live/store.ts
+// endIfOver), Rückblick ohne Live-Steuerung. ARCHIVED: nicht mehr öffentlich (docs/KONZEPT.md Abschnitt 4).
 enum EventStatus {
   DRAFT
   PUBLISHED
@@ -307,8 +306,8 @@ model ItemSecretViewer {
   @@index([userId])
 }
 
-// Verlauf der Live-Steuerung (Phase 4): jede Aktion mit Konto, Zeit und Vorher/Nachher - Grundlage für
-// "Rückgängig". actorId SetNull: Der Verlauf bleibt, wenn ein Konto gelöscht wird.
+// Verlauf der Live-Steuerung: jede Aktion mit Konto, Zeit und Vorher/Nachher (Aufbau: app/lib/live/history.ts,
+// ActionState) - Grundlage für "Rückgängig". actorId null: automatisch (Eventende) oder Konto gelöscht.
 model LiveAction {
   id         String    @id @default(cuid())
   eventId    String

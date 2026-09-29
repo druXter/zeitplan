@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test'
 
 const PUBLIC = ['/', '/impressum', '/datenschutz']
 const PRIVATE = ['/login', '/forgot-password', '/reset-password', '/account', '/admin', '/admin/users', '/admin/events', '/admin/events/new', '/admin/events/x',
-  '/admin/events/import', '/admin/events/x/plan', '/admin/events/x/items/new', '/admin/events/x/export', '/admin/events/x/team',
+  '/admin/events/import', '/admin/events/x/plan', '/admin/events/x/items/new', '/admin/events/x/export', '/admin/events/x/team', '/admin/events/x/live',
   '/admin/events/x/qr', '/admin/series', '/admin/series/x']
 // Einbettbar: nur /<slug> (Gästeansicht, Reihen-Übersicht).
 const EMBEDDABLE = ['/irgendein-event']

@@ -1,7 +1,7 @@
 // app/ui/account-nav.tsx
 import Link from 'next/link'
 import { getCurrentUser } from '../lib/auth'
-import { canInviteUsers } from '../lib/permissions'
+import { canCreateEvents, canInviteUsers } from '../lib/permissions'
 import { logoutUser } from '../auth-actions'
 import LoginLink from './login-link'
 
@@ -22,6 +22,7 @@ export default async function AccountNav() {
         <>
           <Link href="/admin" className="hover:text-gray-900">Verwaltung</Link>
           <Link href="/admin/events" className="hover:text-gray-900">Events</Link>
+          {canCreateEvents(user) && <Link href="/admin/series" className="hover:text-gray-900">Reihen</Link>}
           {canInviteUsers(user) && <Link href="/admin/users" className="hover:text-gray-900">Nutzer*innen</Link>}
           <Link href="/account" className="hover:text-gray-900 truncate max-w-48">{user.name || user.email}</Link>
           <form action={logoutUser}>

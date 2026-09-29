@@ -13,8 +13,8 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | Phase | Inhalt | Stand |
 | --- | --- | --- |
 | 0 | Gerüst: Konten, Rollen, Einladungen, Events mit Freigaben, Sicherheits-Header, Slugs, PWA, Impressum/Datenschutz, Docker, Unit- und E2E-Setup | ✅ umgesetzt |
-| 1 | Prognose-Kern als reine Funktionen (`project`, `swapAdjacent`, `insertAfter`, `toGuestView`) | offen |
-| 2 | Datenmodell komplett und Planung (Punkte, Spuren, Anker, Sichtbarkeit, Reihen, Import/Export, Vorlage) | offen |
+| 1 | Prognose-Kern als reine Funktionen (`project`, `swapAdjacent`, `insertAfter`, `toGuestView`) | ✅ umgesetzt |
+| 2 | Datenmodell komplett und Planung (Punkte, Spuren, Anker, Sichtbarkeit, Reihen, Import/Export, Vorlage) | ✅ umgesetzt |
 | 3 | Gästeansicht, Tafel, Polling-Endpunkt, QR-Code, Reihen-Übersicht, Team-Ansicht | offen |
 | 4 | Live-Steuerung | offen |
 | 5 | Zugang per Code und Konto, Gast-Sitzungen, Tafel-Link | offen |
@@ -22,7 +22,8 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 7 | Anbindung an rsvp-app (Zugang `RSVP`) | offen |
 | 8 | Abschluss, Test auf echtem Handy und Fernseher, Lasttest | offen |
 
-Bisher gibt es nur das Gerüst: Anmelden, Konten einladen, Events anlegen und freigeben. Programmpunkte, die
+Bisher gibt es das Gerüst (Anmelden, Konten einladen, Events anlegen und freigeben), den rechnerischen Kern der
+Prognose und die Planung (Programmpunkte, Spuren, geheime Punkte, Reihen, Import/Export, Vorlage „Hochzeit“). Die
 Gästeansicht und die Live-Steuerung folgen mit den nächsten Phasen.
 
 ## Konten
@@ -61,17 +62,85 @@ Die Anmeldung mit Konten anderer Tools der Suite (Föderation) kommt mit Phase 6
 
 Unter `/admin/events` legen Creator und Admins Events an, Moderator\*innen sehen dort die ihnen freigegebenen.
 
-* **Anlegen:** Titel, Adresse (Vorschlag aus dem Titel), Datum, Beschreibung. Neue Events sind ein Entwurf.
+* **Anlegen:** Titel, Adresse (Vorschlag aus dem Titel), Datum, Beschreibung – leer (mit einer Spur „Ablauf“) oder mit
+  der **Vorlage „Hochzeit“** (`app/lib/planning/template.ts`: Trauung, Empfang, Abendessen als Anker, Party bis nach
+  Mitternacht, Spur „Brautpaar“ mit Zusammenführung, Team-Spur, ein geheimer Punkt). Neue Events sind ein Entwurf.
 * **Adresse** (`/<adresse>`, dort erscheint ab Phase 3 die Gästeansicht): Kleinbuchstaben, Ziffern, Bindestriche;
-  reservierte Namen (alle Pfade des Tools, `app/lib/slugs.ts`) und vergebene Adressen werden abgelehnt.
+  reservierte Namen (alle Pfade des Tools, `app/lib/slugs.ts`) und vergebene Adressen werden abgelehnt – Events und
+  Reihen teilen sich dabei einen Namensraum.
 * **Datum:** der Tag, an dem der Ablauf beginnt – gespeichert als Beginn dieses Tages in der Zeitzone des Events
-  (vorerst immer Europe/Berlin) als UTC-Zeitpunkt. Uhrzeiten stehen später nur an den Programmpunkten, ebenfalls als
-  absolute Zeitpunkte – nie als „HH:MM“ (Mitternacht, Zeitumstellung).
+  (vorerst immer Europe/Berlin) als UTC-Zeitpunkt. Uhrzeiten stehen nur an den Programmpunkten, ebenfalls als absolute
+  Zeitpunkte – nie als „HH:MM“ (Mitternacht, Zeitumstellung). Ein neues Datum verschiebt alle Punkte um dieselbe Zahl
+  von Kalendertagen, die Uhrzeiten bleiben (nicht, solange das Event live ist).
+* **Status:** Entwurf ↔ veröffentlicht, archivieren. „Live“ und „Beendet“ setzt die Live-Steuerung (Phase 4).
+* **Ablauf und Gäste:** Rundung, Hysterese, Horizont und „+10 zeigen“ für die Gästeanzeige, Fortschreiben mit
+  Nachfrage und Deckel für die Prognose (Standardwerte aus dem Konzept).
 * **Freigaben:** Besitzer\*in oder Admin gibt das Event per E-Mail-Adresse einem bestehenden Konto frei. Freigegebene
-  Konten sehen das Event und steuern später den Ablauf live; Einstellungen ändern, löschen und weiter freigeben können
-  sie nicht. Ob sie auch den Plan bearbeiten oder Punkte einschieben dürfen, legen ab Phase 2/4 zwei Schalter pro Event
-  fest. Admins sehen alle Events.
-* **Löschen:** nur Besitzer\*in oder Admin, samt Freigaben.
+  Konten sehen das Event mit internen Notizen und steuern später den Ablauf live; Einstellungen ändern, löschen und
+  weiter freigeben können sie nicht. Admins sehen alle Events.
+* **Rechte der Moderator\*innen** – zwei Schalter pro Event, beide standardmäßig aus:
+  * *Plan bearbeiten:* Punkte ändern, verschieben, anlegen und löschen (vor und nach dem Event). Spuren, Einstellungen,
+    Schalter und Freigaben bleiben bei Besitzer\*in und Admin.
+  * *Einschübe und Löschen während des Events:* Punkte anlegen und löschen, solange das Event live ist.
+* **Duplizieren:** Kopie auf einen neuen Tag mit gleichen Uhrzeiten – Spuren, Punkte, Abhängigkeiten und Einstellungen,
+  aber ohne Live-Stand, Freigaben und Schalter.
+* **Export/Import:** Der Ablauf als JSON (`format: "zeitplan-event"`, `schemaVersion: 1`, Zeiten als ISO 8601 mit
+  Versatz). Ein Import legt immer ein **neues** Event an; die Datei wird vollständig geprüft (Grenzen, Verweise,
+  „wartet auf“ ohne Schleifen) und landet auf dem gewählten Tag.
+* **Löschen:** nur Besitzer\*in oder Admin, samt Ablauf und Freigaben.
+
+## Planung
+
+Unter `/admin/events/<id>/plan` (für alle Konten mit Zugriff; bearbeiten nur mit Recht):
+
+* **Spuren** als Tabs „Alle / Spur 1 / Spur 2“ – parallele Abläufe mit eigener Kette, öffentlich oder nur fürs Team.
+  „Alle“ zeigt alles chronologisch mit Spur-Kennzeichnung. Spuren anlegen, umbenennen, umsortieren und (leer) löschen
+  darf nur Besitzer\*in oder Admin.
+* **Programmpunkte:** Titel, Ort, Beschreibung für Gäste, **interne Notiz** (nur Team), Beginn, Dauer (das Ende wird
+  angezeigt), Spur, Anker, „darf früher beginnen“, Sichtbarkeit und „wartet auf“ (Zusammenführung, auch über Spuren).
+  Neue und zeitlich geänderte Punkte werden nach ihrem Beginn einsortiert.
+* **Puffer und Überschneidungen** stehen als eigene Zeile zwischen zwei Punkten einer Spur; Konflikte mit Ankern und
+  Schleifen bei „wartet auf“ meldet die Seite oben (berechnet mit dem Prognose-Kern).
+* **Umsortieren** per „nach oben“/„nach unten“: tauscht mit dem Nachbarn wie im Live-Betrieb (`swapAdjacent`) – der
+  nach oben geholte Punkt übernimmt den Beginn, der andere folgt mit demselben Abstand. Anker verschiebt man über ihre
+  Uhrzeit.
+* **Sichtbarkeit:** öffentlich, nur Team, oder **geheim** mit Kontenliste (nur Konten mit Zugriff aufs Event). Geheime
+  Punkte sehen und ändern nur eingetragene Konten – auch nicht Besitzer\*in oder Admin; alle anderen sehen „Geheimer
+  Punkt“ mit Zeit und Dauer. Das gilt auch für Export und Duplizieren (dort als Platzhalter), Fehlermeldungen und die
+  Auswahl bei „wartet auf“.
+* **Gleichzeitige Änderungen:** Jeder Punkt hat eine Version; wer einen veralteten Stand speichert, bekommt einen
+  Hinweis statt die Änderung eines anderen zu überschreiben. Tauschen ist absichtsbasiert (beide Punkte werden genannt).
+  Jede Änderung erhöht `liveVersion` des Events (für den Polling-Endpunkt ab Phase 3).
+
+Die Planungsregeln stehen als reine Funktionen unter `app/lib/planning/` (Formular, SECRET-Filter `redactItem`,
+Reihenfolge, Export/Import, Vorlage), Rechte in `app/lib/permissions.ts`.
+
+## Reihen
+
+Unter `/admin/series` bündeln Creator und Admins mehrere Events (Polterabend, Hochzeit, Brunch) zu einer Reihe mit
+eigener Adresse; die gemeinsame Übersichtsseite für Gäste kommt mit Phase 3. Zuordnen lassen sich nur eigene Reihen
+(Admins: alle), in den Einstellungen des Events. Löschen einer Reihe lässt ihre Events stehen.
+
+## Prognose-Kern
+
+Die Regeln aus [docs/KONZEPT.md](docs/KONZEPT.md) Abschnitt 2 und 3 stecken in **reinen Funktionen** unter
+`app/lib/schedule/` – ohne Datenbank, ohne Uhr (`now` ist immer Parameter), mit eigenen Typen statt Prisma. Server und
+Browser (Vorschau im Editor) rechnen damit dasselbe. Server Actions laden Daten, rufen den Kern auf und speichern das
+Ergebnis; Regeln stehen nie in Actions oder Komponenten.
+
+| Funktion | Zweck |
+| --- | --- |
+| `project(items, now, settings)` | Prognose je Punkt: erwarteter Beginn und Ende, Abweichung, Phase (kommt/jetzt/vorbei, gemeldet oder abgeleitet), überzogen, gedeckelt, Nachfrage; dazu Konflikte mit Ankern. Zyklen und unbekannte Abhängigkeiten werden gemeldet statt gerechnet. |
+| `swapAdjacent(items, a, b)` | Tauscht zwei benachbarte Punkte im aktuellen Plan: B übernimmt den Beginn von A, A folgt mit demselben Abstand, das Ende des Blocks bleibt. Absichtsbasiert – sind die beiden nicht mehr Nachbarn, wird abgelehnt. |
+| `insertAfter(items, afterId, neu, now, settings)` | Einschub direkt nach einem Punkt; die folgenden rutschen über die normale Kette. |
+| `toGuestView(projection, previouslyShown, now, settings)` | Die **einzige** Stelle, an der Daten für Gäste entstehen: nur öffentliche Punkte öffentlicher Spuren, ohne interne Notizen, Zeiten mit Horizont, Rundung, „ca.“ und Hysterese; liefert zusätzlich den gezeigten Beginn je Punkt zum Speichern. |
+| `checkDependencies(items)` | Zyklen (auch über die Reihenfolge der Spuren) und unbekannte „wartet auf“ – für Planung und Import. |
+
+Kurz die Regeln: Verspätung wandert weiter, bis ein Puffer sie schluckt; kein Vorziehen (außer „darf früher
+beginnen“); zurückgestellte und ausgefallene Punkte verbrauchen keine Zeit; Anker rutschen nicht, Überschneidungen sind
+Konflikte fürs Team; ein überzogener laufender Punkt schiebt die Prognose live weiter („Fortschreiben“), bis zum Deckel;
+ein Punkt kann auf Punkte anderer Spuren warten. Alle Zeiten sind absolute Zeitpunkte, Dauern echte Minuten – auch über
+Mitternacht und die Zeitumstellung.
 
 ## Als App installieren (PWA)
 
@@ -110,16 +179,20 @@ Admin-Bereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im Brow
 * **Sitzungen:** zufälliger Token im Cookie `__Host-session` (HttpOnly, Secure, SameSite=Lax, ohne Domain-Attribut),
   in der Datenbank nur als SHA-256-Hash. Neue Sitzung bei jedem Login, ein Passwortwechsel beendet alle anderen
   Sitzungen. Einladungs-/Reset-Links: einmalig, befristet, nur als Hash; das bloße Öffnen (GET) verbraucht sie nicht.
-* **Berechtigungen** prüft jede Server Action selbst (`loadEventForUser` → `eventLevel` in `app/lib/permissions.ts`),
-  nie nur die Oberfläche. Server Actions prüfen zusätzlich den Origin (CSRF, Next.js-Standard).
+* **Berechtigungen** prüft jede Server Action selbst (`loadEventForUser` → `eventLevel`, dazu `canEditPlan`,
+  `canAddRemoveItems`, `canManageEvent` und `canEditItem` in `app/lib/permissions.ts`), nie nur die Oberfläche. Server
+  Actions prüfen zusätzlich den Origin (CSRF, Next.js-Standard).
 * **Header** (`next.config.ts`): `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS für alle Seiten. **Keine
   Seite ist einbettbar** (`frame-ancestors 'none'`, `X-Frame-Options: DENY`) – anders als in Seating auch nicht die
   künftige Gästeansicht. Login, Konto und Verwaltung zusätzlich `X-Robots-Tag: noindex` und `Cache-Control: no-store`;
   Reset-Links `Referrer-Policy: no-referrer`. Die Reihenfolge der Regeln ist wichtig (die spätere gewinnt, ein Header
   lässt sich nur überschreiben, nicht entfernen) und in der Datei kommentiert.
-* **Reservierte Adressen:** Events (und später Reihen) liegen unter `/<slug>`. Alle Pfade des Tools stehen in
-  `app/lib/slugs.ts`; ein Test schlägt fehl, sobald eine neue Route oder eine Datei unter `public/` dort fehlt.
-* **Grenze:** Geheime Programmpunkte (`SECRET`, ab Phase 2) sehen in der Oberfläche nur eingetragene Konten – auch nicht
+* **Reservierte Adressen:** Events und Reihen liegen unter `/<slug>` und teilen sich den Namensraum. Alle Pfade des
+  Tools stehen in `app/lib/slugs.ts`; ein Test schlägt fehl, sobald eine neue Route oder eine Datei unter `public/`
+  dort fehlt.
+* **Geheime Punkte:** Alle Punkte für Konten laufen durch `redactItem` (`app/lib/planning/items.ts`, aufgerufen von
+  `loadPlan`) – eine Stelle für Planung, Export und Duplizieren.
+* **Grenze:** Geheime Programmpunkte (`SECRET`) sehen in der Oberfläche nur eingetragene Konten – auch nicht
   Besitzer\*in oder Admin. Gegenüber dem Betreiber mit Zugriff auf die Datenbank gibt es aber **keine echte
   Geheimhaltung**.
 
@@ -130,7 +203,7 @@ Ein externer Scheduler (z. B. Uptime Kuma) ruft **einmal täglich** auf:
 `GET https://zeitplan.deine-domain.de/api/cron/cleanup?secret=<CRON_SECRET>`
 
 Ein leeres oder fehlendes `CRON_SECRET` lässt niemanden durch. Gelöscht werden (suite-weit gleiche Fristen): Events
-18 Monate nach ihrem Ende (samt Freigaben; als Ende gilt vorerst der Eventtag plus Spielraum für Feiern über
+18 Monate nach ihrem Ende (samt Ablauf und Freigaben; als Ende gilt vorerst der Eventtag plus Spielraum für Feiern über
 Mitternacht), Konten nach 2 Jahren ohne Anmeldung (Admin-Konten und Konten, denen noch Events gehören, ausgenommen),
 abgelaufene Sitzungen, Einladungs-/Reset-Links und Drossel-Zähler.
 
@@ -150,11 +223,24 @@ Es gibt keinen `migrations`-Ordner – wie in den anderen Tools der Suite aussch
 
 ```bash
 npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, Formular-Helfer, Slugs (inkl. Test auf
-                    # fehlende Routen), Cron-Secret, Zeitzonen (Zeitumstellung, Eventtag), Event-Rechte, Event-Formular
+                    # fehlende Routen), Cron-Secret, Zeitzonen (Zeitumstellung, Eventtag, Verschieben), Rechte,
+                    # Event-Formular und -Einstellungen, Reihen, Prognose-Kern (tests/unit/schedule), Planung
+                    # (tests/unit/planning: Punkt-Formular, SECRET-Filter, Reihenfolge, Export/Import, Vorlage)
 npm run test:e2e    # Playwright gegen eine frisch gebaute Instanz auf http://127.0.0.1:3801
 npm run build
 npm run lint
 ```
+
+Der Prognose-Kern hat für jede Regel eigene Unit-Tests, das Beispiel aus dem Konzept als Tabellentest, Mitternacht
+und die Zeitumstellung am 25.10.2026, Zusammenführung zweier Spuren, Zyklen (auch solche, die erst mit der Reihenfolge
+der Spuren entstehen), Tauschen und Einschub. Für `toGuestView` prüft ein Test, dass TEAM- und SECRET-Punkte, Team-Spuren
+und interne Notizen **nirgends** im serialisierten Ergebnis stehen – weder Titel, Ort, Beschreibung, Notiz noch id –
+und dass die Ausgabe nur freigegebene Felder hat.
+
+Für die Planung prüfen Unit-Tests u. a., dass `redactItem` von einem geheimen Punkt ohne Eintrag nichts außer Zeit,
+Dauer und Kette übrig lässt, dass Export und Import sich gegenseitig verstehen, der Import Schleifen (auch über die
+Reihenfolge der Spuren), unbekannte Verweise, doppelte Schlüssel, fremde Felder und Zeiten fern vom Eventtag ablehnt,
+und dass die Vorlage „Hochzeit“ in der Nacht der Zeitumstellung ihre Uhrzeiten behält.
 
 Die E2E-Tests löschen und erzeugen bei jedem Lauf ihre eigene Datenbank `prisma/test.db` (nie die Entwicklungs- oder
 Produktivdaten), bauen mit `next build` und starten `next start` – sie prüfen also das, was auch in Produktion läuft.
@@ -166,7 +252,12 @@ verbraucht nichts), gefälschte Formular-POSTs ohne Berechtigung und mit fremdem
 Positivkontrolle**, dass derselbe POST als berechtigtes Konto wirkt. Für Events: Anlegen (Eventtag in UTC), Adresse
 (reserviert, ungültig, vergeben), Einstellungen, Freigabe (Moderator\*in ohne und mit Freigabe, keine Einstellungen,
 kein Löschen und Weiterfreigeben, Entziehen), fremde Konten, Moderator\*innen legen nichts an, Umhängen beim
-Kontolöschen, Löschfristen. Installierbare App: Manifest, Icons, `sw.js`-Header, Worker speichert nur die
+Kontolöschen, Löschfristen. Für die Planung (`tests/e2e/planning.spec.ts`): Vorlage, Anlegen und Einsortieren, Puffer,
+Tauschen, veraltete Stände, Schleifen; Moderator\*in ohne Schalter (nachgespielte Aktionen wirkungslos, mit Schalter
+wirksam, Spuren nie, live nur mit „Einschübe“); geheimer Punkt – Besitzer\*in ohne Eintrag findet ihn weder im HTML
+noch im Export und kann ihn nicht ändern, tauschen oder löschen, die eingetragene Moderator\*in schon; Einstellungen,
+Schalter und Status nur für Besitzer\*in; Import (Schleife, kaputtes JSON, ungültige Werte, fremdes Format, gültig);
+Duplizieren; neues Datum verschiebt die Punkte; Reihen und gemeinsamer Namensraum. Installierbare App: Manifest, Icons, `sw.js`-Header, Worker speichert nur die
 Offline-Seite.
 
 Mails fängt ein Test-SMTP ab (`tests/e2e/mail-server.ts`, Port 2527, Pakete `smtp-server` und `mailparser`, nur für die

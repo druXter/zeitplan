@@ -142,3 +142,40 @@ export async function createEventRecord(ownerId: string | null, options: {
     }
   })
 }
+
+/** Spur direkt in der Datenbank. */
+export async function createTrackRecord(eventId: string, options: { name?: string; visibility?: 'PUBLIC' | 'TEAM'; sortOrder?: number } = {}) {
+  return prisma.track.create({
+    data: { eventId, name: options.name ?? 'Ablauf', visibility: options.visibility ?? 'PUBLIC', sortOrder: options.sortOrder ?? 1 }
+  })
+}
+
+/**
+ * Programmpunkt direkt in der Datenbank. start: Ortszeit "14:00" am Tag des Events (Berlin, Tag als
+ * Mitternacht UTC+2 im Sommer angenommen - die Tests legen Events im Juni an).
+ */
+export async function createItemRecord(event: { id: string; date: Date }, trackId: string, options: {
+  title: string; start: string; durationMin?: number; sortOrder: number; visibility?: 'PUBLIC' | 'TEAM' | 'SECRET'
+  location?: string; description?: string; internalNote?: string; isAnchor?: boolean; secretViewers?: string[]
+}) {
+  const [hours, minutes] = options.start.split(':').map(Number)
+  return prisma.item.create({
+    data: {
+      eventId: event.id,
+      trackId,
+      title: options.title,
+      sortOrder: options.sortOrder,
+      plannedStart: new Date(event.date.getTime() + (hours * 60 + minutes) * 60_000),
+      plannedDurationMin: options.durationMin ?? 30,
+      visibility: options.visibility ?? 'PUBLIC',
+      location: options.location,
+      description: options.description,
+      internalNote: options.internalNote,
+      isAnchor: options.isAnchor ?? false,
+      secretViewers: options.secretViewers ? { create: options.secretViewers.map(userId => ({ userId })) } : undefined
+    }
+  })
+}
+
+/** Eventtag im Sommer (Berlin = UTC+2) als Mitternacht Ortszeit. */
+export const SUMMER_DAY = new Date('2026-06-19T22:00:00.000Z')

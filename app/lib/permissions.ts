@@ -25,13 +25,56 @@ export function canInviteUsers(user: CurrentUser): boolean {
  * reicht sie hier herein, damit die Regel selbst ohne Datenbank testbar bleibt. Jede Seite, Server
  * Action und jeder Route Handler geht über loadEventForUser (dort) und damit über diese Funktion.
  *
- * SECRET-Punkte (Phase 2) prüft eine eigene Regel pro Punkt - auch owner sieht sie nur, wenn eingetragen.
+ * SECRET-Punkte prüft eine eigene Regel pro Punkt (seesItemContent) - auch owner sieht sie nur, wenn eingetragen.
  */
 export type EventLevel = 'owner' | 'moderator'
 
 export function eventLevel(user: CurrentUser, event: { ownerId: string | null }, hasShare: boolean): EventLevel | null {
   if (user.role === 'ADMIN' || (event.ownerId !== null && event.ownerId === user.id)) return 'owner'
   return hasShare ? 'moderator' : null
+}
+
+/**
+ * Plan bearbeiten (Programmpunkte anlegen, ändern, verschieben, löschen): owner immer, Moderator*innen nur mit
+ * dem Schalter "Plan bearbeiten" des Events (docs/KONZEPT.md Abschnitt 7). Spuren, Event-Einstellungen,
+ * Schalter und Freigaben bleiben bei owner (canManageEvent).
+ */
+export function canEditPlan(level: EventLevel, event: { modsMayEditPlan: boolean }): boolean {
+  return level === 'owner' || event.modsMayEditPlan
+}
+
+/**
+ * Punkte anlegen und löschen. Vor und nach dem Event wie "Plan bearbeiten"; solange das Event LIVE ist, sind
+ * das für Moderator*innen Einschübe bzw. Löschen während des Events und brauchen den Schalter
+ * "Einschübe und Löschen" (Abschnitt 7) - auch auf der Planungsseite.
+ */
+export function canAddRemoveItems(level: EventLevel, event: { status: string; modsMayEditPlan: boolean; modsMayInsert: boolean }): boolean {
+  if (level === 'owner') return true
+  return event.status === 'LIVE' ? event.modsMayInsert : event.modsMayEditPlan
+}
+
+/** Event-Einstellungen, Schalter, Spuren, Freigaben, Status, Löschen: nur owner. */
+export function canManageEvent(level: EventLevel): boolean {
+  return level === 'owner'
+}
+
+/**
+ * SECRET (docs/KONZEPT.md Abschnitt 4): Titel, Ort, Beschreibung und Notiz nur für eingetragene Konten - auch
+ * nicht für Besitzer*in oder ADMIN. Alle anderen sehen nur Zeit und Dauer. Wer den Inhalt nicht sieht, darf den
+ * Punkt auch nicht ändern, verschieben, löschen oder live steuern.
+ */
+export function seesItemContent(item: { visibility: 'PUBLIC' | 'TEAM' | 'SECRET' }, isSecretViewer: boolean): boolean {
+  return item.visibility !== 'SECRET' || isSecretViewer
+}
+
+/** Einen bestehenden Punkt ändern, verschieben oder löschen: Plan bearbeiten UND den Inhalt sehen. */
+export function canEditItem(
+  level: EventLevel,
+  event: { modsMayEditPlan: boolean },
+  item: { visibility: 'PUBLIC' | 'TEAM' | 'SECRET' },
+  isSecretViewer: boolean
+): boolean {
+  return canEditPlan(level, event) && seesItemContent(item, isSecretViewer)
 }
 
 /** Konstantzeitvergleich für Tokens - `===` würde über die Antwortzeit verraten, wie viele Zeichen stimmen. */

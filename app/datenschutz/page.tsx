@@ -3,10 +3,11 @@ import Link from 'next/link'
 
 // ENTWURF: Beschreibt, was dieses Tool tatsächlich speichert und verarbeitet. Er ersetzt keine
 // Rechtsberatung - vor dem Einsatz mit Externen bitte einmal prüfen lassen und bei jeder
-// Änderung der Datenverarbeitung mitpflegen. Stand: Phase 0 (Konten für Planung und Moderation,
-// Einladungen, Events mit Freigaben, Drosselung, Löschfristen, installierbare App mit Service Worker).
-// Mit den folgenden Phasen kommen Programmpunkte, Gästeansicht, Live-Steuerung mit Verlauf,
-// Gast-Sitzungen, Föderation und die Anbindung an rsvp-app dazu - dann hier ergänzen.
+// Änderung der Datenverarbeitung mitpflegen. Stand: Phase 2 (Konten für Planung und Moderation,
+// Einladungen, Events mit Freigaben, Programmpunkte mit internen Notizen und geheimen Punkten, Reihen,
+// Export/Import, Drosselung, Löschfristen, installierbare App mit Service Worker). Mit den folgenden
+// Phasen kommen Gästeansicht, Live-Steuerung mit Verlauf, Gast-Sitzungen, Föderation und die Anbindung an
+// rsvp-app dazu - dann hier ergänzen.
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -81,6 +82,19 @@ export default function DatenschutzPage() {
             Veranstaltung in der Verwaltung nur das besitzende Konto, die freigegebenen Konten und Administrator*innen. Wird
             ein Konto gelöscht, gehen seine Veranstaltungen an eine*n Administrator*in über.
           </p>
+          <p className="mt-2">
+            Zum <strong>Ablauf</strong> einer Veranstaltung speichern wir die Programmpunkte mit Titel, Ort, Beschreibung,
+            Zeiten und optional einer <strong>internen Notiz</strong> für das Team (z. B. eine Ansprechperson). Interne
+            Notizen sehen nur Konten mit Zugriff auf die Veranstaltung, nie Gäste. Bei <strong>geheimen Punkten</strong>{' '}
+            (z. B. einer Überraschung) speichern wir zusätzlich, welche Konten den Inhalt sehen dürfen; alle anderen sehen
+            nur Zeit und Dauer. Gegenüber dem Betreiber der Anwendung, der Zugriff auf die Datenbank hat, sind auch geheime
+            Punkte nicht verborgen. Mehrere Veranstaltungen lassen sich zu einer <strong>Reihe</strong> mit Titel und
+            Adresse bündeln.
+          </p>
+          <p className="mt-2">
+            Ein <strong>Export</strong> als Datei enthält den Ablauf mit internen Notizen, aber keine Konten, E-Mail-Adressen
+            oder Freigaben; für die Weitergabe einer exportierten Datei ist verantwortlich, wer sie herunterlädt.
+          </p>
         </div>
 
         <div>
@@ -150,7 +164,8 @@ export default function DatenschutzPage() {
             entfernt. Drossel-Zähler siehe Punkt 5.
           </p>
           <p className="mt-2">
-            Veranstaltungen werden <strong>18 Monate nach ihrem Ende</strong> automatisch gelöscht, samt Freigaben.
+            Veranstaltungen werden <strong>18 Monate nach ihrem Ende</strong> automatisch gelöscht, samt Ablauf,
+            internen Notizen und Freigaben.
           </p>
         </div>
 

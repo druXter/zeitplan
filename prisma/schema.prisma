@@ -2,10 +2,11 @@
 // Kein eigener migrations-Ordner - wie in den anderen Tools der Suite ausschließlich per
 // `npx prisma db push` synchronisiert (siehe README.md/Dockerfile).
 //
-// Phase 0: Konten, Sitzungen, Einladungen, Drosselung (1:1 nach Seating) und Events mit Freigaben -
-// vom Event nur, was Planung und Freigabe jetzt schon brauchen. Das vollständige Datenmodell
-// (Spuren, Programmpunkte, Abhängigkeiten, SECRET-Liste, Reihen, Live-Felder, Gast-Sitzungen, Verlauf)
-// kommt mit Phase 2, siehe docs/KONZEPT.md Abschnitt 9. Mit `db push` kostet das Nachziehen nichts.
+// Konten, Sitzungen, Einladungen, Drosselung (1:1 nach Seating), Events mit Freigaben und seit Phase 2 das
+// vollständige Datenmodell aus docs/KONZEPT.md Abschnitt 9: Reihen, Spuren, Programmpunkte mit Live-Feldern,
+// Abhängigkeiten, SECRET-Liste, Verlauf und Gast-Sitzungen. Felder, die erst spätere Phasen nutzen (Zugang,
+// Tafel-Link, rsvp-Verknüpfung, Verlauf, Gast-Sitzungen), stehen schon hier, damit das Modell nicht mehr
+// umgebaut werden muss.
 
 generator client {
   provider = "prisma-client-js"
@@ -50,9 +51,13 @@ model User {
   resetTokenHash      String?   @unique
   resetTokenExpiresAt DateTime?
 
-  sessions    Session[]
-  events      Event[]
-  eventAccess EventAccess[]
+  sessions      Session[]
+  events        Event[]
+  eventAccess   EventAccess[]
+  series        Series[]
+  secretItems   ItemSecretViewer[]
+  liveActions   LiveAction[]       @relation("LiveActionActor")
+  undoneActions LiveAction[]       @relation("LiveActionUndoneBy")
 }
 
 // Server-seitige Session: das Cookie trägt nur den zufälligen Token, in der Datenbank
@@ -91,10 +96,18 @@ enum EventStatus {
   ARCHIVED
 }
 
+// Zugang der Gäste zu /<slug> (docs/KONZEPT.md Abschnitt 6). Bis Phase 5 wirkt nur PUBLIC.
+enum GuestAccess {
+  PUBLIC
+  CODE
+  ACCOUNT
+  RSVP
+}
+
 // Ein Ablauf unter /<slug> (Gästeansicht ab Phase 3). date: Beginn des Eventtags in der Zeitzone des
-// Events als UTC-Zeitpunkt (00:00 Ortszeit) - der Tag, an dem der Ablauf beginnt; Uhrzeiten stehen
-// später nur an den Programmpunkten, immer als absolute Zeitpunkte. timezone: Eingabe und Anzeige
-// (vorerst immer Europe/Berlin).
+// Events als UTC-Zeitpunkt (00:00 Ortszeit) - der Tag, an dem der Ablauf beginnt; Uhrzeiten stehen nur an
+// den Programmpunkten, immer als absolute Zeitpunkte. timezone: Eingabe und Anzeige (vorerst immer
+// Europe/Berlin).
 //
 // ownerId: SetNull nur als Sicherheitsnetz (beim Löschen eines Kontos werden Events umgehängt).
 model Event {
@@ -105,15 +118,68 @@ model Event {
   date        DateTime
   timezone    String      @default("Europe/Berlin")
   status      EventStatus @default(DRAFT)
-  ownerId     String?
-  owner       User?       @relation(fields: [ownerId], references: [id], onDelete: SetNull)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
 
-  shares EventAccess[]
+  // Zugang (Phase 5): accessCodeHmac ist der Zugangscode nur als HMAC, nie im Klartext.
+  access         GuestAccess @default(PUBLIC)
+  accessCodeHmac String?
+
+  // Prognose und Anzeige für Gäste (Abschnitt 2), Werte in Minuten.
+  autoCreep         Boolean @default(true)
+  creepNudgeMin     Int     @default(5)
+  creepCapMin       Int     @default(30)
+  guestRoundingMin  Int     @default(5)
+  hysteresisMin     Int     @default(3)
+  showDelayToGuests Boolean @default(false)
+  guestHorizonMin   Int     @default(120)
+
+  // Rechte der Moderator*innen (Abschnitt 7), beide standardmäßig aus. Geprüft in jeder Server Action
+  // (app/lib/permissions.ts canEditPlan/canInsertLive).
+  modsMayInsert   Boolean @default(false)
+  modsMayEditPlan Boolean @default(false)
+
+  // displayTokenVersion: Teil des per HMAC abgeleiteten Tafel-Links (Phase 5) - erhöhen macht alte Links
+  // ungültig. liveVersion: steigt mit JEDER Änderung an Plan oder Live-Stand (Planung ab Phase 2, Live ab
+  // Phase 4) - Grundlage für den ETag des Polling-Endpunkts (Phase 3).
+  displayTokenVersion Int @default(1)
+  liveVersion         Int @default(0)
+
+  // Verknüpfung mit einem Termin in rsvp-app (Phase 7b), Aufbau wie in Seating.
+  rsvpLink Json?
+
+  seriesId  String?
+  series    Series?  @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shares        EventAccess[]
+  tracks        Track[]
+  items         Item[]
+  liveActions   LiveAction[]
+  guestSessions GuestSession[]
 
   @@index([ownerId])
   @@index([date])
+  @@index([seriesId])
+}
+
+// Mehrere Events (Polterabend, Hochzeit, Brunch) mit gemeinsamer Übersicht unter /<slug> (Phase 3).
+// Events und Reihen teilen sich einen Namensraum: Die Server Actions prüfen beim Speichern beide Tabellen
+// (app/lib/planning/slug-store.ts). Zugang wird pro Event geprüft, die Reihe selbst verrät nur Titel,
+// Datum und Link ihrer veröffentlichten Events. Löschen einer Reihe löst nur die Zuordnung.
+model Series {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events Event[]
+
+  @@index([ownerId])
 }
 
 // Freigabe eines Events an ein weiteres Konto (wie in Seating). Was ein freigegebenes Konto darf,
@@ -130,4 +196,149 @@ model EventAccess {
 
   @@unique([eventId, userId])
   @@index([userId])
+}
+
+enum TrackVisibility {
+  PUBLIC
+  TEAM
+}
+
+// Paralleler Ablauf ("Brautpaar" neben "Gäste") mit eigener Kette. TEAM-Spuren sehen Gäste nie, auch
+// nicht ihre öffentlichen Punkte. sortOrder: Reihenfolge der Tabs.
+model Track {
+  id         String          @id @default(cuid())
+  eventId    String
+  event      Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name       String
+  sortOrder  Int
+  visibility TrackVisibility @default(PUBLIC)
+
+  items Item[]
+
+  @@index([eventId])
+}
+
+enum ItemVisibility {
+  PUBLIC
+  TEAM
+  SECRET
+}
+
+enum ItemStatus {
+  PLANNED
+  RUNNING
+  DONE
+  DEFERRED
+  CANCELLED
+}
+
+// Ein Programmpunkt. plannedStart/plannedDurationMin/sortOrder sind der AKTUELLE Plan; original* der beim
+// Live-Schalten eingefrorene Ursprungsplan (Phase 4, Abschnitt 1). Die Kette ergibt sich aus sortOrder
+// innerhalb der Spur (app/lib/schedule). Live-Felder (actual*, reported*, guestShownStart) setzt erst die
+// Live-Steuerung bzw. die Gästeansicht.
+//
+// SECRET: Titel, Ort, Beschreibung und Notiz nur für die Konten in ItemSecretViewer - auch nicht für
+// Besitzer*in oder ADMIN (app/lib/planning/store.ts ersetzt sie beim Laden durch einen Platzhalter).
+// version: steigt mit jeder Änderung am Punkt - Planänderungen prüfen sie und lehnen veraltete Stände ab.
+model Item {
+  id                 String         @id @default(cuid())
+  eventId            String
+  event              Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  trackId            String
+  track              Track          @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  sortOrder          Int
+  title              String
+  location           String?
+  description        String?
+  internalNote       String?
+  visibility         ItemVisibility @default(PUBLIC)
+  isAnchor           Boolean        @default(false)
+  mayStartEarly      Boolean        @default(false)
+  plannedStart       DateTime
+  plannedDurationMin Int
+
+  originalStart       DateTime?
+  originalDurationMin Int?
+  originalSortOrder   Int?
+
+  status           ItemStatus @default(PLANNED)
+  insertedLive     Boolean    @default(false)
+  actualStart      DateTime?
+  actualEnd        DateTime?
+  reportedDelayMin Int?
+  reportedAt       DateTime?
+  cancelReason     String?
+  guestShownStart  DateTime?
+
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  waitsFor      ItemDependency[]   @relation("DependencyItem")
+  waitedOnBy    ItemDependency[]   @relation("DependencyTarget")
+  secretViewers ItemSecretViewer[]
+  liveActions   LiveAction[]
+
+  @@index([eventId])
+  @@index([trackId, sortOrder])
+}
+
+// Zusammenführung: itemId beginnt frühestens nach dem Ende von waitsForItemId. Keine Zyklen - geprüft vor
+// jedem Speichern und Import mit checkDependencies (app/lib/schedule/dependencies.ts).
+model ItemDependency {
+  itemId         String
+  item           Item   @relation("DependencyItem", fields: [itemId], references: [id], onDelete: Cascade)
+  waitsForItemId String
+  waitsFor       Item   @relation("DependencyTarget", fields: [waitsForItemId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, waitsForItemId])
+  @@index([waitsForItemId])
+}
+
+// Wer den Inhalt eines SECRET-Punkts sieht (und ihn bearbeiten bzw. live steuern darf). Verliert ein Konto
+// die Freigabe fürs Event, bleibt der Eintrag wirkungslos - ohne Zugriff aufs Event sieht es nichts.
+model ItemSecretViewer {
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, userId])
+  @@index([userId])
+}
+
+// Verlauf der Live-Steuerung (Phase 4): jede Aktion mit Konto, Zeit und Vorher/Nachher - Grundlage für
+// "Rückgängig". actorId SetNull: Der Verlauf bleibt, wenn ein Konto gelöscht wird.
+model LiveAction {
+  id         String    @id @default(cuid())
+  eventId    String
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  itemId     String?
+  item       Item?     @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  actorId    String?
+  actor      User?     @relation("LiveActionActor", fields: [actorId], references: [id], onDelete: SetNull)
+  type       String
+  before     Json
+  after      Json
+  createdAt  DateTime  @default(now())
+  undoneAt   DateTime?
+  undoneById String?
+  undoneBy   User?     @relation("LiveActionUndoneBy", fields: [undoneById], references: [id], onDelete: SetNull)
+
+  @@index([eventId, createdAt])
+}
+
+// Gast-Sitzung nach Zugangscode oder rsvp-Link (Phase 5/7b). Das Cookie trägt nur den Token, hier liegt
+// ausschließlich sein SHA-256-Hash. rsvpId: die Zusage in rsvp-app - eine Absage beendet ihre Sitzungen.
+model GuestSession {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  rsvpId    String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([eventId])
+  @@index([expiresAt])
 }

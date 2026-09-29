@@ -1,12 +1,13 @@
-// app/admin/events/[id]/page.tsx
 import Link from 'next/link'
 import { prisma } from '../../../lib/prisma'
 import { requireUser } from '../../../lib/auth'
 import { baseUrl } from '../../../lib/base-url'
 import { loadEventOr404 } from '../../../lib/events/store'
+import { canAddRemoveItems, canCreateEvents, canEditPlan, canManageEvent } from '../../../lib/permissions'
+import { allowedStatusChanges, STATUS_LABELS } from '../../../lib/events/settings'
 import { formatDate, utcToZonedDate } from '../../../lib/timezone'
-import { deleteEvent, shareEvent, unshareEvent } from '../actions'
-import { EventSettingsForm } from '../event-forms'
+import { changeEventStatus, deleteEvent, shareEvent, unshareEvent } from '../actions'
+import { EventOptionsForm, EventSettingsForm } from '../event-forms'
 import ConfirmForm from '../../../ui/confirm-form'
 import CopyableField from '../../../ui/copyable-field'
 import StatusBadge from '../../../ui/status-badge'
@@ -14,23 +15,39 @@ import Notice from '../../../ui/notice'
 
 export const dynamic = 'force-dynamic'
 
-type Search = { created?: string; shared?: string; unshared?: string; shareError?: string }
+type Search = { created?: string; imported?: string; duplicated?: string; status?: string; shared?: string; unshared?: string; shareError?: string }
+
+const STATUS_ACTIONS: Record<string, string> = {
+  PUBLISHED: 'Veröffentlichen',
+  DRAFT: 'Zurück zum Entwurf',
+  ARCHIVED: 'Archivieren'
+}
 
 /**
- * Übersicht eines Events. owner (Besitzer*in, Admin) sieht Einstellungen, Freigaben und Löschen;
- * freigegebene Konten sehen nur die Übersicht - Planung, Team-Ansicht und Live-Steuerung kommen mit
- * Phase 2 bis 4 hierher.
+ * Übersicht eines Events. owner (Besitzer*in, Admin) sieht Status, Einstellungen, Rechte der Moderator*innen,
+ * Freigaben und Löschen; freigegebene Konten den Weg zum Ablauf und ihre Rechte. Team-Ansicht und
+ * Live-Steuerung kommen mit Phase 3 und 4 hierher.
  */
 export default async function EventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
   const { id } = await params
   const user = await requireUser(`/admin/events/${id}`)
   const event = await loadEventOr404(id, user)
   const search = await searchParams
-  const isOwner = event.level === 'owner'
+  const isOwner = canManageEvent(event.level)
 
-  const shares = isOwner
-    ? await prisma.eventAccess.findMany({ where: { eventId: event.id }, include: { user: { select: { email: true } } }, orderBy: { createdAt: 'asc' } })
-    : []
+  const [shares, series, itemCount] = await Promise.all([
+    isOwner
+      ? prisma.eventAccess.findMany({ where: { eventId: event.id }, include: { user: { select: { email: true } } }, orderBy: { createdAt: 'asc' } })
+      : Promise.resolve([]),
+    isOwner
+      ? prisma.series.findMany({
+          where: user.role === 'ADMIN' ? {} : { OR: [{ ownerId: user.id }, ...(event.seriesId ? [{ id: event.seriesId }] : [])] },
+          orderBy: { title: 'asc' },
+          select: { id: true, title: true }
+        })
+      : Promise.resolve([]),
+    prisma.item.count({ where: { eventId: event.id } })
+  ])
 
   return (
     <main className="bg-gray-50 py-6 px-4">
@@ -42,10 +59,28 @@ export default async function EventPage({ params, searchParams }: { params: Prom
         </div>
 
         {search.created === '1' && <Notice tone="success">Event angelegt. Es ist noch ein Entwurf.</Notice>}
+        {search.imported === '1' && <Notice tone="success">Ablauf importiert. Das neue Event ist noch ein Entwurf.</Notice>}
+        {search.duplicated === '1' && <Notice tone="success">Kopie angelegt. Sie ist noch ein Entwurf.</Notice>}
+        {search.status === '1' && <Notice tone="success">Status geändert.</Notice>}
         {search.shared === '1' && <Notice tone="success">Freigabe hinzugefügt.</Notice>}
         {search.unshared === '1' && <Notice tone="success">Freigabe entfernt.</Notice>}
         {search.shareError === 'notfound' && <Notice tone="error">Zu dieser Adresse gibt es kein Konto. Lade die Person zuerst unter „Nutzer*innen“ ein.</Notice>}
         {search.shareError === 'owner' && <Notice tone="error">Diesem Konto gehört das Event bereits.</Notice>}
+
+        <div className="bg-white rounded-lg shadow p-4 space-y-3">
+          <h2 className="font-bold">Ablauf</h2>
+          <p className="text-sm text-gray-700">
+            {itemCount === 1 ? '1 Programmpunkt' : `${itemCount} Programmpunkte`}.{' '}
+            {canEditPlan(event.level, event) ? 'Du kannst den Plan bearbeiten.' : 'Du kannst den Plan ansehen.'}
+          </p>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Link href={`/admin/events/${event.id}/plan`} className="bg-blue-600 text-white font-bold py-2 px-3 rounded hover:bg-blue-700">Ablauf planen</Link>
+            <a href={`/admin/events/${event.id}/export`} className="py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">Export (JSON)</a>
+            {canCreateEvents(user) && (
+              <Link href={`/admin/events/${event.id}/duplicate`} className="py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">Duplizieren</Link>
+            )}
+          </div>
+        </div>
 
         <div className="bg-white rounded-lg shadow p-4 space-y-2">
           <CopyableField label="Link für Gäste" value={`${baseUrl()}/${event.slug}`} />
@@ -55,19 +90,53 @@ export default async function EventPage({ params, searchParams }: { params: Prom
         {isOwner ? (
           <>
             <div className="bg-white rounded-lg shadow p-4 space-y-3">
+              <h2 className="font-bold">Status: {STATUS_LABELS[event.status]}</h2>
+              <p className="text-xs text-gray-600">
+                Entwürfe sehen nur Konten mit Zugriff. Veröffentlichte Events zeigen Gästen den Ablauf (ab der nächsten
+                Ausbaustufe). Live und Beendet setzt die Live-Steuerung.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {allowedStatusChanges(event.status).map(target => (
+                  <form key={target} action={changeEventStatus}>
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <input type="hidden" name="status" value={target} />
+                    <button type="submit" className="text-sm py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">{STATUS_ACTIONS[target]}</button>
+                  </form>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-4 space-y-3">
               <h2 className="font-bold">Einstellungen</h2>
               <EventSettingsForm
                 eventId={event.id}
                 baseUrl={baseUrl()}
                 values={{ title: event.title, slug: event.slug, date: utcToZonedDate(event.date, event.timezone), description: event.description }}
+                series={series}
+                seriesId={event.seriesId}
+              />
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-4 space-y-3">
+              <h2 className="font-bold">Ablauf und Gäste</h2>
+              <EventOptionsForm
+                eventId={event.id}
+                modsMayEditPlan={event.modsMayEditPlan}
+                modsMayInsert={event.modsMayInsert}
+                options={{
+                  autoCreep: event.autoCreep, creepNudgeMin: event.creepNudgeMin, creepCapMin: event.creepCapMin,
+                  guestRoundingMin: event.guestRoundingMin, hysteresisMin: event.hysteresisMin,
+                  showDelayToGuests: event.showDelayToGuests, guestHorizonMin: event.guestHorizonMin
+                }}
               />
             </div>
 
             <div className="bg-white rounded-lg shadow p-4 space-y-3">
               <h2 className="font-bold">Freigaben</h2>
               <p className="text-xs text-gray-600">
-                Freigegebene Konten (z. B. Moderator*innen) sehen das Event und steuern später den Ablauf live. Die
-                Einstellungen ändern, löschen und weiter freigeben können sie nicht.
+                Freigegebene Konten (z. B. Moderator*innen) sehen das Event mit internen Notizen und steuern später den
+                Ablauf live. Den Plan bearbeiten sie nur, wenn du es oben erlaubst. Einstellungen ändern, löschen und
+                weiter freigeben können sie nicht.
               </p>
               {shares.length > 0 && (
                 <ul className="text-sm divide-y">
@@ -92,7 +161,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
 
             <div className="bg-white rounded-lg shadow p-4 space-y-2">
               <h2 className="font-bold">Event löschen</h2>
-              <p className="text-xs text-gray-600">Löscht das Event mit allen Freigaben endgültig.</p>
+              <p className="text-xs text-gray-600">Löscht das Event mit Ablauf und allen Freigaben endgültig.</p>
               <ConfirmForm action={deleteEvent} message={`Event „${event.title}“ endgültig löschen?`}>
                 <input type="hidden" name="eventId" value={event.id} />
                 <button type="submit" className="text-sm text-red-700 hover:underline">Event löschen</button>
@@ -103,9 +172,16 @@ export default async function EventPage({ params, searchParams }: { params: Prom
           <div className="bg-white rounded-lg shadow p-4 space-y-2">
             <h2 className="font-bold">Freigegeben für dich</h2>
             <p className="text-sm text-gray-700">
-              Dieses Event wurde für dich freigegeben. Hier findest du später den Ablauf mit den internen Notizen und die
-              Live-Steuerung.
+              Dieses Event wurde für dich freigegeben. Du siehst den Ablauf mit den internen Notizen; die Live-Steuerung
+              folgt in einer späteren Ausbaustufe.
             </p>
+            <ul className="text-sm list-disc list-inside text-gray-700">
+              <li>Plan bearbeiten: {event.modsMayEditPlan ? 'erlaubt' : 'nicht erlaubt'}</li>
+              <li>Einschübe und Löschen während des Events: {event.modsMayInsert ? 'erlaubt' : 'nicht erlaubt'}</li>
+            </ul>
+            {!canAddRemoveItems(event.level, event) && event.modsMayEditPlan && event.status === 'LIVE' && (
+              <p className="text-xs text-gray-600">Solange das Event live ist, legst du keine Punkte an und löschst keine.</p>
+            )}
           </div>
         )}
       </div>

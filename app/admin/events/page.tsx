@@ -31,9 +31,12 @@ export default async function EventsPage({ searchParams }: { searchParams: Promi
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">Events</h1>
             {canCreateEvents(user) && (
-              <Link href="/admin/events/new" className="bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">
-                Neues Event
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <Link href="/admin/events/import" className="py-2 px-4 rounded border border-gray-300 hover:bg-gray-50">Importieren</Link>
+                <Link href="/admin/events/new" className="bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">
+                  Neues Event
+                </Link>
+              </div>
             )}
           </div>
           {deleted === '1' && <Notice tone="success">Event gelöscht.</Notice>}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseEventForm } from '../../../app/lib/events/settings'
+import { allowedStatusChanges, DEFAULT_EVENT_OPTIONS, parseEventForm, parseEventOptions } from '../../../app/lib/events/settings'
 
 function form(values: Record<string, string>): FormData {
   const data = new FormData()
@@ -32,5 +32,31 @@ describe('parseEventForm', () => {
   it('lehnt zu lange Titel ab, statt sie abzuschneiden', () => {
     const parsed = parseEventForm(form({ ...valid, title: 'x'.repeat(121) }))
     expect(parsed.ok).toBe(false)
+  })
+})
+
+describe('parseEventOptions', () => {
+  const options = { creepNudgeMin: '5', creepCapMin: '30', guestRoundingMin: '5', hysteresisMin: '3', guestHorizonMin: '120', autoCreep: 'on' }
+
+  it('Standardwerte, Schalter nur mit Haken', () => {
+    expect(parseEventOptions(form(options))).toEqual({ ok: true, options: DEFAULT_EVENT_OPTIONS, modsMayEditPlan: false, modsMayInsert: false })
+    const all = parseEventOptions(form({ ...options, showDelayToGuests: 'on', modsMayEditPlan: 'on', modsMayInsert: 'on' }))
+    expect(all).toMatchObject({ ok: true, options: { showDelayToGuests: true }, modsMayEditPlan: true, modsMayInsert: true })
+    expect(parseEventOptions(form({ ...options, autoCreep: '' }))).toMatchObject({ ok: true, options: { autoCreep: false } })
+  })
+
+  it('lehnt Werte außerhalb der Grenzen ab', () => {
+    const parsed = parseEventOptions(form({ ...options, creepNudgeMin: '0', guestHorizonMin: '99999', hysteresisMin: '1.5' }))
+    expect(!parsed.ok && parsed.errors.map(e => e.split(':')[0])).toEqual(['Nachfrage nach', 'Hysterese', 'Horizont'])
+  })
+})
+
+describe('allowedStatusChanges', () => {
+  it('Planung wechselt nur zwischen Entwurf, veröffentlicht und archiviert - LIVE/ENDED setzt die Live-Steuerung', () => {
+    expect(allowedStatusChanges('DRAFT')).toEqual(['PUBLISHED', 'ARCHIVED'])
+    expect(allowedStatusChanges('PUBLISHED')).toEqual(['DRAFT', 'ARCHIVED'])
+    expect(allowedStatusChanges('LIVE')).toEqual([])
+    expect(allowedStatusChanges('ENDED')).toEqual(['ARCHIVED'])
+    expect(allowedStatusChanges('ARCHIVED')).toEqual(['DRAFT'])
   })
 })

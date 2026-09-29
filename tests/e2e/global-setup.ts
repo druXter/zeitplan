@@ -9,6 +9,7 @@ import { startMailServer } from './mail-server'
 export default async function globalSetup() {
   const mailServer = await startMailServer()
   await prisma.event.deleteMany()
+  await prisma.series.deleteMany()
   await prisma.user.deleteMany()
   await prisma.loginThrottle.deleteMany()
   await prisma.$disconnect()

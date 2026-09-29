@@ -1,5 +1,6 @@
 // app/admin/events/new/page.tsx
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { requireUser } from '../../../lib/auth'
 import { canCreateEvents } from '../../../lib/permissions'
 import { baseUrl } from '../../../lib/base-url'
@@ -16,6 +17,9 @@ export default async function NewEventPage() {
       <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow space-y-4 text-gray-900">
         <h1 className="text-2xl font-bold">Neues Event</h1>
         <CreateEventForm baseUrl={baseUrl()} />
+        <p className="text-sm text-gray-600">
+          Oder <Link href="/admin/events/import" className="text-blue-700 hover:underline">einen exportierten Ablauf importieren</Link>.
+        </p>
       </div>
     </main>
   )

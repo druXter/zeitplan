@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatDateTime, formatDeadline, formatRange, utcToZonedDate, utcToZonedInput, zonedDateToUtc, zonedInputToUtc } from '../../app/lib/timezone'
+import {
+  daysBetween, formatClock, formatDate, formatDateTime, formatDeadline, formatRange, shiftDays, toZonedIso, utcToZonedDate, utcToZonedInput,
+  zonedDateToUtc, zonedInputToUtc
+} from '../../app/lib/timezone'
 
 describe('zonedInputToUtc', () => {
   it('rechnet Winter- und Sommerzeit in Berlin um', () => {
@@ -65,5 +68,35 @@ describe('Tag eines Events', () => {
     for (const value of ['', '2026-02-30', '2026-13-01', '24.10.2026', '2026-10-24T10:00']) {
       expect(zonedDateToUtc(value), value).toBeNull()
     }
+  })
+})
+
+describe('Export und Verschieben', () => {
+  it('ISO mit Versatz ist eindeutig, auch in der doppelten Stunde', () => {
+    expect(toZonedIso(new Date('2026-06-20T12:00:00Z'))).toBe('2026-06-20T14:00:00+02:00')
+    // 25.10.2026: 02:30 gibt es zweimal - einmal Sommer-, einmal Winterzeit.
+    expect(toZonedIso(new Date('2026-10-25T00:30:00Z'))).toBe('2026-10-25T02:30:00+02:00')
+    expect(toZonedIso(new Date('2026-10-25T01:30:00Z'))).toBe('2026-10-25T02:30:00+01:00')
+    expect(new Date(toZonedIso(new Date('2026-10-25T01:30:00Z'))).toISOString()).toBe('2026-10-25T01:30:00.000Z')
+  })
+
+  it('Tage zwischen zwei Eventtagen', () => {
+    expect(daysBetween(zonedDateToUtc('2026-06-20')!, zonedDateToUtc('2026-06-27')!)).toBe(7)
+    expect(daysBetween(zonedDateToUtc('2026-10-24')!, zonedDateToUtc('2026-10-26')!)).toBe(2)
+    expect(daysBetween(zonedDateToUtc('2026-06-27')!, zonedDateToUtc('2026-06-20')!)).toBe(-7)
+  })
+
+  it('verschiebt um Tage und behält die Uhrzeit, auch über die Zeitumstellung', () => {
+    const summer = zonedInputToUtc('2026-10-24T14:00')!
+    const winter = shiftDays(summer, 1)
+    expect(utcToZonedInput(winter)).toBe('2026-10-25T14:00')
+    expect(winter.getTime() - summer.getTime()).toBe(25 * 60 * 60 * 1000)
+    expect(utcToZonedInput(shiftDays(zonedInputToUtc('2026-06-21T01:30')!, -1))).toBe('2026-06-20T01:30')
+    const same = new Date('2026-10-25T00:30:00Z')
+    expect(shiftDays(same, 0)).toBe(same)
+  })
+
+  it('Uhrzeit kurz', () => {
+    expect(formatClock(new Date('2026-06-20T12:05:00Z'))).toBe('14:05')
   })
 })

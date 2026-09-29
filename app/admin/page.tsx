@@ -23,6 +23,9 @@ export default async function AdminPage() {
           </p>
           <ul className="text-sm list-disc list-inside">
             <li><Link href="/admin/events" className="text-blue-700 hover:underline">Events</Link></li>
+            {canCreateEvents(user) && (
+              <li><Link href="/admin/series" className="text-blue-700 hover:underline">Reihen</Link> – mehrere Events mit gemeinsamer Übersicht</li>
+            )}
             {canInviteUsers(user) && (
               <li><Link href="/admin/users" className="text-blue-700 hover:underline">Nutzer*innen verwalten</Link></li>
             )}

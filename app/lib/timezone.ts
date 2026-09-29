@@ -101,3 +101,42 @@ export function utcToZonedDate(date: Date, timeZone: string = DEFAULT_TIMEZONE):
 export function formatDate(date: Date, timeZone: string = DEFAULT_TIMEZONE): string {
   return new Intl.DateTimeFormat('de-DE', { timeZone, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(date)
 }
+
+/**
+ * Zeitpunkt als ISO-8601 mit dem Versatz der Zeitzone: "2026-10-25T02:30:00+01:00". Eindeutig (auch in der
+ * doppelten Stunde der Zeitumstellung) und trotzdem lesbar - für Export-Dateien.
+ */
+export function toZonedIso(date: Date, timeZone: string = DEFAULT_TIMEZONE): string {
+  const offsetMin = Math.round(offsetAt(date.getTime(), timeZone) / 60_000)
+  const local = new Date(date.getTime() + offsetMin * 60_000).toISOString().slice(0, 19)
+  const abs = Math.abs(offsetMin)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${local}${offsetMin < 0 ? '-' : '+'}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`
+}
+
+/** Ganze Kalendertage zwischen zwei Eventtagen (Beginn des Tages als UTC-Zeitpunkt, siehe zonedDateToUtc). */
+export function daysBetween(from: Date, to: Date, timeZone: string = DEFAULT_TIMEZONE): number {
+  const day = (date: Date) => {
+    const [year, month, dayOfMonth] = utcToZonedDate(date, timeZone).split('-').map(Number)
+    return Date.UTC(year, month - 1, dayOfMonth)
+  }
+  return Math.round((day(to) - day(from)) / (24 * 60 * 60 * 1000))
+}
+
+/**
+ * Verschiebt einen Zeitpunkt um ganze Kalendertage und behält dabei die Uhrzeit in der Zeitzone bei (14:00
+ * bleibt 14:00, auch über eine Zeitumstellung hinweg) - für Duplizieren, Import und ein geändertes
+ * Eventdatum. Eine Uhrzeit, die es am Zieltag nicht gibt oder doppelt gibt, löst zonedInputToUtc auf.
+ */
+export function shiftDays(date: Date, days: number, timeZone: string = DEFAULT_TIMEZONE): Date {
+  if (days === 0) return date
+  const local = utcToZonedInput(date, timeZone)
+  const [year, month, dayOfMonth] = local.slice(0, 10).split('-').map(Number)
+  const target = new Date(Date.UTC(year, month - 1, dayOfMonth + days)).toISOString().slice(0, 10)
+  return zonedInputToUtc(`${target}${local.slice(10)}`, timeZone) ?? date
+}
+
+/** "14:00" in der Zeitzone des Events. */
+export function formatClock(date: Date, timeZone: string = DEFAULT_TIMEZONE): string {
+  return formatTime(date, timeZone)
+}

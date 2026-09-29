@@ -140,8 +140,8 @@ Einschub kommt.
 
 * Events mit Titel, Adresse (`/<slug>`, reservierte Namen wie in Seating), Datum, Zeitzone (vorerst Europe/Berlin),
   Status `DRAFT → PUBLISHED → LIVE → ENDED → ARCHIVED`.
-* Programmpunkte als Liste mit Uhrzeit und Dauer (Ende wird angezeigt), Ziehen zum Umsortieren, Puffer sichtbar als
-  Lücke. Pro Punkt: Titel, Ort, Beschreibung für Gäste, **interne Notiz** (nur Team: "Song: …", "Mikro 2",
+* Programmpunkte als Liste mit Uhrzeit und Dauer (Ende wird angezeigt), Umsortieren per „nach oben/unten“ (Tausch mit
+  dem Nachbarn wie live, siehe "Entschieden"), Puffer sichtbar als Lücke. Pro Punkt: Titel, Ort, Beschreibung für Gäste, **interne Notiz** (nur Team: "Song: …", "Mikro 2",
   Ansprechperson), Anker ja/nein, darf früher beginnen, Sichtbarkeit.
 * **Sichtbarkeit** in drei Stufen:
   * `PUBLIC` – alle.
@@ -357,3 +357,61 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   `series`. Events und Reihen teilen sich einen Namensraum (Phase 2 prüft beide Tabellen). (Annahme)
 * Ports: Entwicklung 3800, E2E-Instanz 3801 (auf `127.0.0.1`), Test-SMTP 2527 – neben Seating (3700/3701/2526)
   gleichzeitig lauffähig. (Annahme)
+* Prognose-Kern (Phase 1) liegt unter `app/lib/schedule/` und ist unabhängig von Prisma (eigene Typen, die Server
+  Actions übersetzen). Gestartet/beendet liest er an `actualStart`/`actualEnd` ab, nicht am Status. (Annahme)
+* "Darf früher beginnen" streicht nur die Untergrenze "geplanter Beginn": Der Punkt rückt ans Ende seiner Vorgänger,
+  auch in einen geplanten Puffer hinein. Der erste Punkt einer Spur bleibt bei seiner Planzeit, eine gemeldete
+  Verspätung gilt weiter. (Annahme)
+* Meldung an einem laufenden Punkt: Sein Ende ist mindestens geplanter Beginn + gemeldete Verspätung + Dauer. So
+  verlängert "+5" einen laufenden Punkt, ohne eine vor dem Start gemeldete Verspätung doppelt zu zählen; die
+  Live-Steuerung (Phase 4) setzt die Meldung dafür auf bisherige Abweichung + 5. Der Deckel fürs Fortschreiben zählt
+  ab diesem Ende. (Annahme)
+* Konflikte entstehen zwischen einem Anker und seinem Vorgänger in der Spur sowie den Punkten, auf die er wartet – nur
+  solange der Anker nicht begonnen hat. (Annahme)
+* Die Nachfrage "läuft noch?" gilt für gemeldet laufende Punkte. Punkte, deren Beginn ohne Meldung erreicht ist,
+  kennzeichnet der Kern als "nicht bestätigt". (Annahme)
+* Zyklen und unbekannte ids in "wartet auf" prüft der Kern über alle Punkte, auch zurückgestellte und ausgefallene
+  (ein zurückgestellter Punkt kann wieder eingereiht werden). (Annahme)
+* Tauschen: nur geplante Punkte ohne Anker, benachbart unter den aktiven Punkten derselben Spur (ausgefallene und
+  zurückgestellte liegen nicht "dazwischen"). Gemeldete Verspätungen bleiben am Punkt. Ein Tausch, der einen Zyklus
+  erzeugen würde, wird abgelehnt. (Annahme)
+* Einschub: Er beginnt laut Plan, wenn der Punkt davor laut Prognose endet – frühestens jetzt, auf die volle Minute
+  aufgerundet –, in derselben Spur. Die Planzeiten der folgenden Punkte bleiben, sie rutschen über die Kette. (Annahme)
+* Gästeanzeige: Der Horizont bezieht sich auf den geplanten Beginn (aktueller Plan) und gilt nicht mehr, sobald ein
+  Punkt läuft oder vorbei ist. Planzeiten werden minutengenau gezeigt, nur Abweichungen auf 5 Minuten gerundet (zur
+  nächsten, in der Mitte nach oben). Die Hysterese vergleicht die neue Prognose mit dem zuletzt gezeigten Wert; ist ein
+  Punkt wieder genau im Plan, gilt sofort die Planzeit. "ca." heißt: gezeigter Beginn ≠ Planzeit. Gäste sehen nur den
+  Beginn, kein Ende. (Annahme)
+* Für Gäste unsichtbar sind neben TEAM/SECRET auch alle Punkte in Team-Spuren, in unbekannten Spuren und zurückgestellte
+  Punkte; ausgefallene bleiben mit Planzeit und Grund sichtbar. (Annahme)
+* Umsortieren in der Planung per „nach oben/unten" statt Ziehen: tauscht mit dem Nachbarn über `swapAdjacent` wie im
+  Live-Betrieb (B übernimmt den Beginn von A). Bedienbar am Handy und per Tastatur, und Reihenfolge und Uhrzeiten
+  bleiben dabei stimmig. Abweichung von Abschnitt 4 ("Ziehen"). (Annahme)
+* Neue Punkte und Punkte mit geändertem Beginn oder neuer Spur werden nach ihrem Beginn in die Kette einsortiert
+  (`placeInTrack`), die übrigen behalten ihre Reihenfolge. Ohne Zeitänderung bleibt die Position. (Annahme)
+* Schalter "Plan bearbeiten" umfasst Punkte ändern, verschieben, anlegen und löschen. Solange das Event LIVE ist,
+  brauchen Moderator*innen fürs Anlegen und Löschen stattdessen "Einschübe und Löschen". Spuren, Einstellungen,
+  Schalter, Status und Freigaben bleiben bei Besitzer*in und Admin. (Annahme)
+* SECRET in der Planung: Nur eingetragene Konten ändern, verschieben (auch als Tauschpartner) oder löschen einen
+  geheimen Punkt. Zur Auswahl stehen Konten mit Zugriff aufs Event, mindestens eins muss eingetragen sein; das
+  anlegende Konto ist vorausgewählt. Die Kontenliste sehen nur Eingetragene. (Annahme)
+* Export, Duplizieren und Import enthalten nur, was das handelnde Konto sehen darf: Geheime Punkte ohne Eintrag gehen
+  als Platzhalter "Geheimer Punkt" mit Zeit und Dauer mit. Kontenlisten stehen in keiner Datei; nach Import oder Kopie
+  sieht geheime Punkte nur das anlegende Konto. Nicht exportiert werden Live-Stand, Ursprungsplan, Freigaben, Schalter
+  und Zugang. Format `zeitplan-event`, `schemaVersion` 1, Spuren/Punkte mit frei gewählten Schlüsseln, Zeiten als ISO
+  8601 mit Versatz (eindeutig auch in der doppelten Stunde). Ein Import legt immer ein neues Event an. (Annahme)
+* Duplizieren und Import auf einen anderen Tag verschieben alle Punkte um ganze Kalendertage, die Uhrzeit bleibt;
+  ebenso ein geändertes Eventdatum (nicht, solange das Event live ist). Duplizieren darf, wer Events anlegen darf und
+  das Event sieht. (Annahme)
+* Punkte beginnen frühestens am Vortag (Aufbau) und spätestens 3 Tage nach dem Eventtag, Dauer 0 bis 1440 Minuten.
+  Längere Abläufe sind mehrere Events in einer Reihe. (Annahme)
+* Status in der Planung: Entwurf ↔ veröffentlicht, archivieren, Archiv → Entwurf. LIVE und ENDED setzt nur die
+  Live-Steuerung. Der Ursprungsplan wird beim Live-Schalten eingefroren (Phase 4), nicht schon beim Veröffentlichen –
+  bis dahin sind Änderungen normale Planung. (Annahme)
+* Jedes neue Event bekommt eine öffentliche Spur "Ablauf". Spuren lassen sich nur leer löschen, die letzte nie. (Annahme)
+* Reihen gehören dem anlegenden Konto (anlegen darf, wer Events anlegen darf). Zuordnen lassen sich nur eigene Reihen
+  (Admins: alle), in den Einstellungen des Events. Löschen einer Reihe löst nur die Zuordnung. (Annahme)
+* Jede Planänderung erhöht `Event.liveVersion`; `Item.version` steigt bei jeder Änderung am Punkt (nicht beim bloßen
+  Umnummerieren der Reihenfolge) und schützt Formulare vor veralteten Ständen. (Annahme)
+* Standard-Zugang neuer Events ist `PUBLIC`: Ein veröffentlichtes Event ist ab Phase 3 für jede*n mit Link sichtbar,
+  bis Phase 5 Zugangscode und Konto bringt. Wer das nicht will, veröffentlicht erst danach.

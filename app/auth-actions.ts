@@ -1,8 +1,8 @@
 // app/auth-actions.ts
 'use server'
 
-// Übernommen aus Seating (app/auth-actions.ts). Die Verknüpfung mit Konten anderer Tools der
-// Suite (Föderation) kommt mit Phase 6 dazu.
+// Übernommen aus Seating (app/auth-actions.ts), samt Verknüpfungen mit Konten anderer Tools der
+// Suite (unlinkIdentity, Föderation).
 
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -20,6 +20,7 @@ import {
   clearFailures, clientIp, loginRules, passwordChangeRule, refund, reserve, resetRules
 } from './lib/throttle'
 import { sendInviteEmail, sendPasswordResetEmail } from './lib/mail'
+import { AUTHORIZE_CONTINUE_PREFIX } from './lib/suite'
 
 const INVITE_VALID_MS = 7 * 24 * 60 * 60 * 1000
 const RESET_VALID_MS = 60 * 60 * 1000
@@ -70,6 +71,10 @@ export async function loginUser(formData: FormData) {
   await refund(rules.ip)
   await clearFailures([rules.email])
   await createSession(userId)
+
+  // Geht der Login im Anbieter-Ablauf für ein anderes Tool weiter, braucht es einen echten
+  // Seitenwechsel statt eines Client-Router-Übergangs (siehe app/login/continue).
+  if (next.startsWith(AUTHORIZE_CONTINUE_PREFIX)) redirect(`/login/continue?to=${encodeURIComponent(next)}`)
   redirect(next)
 }
 
@@ -84,7 +89,7 @@ export async function logoutUser() {
  * Ausgenommen sind Admin-Konten: Wer ein Admin-Postfach übernimmt, soll dadurch nicht
  * automatisch volle Rechte bekommen - dort bleibt ein Reset nur per Server-Zugriff
  * (create-user.js) möglich, gleiche Regel wie in den anderen Tools. Konten ohne Passwort (offene
- * Einladung, ab Phase 6 rein föderierte Konten) bekommen keinen Reset-Link.
+ * Einladung, rein föderierte Konten - sie melden sich beim Anbieter an) bekommen keinen Reset-Link.
  */
 export async function requestPasswordReset(formData: FormData) {
   const email = formString(formData, 'email', 254).toLowerCase()
@@ -171,6 +176,24 @@ export async function changePassword(formData: FormData) {
   redirect('/account?passwordChanged=1')
 }
 
+/**
+ * Entfernt die Verknüpfung mit einem Konto eines anderen Tools (Föderation, app/api/suite/callback).
+ * Nur die eigene; nie die letzte Anmeldemöglichkeit eines Kontos ohne Passwort - sonst käme die
+ * Person nicht mehr hinein (föderierte Konten haben kein Passwort und bekommen auch keinen Reset-Link).
+ */
+export async function unlinkIdentity(formData: FormData) {
+  const user = await requireUser('/account')
+
+  const identity = await prisma.externalIdentity.findUnique({ where: { id: formString(formData, 'identityId', 50) } })
+  if (!identity || identity.userId !== user.id) redirect('/account')
+
+  const others = await prisma.externalIdentity.count({ where: { userId: user.id, id: { not: identity.id } } })
+  if (!user.hasPassword && others === 0) redirect('/account?error=lastlogin')
+
+  await prisma.externalIdentity.delete({ where: { id: identity.id } })
+  redirect('/account?unlinked=1')
+}
+
 /** Legt für ein Konto einen Einladungs-Link an, verschickt ihn (falls SMTP da ist) und zeigt ihn sonst einmalig an. */
 async function issueInvite(userId: string, email: string): Promise<'mailed' | 'link'> {
   const token = generateToken()
@@ -224,11 +247,13 @@ export async function resendInvite(formData: FormData) {
   const actor = await requireUser('/admin/users')
   if (actor.role !== 'ADMIN') return
 
-  const target = await prisma.user.findUnique({ where: { id: formString(formData, 'userId', 50) } })
-  // Nur für offene Einladungen: ein Konto mit Passwort hat sie nicht nötig, und "Einladung
-  // erneuern" darf kein Weg sein, ein bestehendes Konto zu übernehmen. (Mit Phase 6 zählen
-  // Konten mit Fremdanmeldung ebenfalls nicht als offene Einladung.)
-  if (!target || target.passwordHash) return
+  const target = await prisma.user.findUnique({
+    where: { id: formString(formData, 'userId', 50) },
+    include: { _count: { select: { identities: true } } }
+  })
+  // Nur für offene Einladungen: ein Konto mit Passwort oder Fremdanmeldung hat sie nicht nötig,
+  // und "Einladung erneuern" darf kein Weg sein, ein bestehendes Konto zu übernehmen.
+  if (!target || target.passwordHash || target._count.identities > 0) return
 
   const result = await issueInvite(target.id, target.email)
   redirect(`/admin/users?created=${result}`)
@@ -254,7 +279,7 @@ export async function updateUserRole(formData: FormData) {
 }
 
 /**
- * Löscht ein Konto samt Sitzungen und Freigaben. Nur Admins, und nie ein Admin-Konto. Events
+ * Löscht ein Konto samt Sitzungen, Freigaben und Verknüpfungen. Nur Admins, und nie ein Admin-Konto. Events
  * des Kontos gehen dabei an den löschenden Admin über (wie in Seating) - nichts soll
  * stillschweigend mit einem Konto verschwinden.
  */

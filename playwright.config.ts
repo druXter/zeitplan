@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import { SMTP_PORT } from './tests/e2e/mail-server'
+import { TEST_SUITE_IDPS, TEST_SUITE_TRUSTED_APPS, TEST_ZEITPLAN_SIGNING_KEY } from './tests/e2e/suite-server'
 
 // E2E-Tests gegen eine echte, frisch gebaute Instanz (next build + next start) mit eigener
 // Datenbank (prisma/test.db) - nie gegen die Entwicklungs- oder Produktivdatenbank.
@@ -54,6 +55,12 @@ export default defineConfig({
       CRON_SECRET: TEST_CRON_SECRET,
       ACCESS_CODE_SECRET: TEST_ACCESS_CODE_SECRET,
       DISPLAY_LINK_SECRET: TEST_DISPLAY_LINK_SECRET,
+      // Konto-Föderation (Phase 6): zwei andere Tools aus tests/e2e/suite-server.ts - Zeitplan nimmt
+      // Anmeldungen von beiden an und stellt selbst welche für Tool A aus.
+      SUITE_IDPS: TEST_SUITE_IDPS,
+      SUITE_TRUSTED_APPS: TEST_SUITE_TRUSTED_APPS,
+      SUITE_SIGNING_KEY: TEST_ZEITPLAN_SIGNING_KEY,
+      SUITE_APP_NAME: 'Zeitplan Test',
       // Test-SMTP aus tests/e2e/mail-server.ts (in global-setup gestartet). Empfänger @nomail.test
       // lehnt er ab - dann greift der angezeigte Einladungslink.
       SMTP_HOST: '127.0.0.1',

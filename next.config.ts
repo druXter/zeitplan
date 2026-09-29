@@ -34,7 +34,8 @@ const nextConfig: NextConfig = {
   //   3. /:slug einbettbar - passt aber auch auf /admin, /login, /impressum, /offline.html ...
   //   4. einteilige Seiten des Tools wieder ohne Einbetten, sensible Bereiche mit weiteren Headern.
   //      Neue einteilige Routen hier ergänzen (tests/e2e/headers.spec.ts prüft die Header).
-  //   5. Service Worker der installierbaren App (nie cachen, eigene CSP)
+  //   5. Föderations-Endpunkte (Referrer-Policy)
+  //   6. Service Worker der installierbaren App (nie cachen, eigene CSP)
   //
   // Nicht gesetzt: eine vollständige Content-Security-Policy. Sie würde für Next.js Nonces
   // pro Anfrage brauchen (siehe node_modules/next/dist/docs/01-app/02-guides/
@@ -71,7 +72,7 @@ const nextConfig: NextConfig = {
       // Sensible Bereiche. `/admin/:path*` umfasst auch `/admin` selbst.
       { source: "/admin/:path*", headers: PRIVATE_PAGE },
       { source: "/account", headers: PRIVATE_PAGE },
-      // `/login/:path*` umfasst `/login` und künftige Unterseiten (Föderation, Phase 6).
+      // `/login/:path*` umfasst `/login` und die Zwischenseite `/login/continue` (Föderation).
       { source: "/login/:path*", headers: PRIVATE_PAGE },
       { source: "/forgot-password", headers: PRIVATE_PAGE },
       {
@@ -82,7 +83,14 @@ const nextConfig: NextConfig = {
       },
 
       {
-        // 5. Der Service Worker (public/sw.js) darf NIE aus einem Cache kommen (Browser, Cloudflare),
+        // 5. Die Föderations-Endpunkte (app/api/suite/*) tragen Einmal-Werte (Login-Bestätigung, state)
+        //    in der URL. Überschreibt die Referrer-Policy der allgemeinen Regel.
+        source: "/api/suite/:path*",
+        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+      },
+
+      {
+        // 6. Der Service Worker (public/sw.js) darf NIE aus einem Cache kommen (Browser, Cloudflare),
         //    sonst blieben Nutzer*innen auf einer alten Version hängen. Eigene CSP: Er lädt nur
         //    Ressourcen derselben Herkunft. Steht NACH Regel 3 (/:slug passt auch auf /sw.js) und
         //    ersetzt deren CSP.

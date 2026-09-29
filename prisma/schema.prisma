@@ -28,11 +28,10 @@ enum Role {
 }
 
 // Ein lokales Konto dieses Tools - für Planung und Moderation. Gäste haben kein Konto (sie bekommen
-// ab Phase 5 höchstens eine Gast-Sitzung). Registrierung ist nicht öffentlich: Konten legt ein
-// eingeloggtes Konto an (Einladungslink, siehe resetTokenHash) oder sie entstehen später beim ersten
-// Login über ein verbundenes Tool (Föderation, Phase 6). passwordHash ist null bei noch nicht
-// angenommenen Einladungen (und später bei rein föderierten Konten) - beide können sich nicht per
-// Passwort anmelden.
+// höchstens eine Gast-Sitzung). Registrierung ist nicht öffentlich: Konten legt ein eingeloggtes Konto
+// an (Einladungslink, siehe resetTokenHash) oder sie entstehen beim ersten Login über ein verbundenes
+// Tool (Föderation, ExternalIdentity). passwordHash ist null bei noch nicht angenommenen Einladungen und
+// bei rein föderierten Konten - beide können sich nicht per Passwort anmelden.
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -58,6 +57,7 @@ model User {
   secretItems   ItemSecretViewer[]
   liveActions   LiveAction[]       @relation("LiveActionActor")
   undoneActions LiveAction[]       @relation("LiveActionUndoneBy")
+  identities    ExternalIdentity[]
 }
 
 // Server-seitige Session: das Cookie trägt nur den zufälligen Token, in der Datenbank
@@ -71,6 +71,21 @@ model Session {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
+  @@index([userId])
+}
+
+// Verknüpfung eines lokalen Kontos mit einem Konto in einem anderen Tool der Suite (Föderation über
+// suite-kit, Phase 6, app/api/suite/*; Aufbau wie in Seating). Identität ist (issuer, subject) - NIE die
+// E-Mail, die sich beim Anbieter ändern lässt. issuer = Origin des Anbieter-Tools, subject = dessen Konto-ID.
+model ExternalIdentity {
+  id        String   @id @default(cuid())
+  issuer    String
+  subject   String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([issuer, subject])
   @@index([userId])
 }
 

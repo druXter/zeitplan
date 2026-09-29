@@ -8,6 +8,7 @@ import { createUser, deleteUser, resendInvite, updateUserRole } from '../../auth
 import { isMailConfigured } from '../../lib/mail'
 import SubmitButton from '../../ui/submit-button'
 import Notice from '../../ui/notice'
+import { issuerLabel } from '../../lib/suite'
 import ConfirmForm from '../../ui/confirm-form'
 import CopyableField from '../../ui/copyable-field'
 
@@ -18,7 +19,7 @@ const ERRORS: Record<string, string> = {
   exists: 'Zu dieser E-Mail-Adresse gibt es bereits ein Konto.'
 }
 
-// Übernommen aus Seating (app/admin/users/page.tsx), ohne Föderation (Phase 6).
+// Übernommen aus Seating (app/admin/users/page.tsx), samt Anzeige, über welches Tool sich ein Konto anmeldet.
 export default async function UsersPage({
   searchParams
 }: {
@@ -37,6 +38,7 @@ export default async function UsersPage({
         orderBy: { createdAt: 'asc' },
         select: {
           id: true, email: true, name: true, role: true, passwordHash: true,
+          identities: { select: { issuer: true }, orderBy: { createdAt: 'asc' } },
           _count: { select: { events: true } }
         }
       })
@@ -92,7 +94,8 @@ export default async function UsersPage({
             <h2 className="font-bold mb-3">Alle Konten ({users.length})</h2>
             <ul className="divide-y text-sm">
               {users.map(u => {
-                const pending = !u.passwordHash
+                const pending = !u.passwordHash && u.identities.length === 0
+                const via = u.identities.map(i => issuerLabel(i.issuer)).join(', ')
                 const protectedAccount = u.role === 'ADMIN'
                 return (
                   <li key={u.id} className="py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -101,7 +104,8 @@ export default async function UsersPage({
                       <div className="text-xs text-gray-600">
                         {ROLE_LABELS[u.role]}
                         {' · '}
-                        {pending ? 'Einladung offen' : 'Passwort'}
+                        {pending ? 'Einladung offen' : u.passwordHash ? 'Passwort' : `Anmeldung über ${via}`}
+                        {u.passwordHash && via && ` und ${via}`}
                         {' · '}
                         {u._count.events} Event{u._count.events === 1 ? '' : 's'}
                       </div>

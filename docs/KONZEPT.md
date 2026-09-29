@@ -500,7 +500,7 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
 * Drosselung der Code-Eingabe (abgestimmt): Fehlversuche 20 pro IP und 100 pro Event in 15 Minuten, der
   Versuch wird vor dem Vergleich reserviert, ein richtiger Code gibt ihn zurück. Die Event-Regel ist großzügig, weil
   eine Sperre dort alle Gäste trifft (Saal-WLAN teilt oft eine IP); sie endet mit dem Zeitfenster.
-* Zugang `ACCOUNT` (abgestimmt): jedes angemeldete Konto dieses Tools (ab Phase 6 auch per Föderation) sieht
+* Zugang `ACCOUNT` (abgestimmt): jedes angemeldete Konto dieses Tools (auch per Föderation angemeldet) sieht
   die Gästeansicht; Konten mit Zugriff aufs Event weiter die Vorschau.
 * Gast-Sitzung: ein Cookie pro Event (`__Host-guest-<eventId>`, HttpOnly, SameSite=Lax) statt eines gemeinsamen
   `__Host-guest` – so bleibt der Zugang zum Polterabend, wenn danach der Code der Hochzeit eingegeben wird. Gültig bis
@@ -516,3 +516,11 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   Code bzw. keinen Tafel-Link – kein Rückfall auf einen Standardwert; die Verwaltung weist darauf hin. (Annahme)
 * Mit gültigem Zugang merkt sich die Gästeansicht (und die Tafel) den Stand auch bei geschützten Events im Browser –
   es sind nur Gästedaten, die das Gerät ohnehin gezeigt hat. (Annahme)
+* Föderation (Phase 6) 1:1 wie in Seating: Endpunkte `/.well-known/suite-identity`, `/api/suite/{authorize,login,callback}`,
+  Zwischenseite `/login/continue`, `ExternalIdentity(issuer, subject)`, Verknüpfen und Entfernen unter „Mein Konto“,
+  Anzeige in der Kontoverwaltung. Rolle beim ersten Login (abgestimmt): wie in Seating – Admin nur mit `mapAdminRole`,
+  Moderator*in bleibt Moderator*in, alle anderen Creator; danach vergeben nur lokale Admins Rollen. Empfehlung im README
+  wie bei Seating `autoProvision: false`; wer Events „nur mit Konto“ für alle Konten eines anderen Tools öffnen will,
+  schaltet es bewusst ein.
+* Test-Doppel der Föderation auf den Ports 2530/2531 (`localhost`), damit die E2E-Tests neben denen von Seating
+  (2528/2529) laufen können. (Annahme)

@@ -7,8 +7,8 @@ import Link from 'next/link'
 // Einladungen, Events mit Freigaben, Programmpunkte mit internen Notizen und geheimen Punkten, Reihen,
 // Export/Import, Drosselung, Löschfristen, installierbare App mit Service Worker, Gästeansicht und Tafel mit
 // Offline-Stand im Browser, Phase 4: Live-Steuerung mit Verlauf, Phase 5: Zugangscode mit Gast-Sitzung und
-// Drosselung, Zugang per Konto, Tafel-Link). Mit den folgenden Phasen kommen Föderation und die Anbindung an
-// rsvp-app dazu - dann hier ergänzen.
+// Drosselung, Zugang per Konto, Tafel-Link, Phase 6: Anmeldung mit Konten anderer Tools der Suite). Mit
+// Phase 7 kommt die Anbindung an rsvp-app dazu - dann hier ergänzen.
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -72,6 +72,29 @@ export default function DatenschutzPage() {
           <p className="mt-2">
             Konten werden nicht öffentlich registriert, sondern von einer berechtigten Person eingeladen. Die eingeladene
             Person legt ihr Passwort selbst über den Einladungslink fest.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="font-bold text-lg">3a. Anmeldung mit dem Konto eines anderen Tools (optional)</h2>
+          <p className="mt-2">
+            Ist dies vom Betreiber eingerichtet, kannst du dich hier mit einem Konto eines verbundenen Tools anmelden
+            (z.B. rsvp-app), und umgekehrt kann man sich dort mit einem Konto von hier anmelden. Das geschieht{' '}
+            <strong>nur, wenn du es aktiv anstößt</strong>, und nur zwischen Tools, die der Betreiber ausdrücklich
+            freigegeben hat.
+          </p>
+          <p className="mt-2">
+            Dabei übermittelt das Tool, bei dem du angemeldet bist, an das andere Tool eine kurz gültige (etwa eine
+            Minute), digital signierte Bestätigung mit <strong>deiner Konto-Kennung, E-Mail-Adresse, ggf. deinem
+            Namen und deiner Rolle</strong>. Dein Passwort und deine Sitzung werden nie übermittelt. Wir speichern zu
+            einem verknüpften Konto nur, welches Tool es ist und die Konto-Kennung dort. Je nach Einstellung legen wir
+            beim ersten Mal ein Konto (ohne Passwort) für dich an, oder du verknüpfst ein bestehendes Konto selbst unter
+            &quot;Mein Konto&quot;. Dort kannst du die Verknüpfung auch wieder entfernen. Ändert sich deine
+            E-Mail-Adresse beim anderen Tool, übernehmen wir sie bei der nächsten Anmeldung, wenn dein Konto hier
+            kein eigenes Passwort hat.
+          </p>
+          <p className="mt-2">
+            Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (die von dir angestoßene Anmeldung).
           </p>
         </div>
 
@@ -157,6 +180,7 @@ export default function DatenschutzPage() {
           </p>
           <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
             <li><code>__Host-session</code> - Anmeldung an deinem Konto (30 Tage)</li>
+            <li><code>__Host-suite-state</code> - nur während einer Anmeldung über ein anderes Tool (höchstens 10 Minuten)</li>
             <li><code>invite_link</code> - nur kurz (2 Minuten), wenn ein Konto einen Einladungslink zum Weitergeben angezeigt bekommt</li>
             <li>
               <code>__Host-guest-…</code> - nur nach Eingabe eines Zugangscodes, je Veranstaltung eins: dein Zugang zum
@@ -185,6 +209,11 @@ export default function DatenschutzPage() {
             handelt, ein Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO.
           </p>
           <p className="mt-2">
+            <strong>Andere Tools der Suite:</strong> Meldest du dich über ein anderes Tool an oder mit deinem Konto von hier
+            bei einem anderen Tool, gehen die unter Punkt 3a genannten Angaben direkt an dieses Tool - nur an Tools, die
+            der Betreiber freigegeben hat.
+          </p>
+          <p className="mt-2">
             <strong>Hosting:</strong> Diese Anwendung wird auf einem vom Verantwortlichen selbst betriebenen und
             administrierten Server gehostet. Es findet keine Weitergabe der Daten an einen externen Hosting-Anbieter
             statt.
@@ -195,7 +224,8 @@ export default function DatenschutzPage() {
           <h2 className="font-bold text-lg">10. Speicherdauer</h2>
           <p className="mt-2">
             Ein Konto wird automatisch gelöscht, wenn du dich <strong>2 Jahre</strong> lang nicht mehr angemeldet
-            hast und dir keine Veranstaltungen mehr gehören - inklusive Sitzungen und Freigaben. Administrator-Konten sind
+            hast und dir keine Veranstaltungen mehr gehören - inklusive Sitzungen, Verknüpfungen zu anderen Tools und
+            Freigaben. Administrator-Konten sind
             von dieser automatischen Löschung ausgenommen. Unabhängig davon kannst du jederzeit unter der oben genannten
             Adresse um frühere Löschung deines Kontos bitten.
           </p>

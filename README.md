@@ -18,7 +18,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 3 | Gästeansicht, Tafel, Polling-Endpunkt, QR-Code, Reihen-Übersicht, Team-Ansicht | ✅ umgesetzt |
 | 4 | Live-Steuerung | ✅ umgesetzt |
 | 5 | Zugang per Code und Konto, Gast-Sitzungen, Tafel-Link | ✅ umgesetzt |
-| 6 | Konto-Föderation über `suite-kit` | offen |
+| 6 | Konto-Föderation über `suite-kit`: mit Konten anderer Tools anmelden, für andere Tools bestätigen | ✅ umgesetzt |
 | 7 | Anbindung an rsvp-app (Zugang `RSVP`) | offen |
 | 8 | Abschluss, Test auf echtem Handy und Fernseher, Lasttest | offen |
 
@@ -26,7 +26,8 @@ Bisher gibt es das Gerüst (Anmelden, Konten einladen, Events anlegen und freige
 Prognose, die Planung (Programmpunkte, Spuren, geheime Punkte, Reihen, Import/Export, Vorlage „Hochzeit“) und die
 Ansichten (Gästeansicht mit Prognose, Anzeigetafel, Reihen-Übersicht, QR-Code, Team-Ansicht) und die Live-Steuerung
 fürs Handy (Weiter, Verspätung, Tauschen, Zurückstellen, Ausfall, Einschub, Rückgängig, Verlauf) sowie geschützte
-Events mit Zugangscode oder Konto samt eigenem Tafel-Link. Als Nächstes folgen Föderation und die Anbindung an rsvp-app.
+Events mit Zugangscode oder Konto samt eigenem Tafel-Link und die optionale Anmeldung mit Konten anderer Tools der Suite
+(Föderation). Als Nächstes folgt die Anbindung an rsvp-app.
 
 ## Konten
 
@@ -58,7 +59,44 @@ Admins vergeben die Rollen CREATOR/ADMIN; Creator laden ausschließlich Moderato
 der Oberfläche bewusst weder ändern noch löschen (Schutz vor Aussperren) und haben keinen Passwort-Reset per Mail – das
 geht nur per `create-user.js`. Wird ein Konto gelöscht, gehen seine Events an den löschenden Admin über.
 
-Die Anmeldung mit Konten anderer Tools der Suite (Föderation) kommt mit Phase 6.
+### Anmelden mit einem Konto aus einem anderen Tool (Föderation)
+
+Optional und nach dem Protokoll von [`suite-kit`](https://github.com/druXter/suite-kit) (Ed25519-signierte
+Login-Bestätigungen, kein gemeinsames Geheimnis). Zeitplan kann beides sein:
+
+* **Empfänger** (`SUITE_IDPS`): Die Login-Seite zeigt „Mit … anmelden“ für jedes eingetragene Tool. Beim ersten Login
+  entsteht ein Konto ohne Passwort, sofern `autoProvision` für dieses Tool an ist. **Empfohlen für Zeitplan:**
+  `autoProvision: false`, weil Konten hier nur Planende und Moderator\*innen brauchen – dann meldet sich nur an, wer
+  hier schon eingeladen wurde und sein Konto unter „Mein Konto“ verknüpft hat. Mit `autoProvision: true` kommt jedes
+  Konto des anderen Tools herein (z. B. für Events mit Zugang „nur mit Konto“) – als Creator, der eigene Events anlegen
+  darf; Freigaben für bestehende Events braucht es trotzdem. Die Rolle beim ersten Login: Admin nur mit
+  `mapAdminRole`, sonst Creator; Moderator\*in bleibt Moderator\*in. Danach vergeben nur lokale Admins Rollen.
+* **Anbieter** (`SUITE_SIGNING_KEY`, `SUITE_TRUSTED_APPS`): Andere Tools können Zeitplan-Konten für ihren Login nutzen.
+  Bestätigt werden nur Konten mit eigenem Passwort (keine Ketten), nur für die eingetragenen Tools.
+
+Regeln wie in der ganzen Suite: Identität ist (Tool, Konto-ID), **nie die E-Mail** – gibt es hier schon ein Konto mit
+derselben Adresse, wird der Login abgelehnt, statt es zu übernehmen. Verknüpft wird bewusst unter „Mein Konto“ aus einer
+bestehenden Sitzung; dort lässt sich eine Verknüpfung auch entfernen, außer sie ist die einzige Anmeldemöglichkeit.
+Ändert sich die Adresse beim anderen Tool, zieht Zeitplan sie bei rein föderierten Konten beim nächsten Login nach.
+Die Kontoverwaltung zeigt, über welches Tool sich ein Konto anmeldet.
+
+Einrichten (Beispiel Zeitplan `https://zeitplan.example.de` und rsvp-app `https://rsvp.example.de`, gegenseitig):
+
+```bash
+node node_modules/suite-kit/bin/suite-keygen.js   # eigenes Schlüsselpaar, nur in die .env von Zeitplan
+```
+
+| Wo | Eintrag |
+| --- | --- |
+| Zeitplan | `SUITE_SIGNING_KEY=<privater Schlüssel>`, `SUITE_TRUSTED_APPS=https://rsvp.example.de`, `SUITE_IDPS=[{"issuer":"https://rsvp.example.de","label":"rsvp-app","autoProvision":false}]` |
+| rsvp-app | `https://zeitplan.example.de` in `SUITE_IDPS` (und in `SUITE_TRUSTED_APPS`, wenn rsvp-app Anmeldungen für Zeitplan bestätigen soll) |
+
+`BASE_URL` muss exakt die Adresse sein, unter der die anderen Tools Zeitplan erreichen – sie ist die Kennung (`iss`/`aud`).
+Endpunkte: `/.well-known/suite-identity` (Discovery, ohne Schlüssel 404), `/api/suite/authorize` (Anbieter),
+`/api/suite/login` und `/api/suite/callback` (Empfänger), `/login/continue` (Zwischenseite, damit ein Login mitten im
+Anbieter-Ablauf per echtem Seitenwechsel weitergeht). Ohne `SUITE_*` gibt es weder Buttons noch Endpunkte – Zeitplan
+bleibt ein einzelnes Tool.
+
 
 ## Events
 
@@ -171,7 +209,7 @@ Pro Event unter „Zugang für Gäste“ (nur Besitzer\*in oder Admin):
 | --- | --- |
 | **Öffentlich** (Standard) | jede\*r mit Link |
 | **Mit Zugangscode** | wer einmal den Code eingibt (z. B. von der Einladung); der Browser merkt sich den Zugang |
-| **Nur mit Konto** | jedes angemeldete Konto dieses Tools (ab Phase 6 auch per Föderation) |
+| **Nur mit Konto** | jedes angemeldete Konto dieses Tools, auch per Föderation angemeldet (siehe oben) |
 | Zusage in rsvp-app | kommt mit Phase 7 |
 
 * **Zugangscode:** frei wählbar oder per „Vorschlag“ (z. B. `K7QM-4XPA`), mindestens 8 Buchstaben oder Ziffern.
@@ -322,6 +360,10 @@ Admin-Bereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im Brow
   Polling-Endpunkt (`403`). Zugangscode nur als HMAC, Gast-Sitzung nur als Hash, Tafel-Link per HMAC abgeleitet,
   Code-Eingabe gedrosselt (siehe „Zugang für Gäste“). Die Tafel sendet keinen Referer (`Referrer-Policy:
   no-referrer`), damit der Schlüssel in ihrer Adresse nicht weitergegeben wird.
+* **Föderation** (`app/api/suite/*`): Bestätigungen gelten 60 s, nur zusammen mit dem einmaligen `state`-Cookie
+  desselben Browsers (`__Host-suite-state`, 10 Minuten, wird bei jedem Rücksprung gelöscht); Signatur, Anbieter, Empfänger
+  und `nonce` werden geprüft, der genaue Ablehnungsgrund steht nur im Server-Log. Unbekannte Schlüssel-ID: Discovery
+  höchstens einmal pro Minute neu laden (Schlüsselrotation). Antworten mit `no-store` und `no-referrer`.
 * **Grenze:** Geheime Programmpunkte (`SECRET`) sehen in der Oberfläche nur eingetragene Konten – auch nicht
   Besitzer\*in oder Admin. Gegenüber dem Betreiber mit Zugriff auf die Datenbank gibt es aber **keine echte
   Geheimhaltung**.
@@ -358,7 +400,8 @@ npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, For
                     # (tests/unit/planning: Punkt-Formular, SECRET-Filter, Reihenfolge, Export/Import, Vorlage),
                     # Gästeansicht (tests/unit/guest: Sichtbarkeit, Payload), Abschnitte Jetzt/Als Nächstes/Vorbei,
                     # Live-Steuerung (tests/unit/schedule/live.test.ts, tests/unit/live: Verlauf und Rückgängig),
-                    # Zugang (tests/unit/guest: Sichtbarkeit mit Sitzung/Konto/Tafel-Link, Zugangscode, Tafel-Link)
+                    # Zugang (tests/unit/guest: Sichtbarkeit mit Sitzung/Konto/Tafel-Link, Zugangscode, Tafel-Link),
+                    # Föderation (tests/unit/suite.test.ts: Rollen, Zwischenseite, state-Cookie, Konfiguration)
 npm run test:e2e    # Playwright gegen eine frisch gebaute Instanz auf http://127.0.0.1:3801
 npm run build
 npm run lint
@@ -417,7 +460,17 @@ richtigem Code, andere IP weiter möglich, Erfolg zählt nicht) und nach 100 Feh
 IPs (anderes Event unberührt); Zugang per Konto samt Rückkehr nach der Anmeldung; Tafel-Link ohne Anmeldung, falscher
 und fremder Schlüssel wirkungslos, Gästeansicht nicht per Schlüssel, offene Tafel aktualisiert sich, alter Link nach
 Neuerzeugung ungültig (auch auf der offenen Tafel), Neuerzeugen nicht für Moderator\*innen, Entwurf trotz Schlüssel
-404; eingebettet nur der Link auf einen neuen Tab; Cron löscht abgelaufene Gast-Sitzungen. Installierbare App: Manifest,
+404; eingebettet nur der Link auf einen neuen Tab; Cron löscht abgelaufene Gast-Sitzungen. Konto-Föderation
+(`tests/e2e/suite.spec.ts`, übernommen aus Seating, gegen zwei Test-Doppel anderer Tools in `tests/e2e/suite-server.ts`
+auf den Ports 2530/2531): erster Login legt ein Konto an (Admin dort wird hier Creator, Moderator\*in bleibt), erneuter
+Login in anderem Browser mit nachgezogener Adresse, ohne `autoProvision` kein Konto, vorhandene Adresse → abgelehnt
+statt zusammengeführt, Verknüpfen aus „Mein Konto“ und Login darüber, dieselbe Identität für ein zweites Konto
+abgelehnt, Entfernen (nicht die letzte Anmeldemöglichkeit; Positivkontrolle mit Passwort; fremde Verknüpfung per
+gefälschtem Formular), Wiedergabe der Bestätigung im selben und in einem fremden Browser, manipulierte
+Signatur/Empfänger/`nonce`/Anbieter, unbekannter Schlüssel, nicht konfigurierter Anbieter, Fehlermeldung je nach
+Sitzung auf Konto- oder Login-Seite; als Anbieter: Discovery, nicht freigegebenes Tool, Login mit Fortsetzung über die
+Zwischenseite und gültiger Bestätigung, keine Ketten, Zwischenseite nur zum eigenen Endpunkt. Dazu Zeitplan-eigen: Zugang
+„nur mit Konto“ – Anmelden auf der Gästeansicht über Tool A führt zurück zum Ablauf, ohne Vorschau und ohne Verwaltung. Installierbare App: Manifest,
 Icons, `sw.js`-Header, Worker speichert nur die Offline-Seite.
 
 Mails fängt ein Test-SMTP ab (`tests/e2e/mail-server.ts`, Port 2527, Pakete `smtp-server` und `mailparser`, nur für die
@@ -457,6 +510,7 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | `CRON_SECRET` | Schutz des Aufräum-Endpunkts |
 | `ACCESS_CODE_SECRET` | Schlüssel für Zugangscodes (HMAC), mindestens 32 Zeichen; leer = kein Zugang per Code |
 | `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events; der vorherige hält alte Links beim Wechsel gültig |
+| `SUITE_IDPS`, `SUITE_SIGNING_KEY`, `SUITE_SIGNING_KEY_PREVIOUS`, `SUITE_TRUSTED_APPS`, `SUITE_APP_NAME` | optional: Konto-Föderation (siehe „Anmelden mit einem Konto aus einem anderen Tool“) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mailversand für Einladungen und Passwort-Reset (optional) |
 | `IMPRESSUM_*` | Angaben für Impressum und Datenschutzerklärung |
 
@@ -467,4 +521,5 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | Entwicklung (`npm run dev`) | 3800 (`localhost`) |
 | E2E-Testinstanz | 3801 (`127.0.0.1`) |
 | Test-SMTP der E2E-Tests | 2527 |
+| Test-Doppel anderer Tools der Suite (E2E) | 2530, 2531 (`localhost`) |
 | Docker (Host) | 3008 |

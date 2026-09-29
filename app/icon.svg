@@ -1,0 +1,17 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <title>Zeitplan</title>
+  <circle cx="256" cy="256" r="240" fill="#3B82F6"/>
+  <!-- Zifferblatt -->
+  <circle cx="256" cy="256" r="160" fill="#fff"/>
+  <!-- Der laufende Programmpunkt als Abschnitt auf der Uhr -->
+  <path d="M256 256 L256 124 A132 132 0 0 1 370.3 190 Z" fill="#BFDBFE"/>
+  <!-- Viertelstunden-Striche -->
+  <rect x="246" y="108" width="20" height="30" rx="10" fill="#1E40AF"/>
+  <rect x="374" y="246" width="30" height="20" rx="10" fill="#1E40AF"/>
+  <rect x="246" y="374" width="20" height="30" rx="10" fill="#1E40AF"/>
+  <rect x="108" y="246" width="30" height="20" rx="10" fill="#1E40AF"/>
+  <!-- Zeiger -->
+  <line x1="256" y1="256" x2="256" y2="152" stroke="#1E40AF" stroke-width="22" stroke-linecap="round"/>
+  <line x1="256" y1="256" x2="326" y2="296" stroke="#1E40AF" stroke-width="26" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="20" fill="#1E40AF"/>
+</svg>

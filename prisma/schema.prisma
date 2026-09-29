@@ -1,0 +1,133 @@
+// prisma/schema.prisma
+// Kein eigener migrations-Ordner - wie in den anderen Tools der Suite ausschließlich per
+// `npx prisma db push` synchronisiert (siehe README.md/Dockerfile).
+//
+// Phase 0: Konten, Sitzungen, Einladungen, Drosselung (1:1 nach Seating) und Events mit Freigaben -
+// vom Event nur, was Planung und Freigabe jetzt schon brauchen. Das vollständige Datenmodell
+// (Spuren, Programmpunkte, Abhängigkeiten, SECRET-Liste, Reihen, Live-Felder, Gast-Sitzungen, Verlauf)
+// kommt mit Phase 2, siehe docs/KONZEPT.md Abschnitt 9. Mit `db push` kostet das Nachziehen nichts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Gleiche Rollen wie in Seating und den anderen Tools der Suite, aber eigenständig vergeben:
+// ADMIN sieht/verwaltet alle Events und Konten. CREATOR legt eigene Events an und gibt sie frei.
+// MODERATOR legt nichts selbst an, sondern arbeitet nur in freigegebenen Events (z.B. der Trauzeuge
+// bei der Hochzeit). Die Freigabe pro Event steht in EventAccess.
+enum Role {
+  ADMIN
+  CREATOR
+  MODERATOR
+}
+
+// Ein lokales Konto dieses Tools - für Planung und Moderation. Gäste haben kein Konto (sie bekommen
+// ab Phase 5 höchstens eine Gast-Sitzung). Registrierung ist nicht öffentlich: Konten legt ein
+// eingeloggtes Konto an (Einladungslink, siehe resetTokenHash) oder sie entstehen später beim ersten
+// Login über ein verbundenes Tool (Föderation, Phase 6). passwordHash ist null bei noch nicht
+// angenommenen Einladungen (und später bei rein föderierten Konten) - beide können sich nicht per
+// Passwort anmelden.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String?
+  role         Role     @default(CREATOR)
+  createdAt    DateTime @default(now())
+  // Zuletzt bei einer Anmeldung gesetzt (siehe issueSession in app/lib/auth.ts). Grundlage
+  // für die automatische Löschung inaktiver Konten (app/api/cron/cleanup/route.ts) -
+  // Admin-Konten sind davon ausgenommen.
+  lastLoginAt  DateTime @default(now())
+
+  // Einladung UND Passwort-Reset teilen sich denselben Mechanismus: ein einmaliger,
+  // befristeter Link. Gespeichert wird nur der SHA-256-Hash des Tokens, damit ein
+  // Datenbank-Leak keine gültigen Links preisgibt (siehe app/lib/auth.ts hashToken).
+  resetTokenHash      String?   @unique
+  resetTokenExpiresAt DateTime?
+
+  sessions    Session[]
+  events      Event[]
+  eventAccess EventAccess[]
+}
+
+// Server-seitige Session: das Cookie trägt nur den zufälligen Token, in der Datenbank
+// liegt ausschließlich dessen SHA-256-Hash - ein Leak der Datenbank ergibt also keine
+// übernehmbaren Sitzungen.
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Zähler gegen Passwort-Raten und Mail-Flut (siehe app/lib/throttle.ts). `key` ist ein
+// SHA-256-Hash aus Bereich + Kennung (E-Mail bzw. IP-Adresse) - es werden also weder
+// Adressen noch IPs im Klartext gespeichert. Zeilen werden nach Ablauf des Zeitfensters
+// bei Gelegenheit wieder gelöscht.
+model LoginThrottle {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+}
+
+// DRAFT: nur für Konten mit Zugriff. PUBLISHED: Gästeansicht mit Planzeiten, Ursprungsplan
+// eingefroren. LIVE: Live-Steuerung aktiv. ENDED: nach Eventende, Rückblick ohne Live-Steuerung.
+// ARCHIVED: nicht mehr öffentlich (docs/KONZEPT.md Abschnitt 4). In Phase 0 nur gespeichert und
+// angezeigt - die Übergänge und ihre Wirkung kommen mit Phase 2 bis 4.
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  LIVE
+  ENDED
+  ARCHIVED
+}
+
+// Ein Ablauf unter /<slug> (Gästeansicht ab Phase 3). date: Beginn des Eventtags in der Zeitzone des
+// Events als UTC-Zeitpunkt (00:00 Ortszeit) - der Tag, an dem der Ablauf beginnt; Uhrzeiten stehen
+// später nur an den Programmpunkten, immer als absolute Zeitpunkte. timezone: Eingabe und Anzeige
+// (vorerst immer Europe/Berlin).
+//
+// ownerId: SetNull nur als Sicherheitsnetz (beim Löschen eines Kontos werden Events umgehängt).
+model Event {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  title       String
+  description String      @default("")
+  date        DateTime
+  timezone    String      @default("Europe/Berlin")
+  status      EventStatus @default(DRAFT)
+  ownerId     String?
+  owner       User?       @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  shares EventAccess[]
+
+  @@index([ownerId])
+  @@index([date])
+}
+
+// Freigabe eines Events an ein weiteres Konto (wie in Seating). Was ein freigegebenes Konto darf,
+// entscheidet eventLevel (app/lib/permissions.ts): ansehen und live steuern, aber nicht die
+// Event-Einstellungen ändern, löschen oder weiter freigeben. Plan bearbeiten und Einschübe nur mit
+// den Schaltern des Events (Phase 2/4, docs/KONZEPT.md Abschnitt 7).
+model EventAccess {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@index([userId])
+}

@@ -1,0 +1,19 @@
+services:
+  zeitplan:
+    build: .
+    container_name: zeitplan
+    restart: unless-stopped
+    ports:
+      # 3005 (rsvp-app), 3006 (abstimmungstool) und 3007 (seating) sind auf diesem Server belegt -
+      # bei Bedarf anpassen.
+      - "3008:3000"
+    volumes:
+      # SQLite-Datenbank außerhalb des Containers, damit Abläufe Updates überleben.
+      # Der Container läuft als Nutzer "node" (UID 1000) - das Verzeichnis muss ihm gehören,
+      # siehe README "Deployment".
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=file:/app/data/prod.db
+      - TZ=Europe/Berlin

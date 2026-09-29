@@ -20,18 +20,21 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 5 | Zugang per Code und Konto, Gast-Sitzungen, Tafel-Link | ✅ umgesetzt |
 | 6 | Konto-Föderation über `suite-kit`: mit Konten anderer Tools anmelden, für andere Tools bestätigen | ✅ umgesetzt |
 | 7 | Anbindung an rsvp-app (Zugang `RSVP`): 7a Anbindungen in rsvp-app verallgemeinern, 7b Link, Gast-Sitzung, Webhook | 7a ✅, 7b ✅ auf Zeitplan-Seite (rsvp-app: Button, Weiterleitung, Webhook offen) |
-| 8 | Abschluss, Test auf echtem Handy und Fernseher, Lasttest | offen |
+| 8 | Abschluss: README, Lasttest (200 Gäste), Handy-Layout-Test, Vorschlag für das suite-kit-README | ✅ umgesetzt – Test auf echtem Handy und Fernseher steht noch aus (Checkliste unter „Vor dem Einsatz“) |
 
-Bisher gibt es das Gerüst (Anmelden, Konten einladen, Events anlegen und freigeben), den rechnerischen Kern der
-Prognose, die Planung (Programmpunkte, Spuren, geheime Punkte, Reihen, Import/Export, Vorlage „Hochzeit“) und die
-Ansichten (Gästeansicht mit Prognose, Anzeigetafel, Reihen-Übersicht, QR-Code, Team-Ansicht) und die Live-Steuerung
-fürs Handy (Weiter, Verspätung, Tauschen, Zurückstellen, Ausfall, Einschub, Rückgängig, Verlauf) sowie geschützte
-Events mit Zugangscode oder Konto samt eigenem Tafel-Link und die optionale Anmeldung mit Konten anderer Tools der Suite
-(Föderation) sowie der Zugang über eine Zusage in rsvp-app (Zeitplan-Seite; der Teil in rsvp-app folgt dort).
+**Im Überblick:** Planende legen Events an (leer oder mit der Vorlage „Hochzeit“), planen Programmpunkte in Spuren mit
+Ankern, Puffern, Team- und geheimen Punkten und bündeln mehrere Events zu einer Reihe. Am Tag selbst melden
+Moderator\*innen am Handy Beginn, Ende, Verspätungen, Tausch, Ausfall und Einschübe; der Prognose-Kern rechnet daraus den
+zu erwartenden Ablauf. Gäste sehen ihn in der Gästeansicht (auch eingebettet in die Hochzeits-Website und offline mit
+dem letzten Stand), vor Ort auf der Anzeigetafel; das Team sieht alles minutengenau in der Team-Ansicht. Events sind
+öffentlich oder geschützt (Zugangscode, Konto, Zusage in rsvp-app). Optional: Anmeldung mit Konten anderer Tools der
+Suite (Föderation) und die Anbindung an rsvp-app – deren Teil in rsvp-app (Button „Zeitplan“, Weiterleitung, Webhook)
+ist dort noch umzusetzen.
 
 ## Konten
 
-Konten gibt es nur für Planung und Moderation. Gäste brauchen nie ein Konto.
+Konten gibt es für Planung und Moderation. Gäste brauchen keins – außer ein Event ist auf „nur mit Konto“ gestellt
+(siehe „Zugang für Gäste“).
 
 ### Rollen
 
@@ -119,8 +122,8 @@ Unter `/admin/events` legen Creator und Admins Events an, Moderator\*innen sehen
 * **Freigaben:** Besitzer\*in oder Admin gibt das Event per E-Mail-Adresse einem bestehenden Konto frei. Freigegebene
   Konten sehen das Event mit internen Notizen und steuern später den Ablauf live; Einstellungen ändern, löschen und
   weiter freigeben können sie nicht. Admins sehen alle Events.
-* **Zugang für Gäste** (nur Besitzer\*in oder Admin, siehe „Zugang für Gäste“ unten): öffentlich, mit Zugangscode
-  oder nur mit Konto.
+* **Zugang für Gäste** (nur Besitzer\*in oder Admin, siehe „Zugang für Gäste“ unten): öffentlich, mit Zugangscode,
+  nur mit Konto oder nur mit Zusage in rsvp-app.
 * **Rechte der Moderator\*innen** – zwei Schalter pro Event, beide standardmäßig aus:
   * *Plan bearbeiten:* Punkte ändern, verschieben, anlegen und löschen (vor und nach dem Event). Spuren, Einstellungen,
     Schalter und Freigaben bleiben bei Besitzer\*in und Admin.
@@ -263,7 +266,7 @@ Tafel-Link), Sitzungen in `app/lib/guest/session.ts`, die Code-Eingabe in `app/[
 
 | Ansicht | Adresse | Für |
 | --- | --- | --- |
-| Gästeansicht | `/<adresse>` | Gäste – je nach Zugang mit Link, Code oder Konto |
+| Gästeansicht | `/<adresse>` | Gäste – je nach Zugang mit Link, Code, Konto oder über die Zusage in rsvp-app |
 | Anzeigetafel | `/<adresse>/tafel` (geschützt: `?k=…`) | Beamer oder Fernseher vor Ort |
 | Reihen-Übersicht | `/<reihen-adresse>` | Gäste |
 | Team-Ansicht | `/admin/events/<id>/team` | alle Konten mit Zugriff aufs Event |
@@ -392,6 +395,31 @@ Admin-Bereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im Brow
   Besitzer\*in oder Admin. Gegenüber dem Betreiber mit Zugriff auf die Datenbank gibt es aber **keine echte
   Geheimhaltung**.
 
+## Grenzen
+
+Was das Tool bewusst nicht kann oder wo es an Grenzen stößt – vor dem Einsatz kennen:
+
+* **Geheime Punkte gegenüber dem Betreiber:** `SECRET` verbirgt Inhalte in der Oberfläche auch vor Besitzer\*in und
+  Admin, aber wer Zugriff auf Server oder Datenbank hat, kann alles lesen. Für echte Überraschungen reicht das
+  gegenüber den Beteiligten, nicht gegenüber dem Betreiber.
+* **Zugang ist so geheim wie Code und Links:** Wer den Zugangscode, einen offenen Tafel-Link oder ein Gerät mit
+  Gast-Sitzung hat, sieht den Ablauf. Gegenmittel: Code ändern bzw. Tafel-Link neu erzeugen – beides beendet alte
+  Zugänge sofort. Einen bereits im Browser gemerkten Stand (Offline-Anzeige) nimmt das dem Gerät nicht weg.
+* **Gast-Sitzung pro Browser:** Wer den Ablauf auf einem zweiten Gerät öffnet, gibt den Code dort erneut ein (bzw. öffnet
+  ihn erneut über rsvp-app). Eingebettet (iFrame) funktionieren geschützte Events nur über „in neuem Tab öffnen“.
+* **Aktualisierung per Abfrage, nicht in Echtzeit:** Gäste und Tafel fragen alle 20–30 Sekunden; eine Meldung ist also
+  bis zu einer halben Minute später überall zu sehen (sofort beim Zurückkehren in den Tab). Keine Push-Nachrichten.
+* **Uhren:** Live-Aktionen nutzen immer die Serverzeit. Die Uhr auf der Tafel ist die des Geräts – am Fernseher die
+  Zeit einstellen lassen (automatisch).
+* **Eine Instanz, SQLite:** Das Tool läuft als ein Prozess mit einer SQLite-Datei; horizontal skalieren geht nicht.
+  Für eine Hochzeit mehr als genug (siehe „Lasttest“): 200 Gäste sind im Alltag kaum spürbar (95 % der Abfragen unter
+  20 ms); fragen alle 200 im selben Augenblick, wartet der letzte gut eine Sekunde, bei 1000 gleichzeitig mehrere
+  Sekunden.
+* **Zeitzone:** vorerst immer Europe/Berlin. Punkte liegen höchstens einen Tag vor und drei Tage nach dem Eventtag,
+  Dauer höchstens 24 Stunden – längere Abläufe sind mehrere Events in einer Reihe.
+* **Nicht umgesetzt** (siehe Konzept „Später“): kürzbare Punkte mit Mindestdauer, Echtzeit per SSE,
+  Push-Benachrichtigungen, Mails an Gäste.
+
 ## Automatische Löschung
 
 Ein externer Scheduler (z. B. Uptime Kuma) ruft **einmal täglich** auf:
@@ -399,8 +427,8 @@ Ein externer Scheduler (z. B. Uptime Kuma) ruft **einmal täglich** auf:
 `GET https://zeitplan.deine-domain.de/api/cron/cleanup?secret=<CRON_SECRET>`
 
 Ein leeres oder fehlendes `CRON_SECRET` lässt niemanden durch. Gelöscht werden (suite-weit gleiche Fristen): Events
-18 Monate nach ihrem Ende (samt Ablauf und Freigaben; als Ende gilt vorerst der Eventtag plus Spielraum für Feiern über
-Mitternacht), Konten nach 2 Jahren ohne Anmeldung (Admin-Konten und Konten, denen noch Events gehören, ausgenommen),
+18 Monate nach ihrem Ende (samt Ablauf, Verlauf, Freigaben und Gast-Sitzungen; als Ende gilt der Eventtag plus zwei
+Tage Spielraum für Feiern über Mitternacht), Konten nach 2 Jahren ohne Anmeldung (Admin-Konten und Konten, denen noch Events gehören, ausgenommen),
 abgelaufene Sitzungen und Gast-Sitzungen, Einladungs-/Reset-Links und Drossel-Zähler.
 
 ## Setup
@@ -428,6 +456,7 @@ npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, For
                     # Föderation (tests/unit/suite.test.ts: Rollen, Zwischenseite, state-Cookie, Konfiguration),
                     # Vertrag mit rsvp-app (tests/unit/rsvp: Signatur, Art, Empfänger, Frist, Verknüpfung)
 npm run test:e2e    # Playwright gegen eine frisch gebaute Instanz auf http://127.0.0.1:3801
+npm run test:load   # Lasttest: 200 pollende Gäste gegen eine eigene Instanz (vorher npm run build, siehe unten)
 npm run build
 npm run lint
 ```
@@ -464,7 +493,8 @@ ids davon im HTML, in den RSC-Daten oder im JSON von Gästeansicht, Tafel und En
 Zugriff sie aufruft) – mit Positivkontrolle in der Team-Ansicht; Entwurf/Archiv 404 und Vorschau; geschützter Zugang
 ohne Inhalt, auch per Endpunkt; Prognose mit „ca.“ und gespeichertem gezeigtem Beginn; ETag/304 und neuer Inhalt nach
 Änderung in der Datenbank; Aktualisierung der offenen Seite, Hinweis ohne Verbindung und Offline-Seite mit gemerktem
-Stand; Tafel ohne Scrollen bei 1920×1080 und 1280×720; Reihen-Übersicht; QR-Code; Team-Ansicht mit Konflikten;
+Stand; Tafel ohne Scrollen bei 1920×1080 und 1280×720; Handy bei 360 px (Gästeansicht, Code-Eingabe, Reihen-Übersicht,
+Team-Ansicht, Planung und Live ohne seitliches Scrollen, auch mit langen Wörtern wie Links in Notizen); Reihen-Übersicht; QR-Code; Team-Ansicht mit Konflikten;
 Einbetten (eine fremde Website auf eigenem Port bindet die Gästeansicht per iFrame ein, Tafel und Anmeldung blockiert
 der Browser).
 Für die Live-Steuerung (`tests/e2e/live.spec.ts`): Live schalten friert den Ursprungsplan ein (auch nach einem Tausch
@@ -513,6 +543,50 @@ Versand). Zur Sichtprüfung eignet sich Mailpit (`docker run --rm -p 127.0.0.1:1
 axllent/mailpit`, dann `SMTP_HOST=127.0.0.1 SMTP_PORT=1025`).
 
 Voraussetzung: Chromium für Playwright (`npx playwright install chromium`, einmalig).
+
+### Lasttest
+
+`npm run test:load` (`scripts/load-test.mjs`) startet eine eigene Instanz auf `127.0.0.1:3802` mit eigener Datenbank
+(`prisma/load.db`, bei jedem Lauf neu), legt einen laufenden Hochzeitsablauf an (drei Spuren, 24 Punkte, ein
+überzogener Punkt, der live fortgeschrieben wird) und lässt 200 Gäste mit Gast-Sitzung (Zugang per Code) so pollen wie
+die Seite: alle 20–30 Sekunden mit ETag. Eine Moderatorin meldet dabei alle 15 Sekunden etwas (Verspätung, Meldung
+zurück, „Weiter“). Dazu zwei Anstürme, bei denen alle Gäste im selben Augenblick fragen – ohne Änderung und direkt nach
+„Weiter“. Varianten per Umgebung: `GUESTS`, `DURATION` (Sekunden), `ACCESS=PUBLIC`. Der Lauf scheitert bei jeder
+anderen Antwort als 200/304, im Alltag bei p95 über 500 ms und im Ansturm bei p99 über 3 s.
+
+Ergebnisse (Entwicklungsrechner, 8 Kerne, `next start`; auf dem Server vor dem Einsatz einmal wiederholen):
+
+| Lauf | Anfragen | p50 | p95 | p99 | max |
+| --- | --- | --- | --- | --- | --- |
+| 200 Gäste, Alltag (8 Anfragen/s, 12 Änderungen in 3 Min) | 1447, alle 200/304 | 12 ms | 18 ms | 26 ms | 44 ms |
+| 200 Gäste gleichzeitig, ohne Änderung | 200 × 304 | 880 ms | 1027 ms | 1045 ms | 1050 ms |
+| 200 Gäste gleichzeitig, direkt nach „Weiter“ | 200 × 200 | 896 ms | 1105 ms | 1129 ms | 1136 ms |
+| 1000 Gäste, Alltag (40 Anfragen/s) | 2390, alle 200/304 | 11 ms | 23 ms | 52 ms | 154 ms |
+| 1000 Gäste gleichzeitig | 1000 | 3,9 s | 7,1 s | 7,3 s | 7,3 s |
+
+Jede Anfrage rechnet die Prognose frisch (auch für ein `304`), etwa 5 ms. Im Alltag verteilen sich die Anfragen, ein
+Ansturm aller Gäste im selben Augenblick wird nacheinander abgearbeitet. Nach allen Läufen hatte jeder öffentliche Punkt
+seinen gezeigten Beginn gespeichert (Hysterese), es gab keine Fehler und keine Schreibkonflikte. Reicht das einmal nicht,
+wäre der nächste Schritt, gleichzeitige Anfragen für dasselbe Event zusammenzufassen (eine Rechnung für alle).
+
+## Vor dem Einsatz
+
+Automatisch geprüft sind Handy-Breiten (390 px Live-Steuerung, 360 px Gästeansicht, Code-Eingabe, Team-Ansicht,
+Planung) und die Tafel bei 1920×1080 und 1280×720. Auf echten Geräten einmal durchspielen, am besten am Ort der Feier:
+
+* **Handy der Moderator\*in** (iPhone und Android, einhändig): Live-Steuerung als App installieren, anmelden, „Weiter“,
+  „+10“, „Beendet vor 10 Min“, Tauschen, Rückgängig über die Leiste unten – alles mit dem Daumen erreichbar? Hält die
+  Anmeldung über den Tag (30 Tage)?
+* **Handy eines Gasts** (ohne Konto, fremdes Gerät): QR-Code von der Tischkarte scannen, Zugangscode eingeben bzw. über
+  rsvp-app öffnen, eine Verspätung melden und warten (höchstens 30 s), Flugmodus an und Seite neu laden (letzter Stand mit
+  „keine Verbindung“), wieder online.
+* **Fernseher/Beamer:** Tafel-Link im Vollbild- bzw. Kiosk-Modus öffnen – nichts abgeschnitten, lesbar aus der letzten
+  Reihe, Uhr stimmt, aktualisiert sich nach einer Meldung, läuft über Stunden ohne Neuladen (Bildschirmschoner und
+  Energiesparen des Geräts aus). Danach „Neuen Tafel-Link erzeugen“ und prüfen, dass der Fernseher nichts mehr zeigt.
+* **Empfang im Saal:** mit dem WLAN bzw. Mobilfunk vor Ort; bei vielen Gästen im selben WLAN greift die Code-Drosselung
+  erst nach 20 Fehlversuchen pro IP in 15 Minuten.
+* **Betrieb:** `BASE_URL`, `TRUST_PROXY_HOPS` (gemessen), `CRON_SECRET` und je nach Zugang `ACCESS_CODE_SECRET`,
+  `DISPLAY_LINK_SECRET`, `RSVP_TIMELINE_SECRET` gesetzt; Datenbank gesichert; Lasttest auf dem Server wiederholt.
 
 ## Deployment
 

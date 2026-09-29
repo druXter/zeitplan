@@ -5,6 +5,7 @@ import {
   BASE_URL, cookieOf, createAccount, createEventRecord, createItemRecord, createTrackRecord, login, prisma, SUMMER_DAY, uniqueSlug
 } from './helpers'
 import { zonedDateToUtc } from '../../app/lib/timezone'
+import { accessCodeHmac } from '../../app/lib/guest/tokens'
 
 // Gästeansicht, Tafel, Polling-Endpunkt, Reihen-Übersicht, QR-Code und Team-Ansicht (Phase 3, docs/KONZEPT.md
 // Abschnitt 5). Kern der Phase: TEAM-/SECRET-Inhalte und interne Notizen erscheinen nie in HTML oder JSON für
@@ -459,4 +460,48 @@ test('Einbetten: Gästeansicht im iFrame einer fremden Website, Tafel und Anmeld
   // Ohne iFrame bleiben die Fußzeilen-Links normale Links.
   await page.goto(`/${event.slug}`)
   await expect(page.getByRole('link', { name: 'Impressum' })).not.toHaveAttribute('target', '_blank')
+})
+
+test('Handy (360 px): Gästeansicht, Code-Eingabe, Reihen-Übersicht, Team-Ansicht, Planung und Live ohne seitliches Scrollen', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 })
+  const owner = await createAccount('CREATOR')
+  const series = await prisma.series.create({ data: { slug: uniqueSlug('reihe'), title: 'Hochzeitswochenende mit einem ziemlich langen Namen', ownerId: owner.id } })
+  const event = await createEventRecord(owner.id, {
+    status: 'LIVE', date: today(), seriesId: series.id, title: 'Hochzeit von Kim und Alex mit einem wirklich sehr langen Titel',
+    description: 'Wir freuen uns auf euch! Parken hinter der Scheune, Anfahrt über die Landstraße.'
+  })
+  const a = await createTrackRecord(event.id, { name: 'Gäste', sortOrder: 1 })
+  const b = await createTrackRecord(event.id, { name: 'Brautpaar', sortOrder: 2 })
+  const base = minuteNow()
+  await createItemRecord(event, a.id, { title: 'Sektempfang mit Häppchen und Musik im Garten hinter dem Haus', start: new Date(base - 10 * MINUTE), durationMin: 40, sortOrder: 1, location: 'Garten hinter dem großen Festsaal', actualStart: new Date(base - 10 * MINUTE), status: 'RUNNING' })
+  await createItemRecord(event, a.id, { title: 'Abendessen', start: new Date(base + 60 * MINUTE), durationMin: 90, sortOrder: 2, description: 'Ein sehr langer Beschreibungstext_ohne_Leerzeichen_der_trotzdem_umbrechen_muss_damit_nichts_herausragt' })
+  await createItemRecord(event, a.id, { title: 'Kutschfahrt', start: new Date(base + 200 * MINUTE), sortOrder: 3, status: 'CANCELLED', cancelReason: 'Regen' })
+  await createItemRecord(event, b.id, { title: 'Fotoshooting', start: new Date(base + 20 * MINUTE), sortOrder: 1 })
+
+  const noHorizontalScroll = () => page.evaluate(() => document.scrollingElement!.scrollWidth <= window.innerWidth)
+  for (const path of [`/${event.slug}`, `/${series.slug}`]) {
+    await page.goto(path)
+    expect(await noHorizontalScroll(), path).toBe(true)
+  }
+  await expect(page.getByRole('link', { name: /Hochzeit von Kim/ })).toBeVisible()
+
+  // Geschützt: Code-Eingabe passt aufs Handy, Feld und Knopf sind groß genug zum Tippen.
+  await prisma.event.update({ where: { id: event.id }, data: { access: 'CODE', accessCodeHmac: accessCodeHmac(event.id, 'K7QM-4XPA') } })
+  await page.goto(`/${event.slug}`)
+  expect(await noHorizontalScroll()).toBe(true)
+  for (const target of [page.getByLabel('Zugangscode'), page.getByRole('button', { name: 'Ablauf öffnen' })]) {
+    expect((await target.boundingBox())!.height).toBeGreaterThanOrEqual(40)
+  }
+  await page.getByLabel('Zugangscode').fill('k7qm 4xpa')
+  await page.getByRole('button', { name: 'Ablauf öffnen' }).click()
+  await expect(page.locator('[data-item-status="now"]')).toContainText('Sektempfang')
+  expect(await noHorizontalScroll()).toBe(true)
+
+  // Team-Ansicht, Planung und Live-Steuerung am Handy - auch mit einer langen Notiz ohne Leerzeichen (z. B. ein Link).
+  await prisma.item.updateMany({ where: { eventId: event.id, title: 'Abendessen' }, data: { internalNote: 'https://maps.example.com/'.padEnd(160, 'x') } })
+  await login(page, owner.email)
+  for (const path of [`/admin/events/${event.id}/team`, `/admin/events/${event.id}/plan`, `/admin/events/${event.id}/live`]) {
+    await page.goto(path)
+    expect(await noHorizontalScroll(), path).toBe(true)
+  }
 })

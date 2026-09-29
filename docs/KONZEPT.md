@@ -535,3 +535,12 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   – eine verspätet zugestellte alte Absage beendet keinen Zugang nach erneuter Zusage. `attending: true` legt nichts
   an. Ändern sich Zugang oder verknüpfter Termin, enden alle Gast-Sitzungen. (Annahme)
 * Test-Doppel von rsvp-app auf Port 2532 (`localhost`) – Seatings Doppel belegen 2526–2529. (Annahme)
+* Lasttest (Phase 8): `npm run test:load` (`scripts/load-test.mjs`) gegen eine eigene Instanz mit eigener Datenbank –
+  200 Gäste mit Gast-Sitzung pollen wie die Seite (20–30 s, ETag), eine Moderatorin meldet alle 15 s, dazu zwei
+  Anstürme aller Gäste im selben Augenblick. Grenze für „bestanden“: keine Antwort außer 200/304, Alltag p95 ≤ 500 ms,
+  Ansturm p99 ≤ 3 s. Ergebnisse im README. Kein Zusammenfassen gleichzeitiger Anfragen, solange die Zahlen reichen.
+  (Annahme)
+* Lange Wörter (Links in Beschreibungen und Notizen) brechen um (`overflow-wrap: break-word` auf `body`), damit keine
+  Seite am Handy seitlich scrollt; automatisch geprüft bei 360 px. Der Test auf echtem Handy und Fernseher bleibt beim
+  Betreiber (Checkliste im README unter „Vor dem Einsatz“). (Annahme)
+* Eintrag im suite-kit-README: Das Repo wird hier nicht geändert (nur lesen); der Text ist als Vorschlag übergeben.

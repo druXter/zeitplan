@@ -5,3 +5,10 @@
 body:has([data-board]) {
   overflow: hidden;
 }
+
+/* Lange Wörter ohne Leerzeichen (z. B. ein Link in einer Beschreibung oder Notiz) umbrechen, statt die Seite auf dem
+   Handy seitlich scrollbar zu machen. break-word greift nur, wenn ein Wort sonst herausragen würde - normaler Text und
+   Knöpfe bleiben unverändert. */
+body {
+  overflow-wrap: break-word;
+}

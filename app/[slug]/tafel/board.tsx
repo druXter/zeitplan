@@ -10,10 +10,13 @@ import { useGuestView } from '../use-guest-view'
 /**
  * Anzeigetafel für Beamer/TV (docs/KONZEPT.md Abschnitt 5): große Schrift, jetzt und die nächsten 3-4 Punkte,
  * Uhr, lädt selbst nach. Füllt den ganzen Bildschirm ohne Scrollen - Schriftgrößen in vh, lange Titel gekürzt,
- * höchstens 5 Punkte. Dieselben Daten wie die Gästeansicht (GuestPayload aus toGuestView).
+ * höchstens 5 Punkte. Dieselben Daten wie die Gästeansicht (GuestPayload aus toGuestView). displayKey: Tafel-Link
+ * eines geschützten Events, den auch jede Aktualisierung mitschickt.
  */
-export default function Board({ slug, initial, etag, remember }: { slug: string; initial: GuestPayload; etag: string; remember: boolean }) {
-  const { payload, connection } = useGuestView(slug, initial, etag, remember)
+export default function Board({ slug, initial, etag, remember, displayKey }: {
+  slug: string; initial: GuestPayload; etag: string; remember: boolean; displayKey?: string
+}) {
+  const { payload, connection } = useGuestView(slug, initial, etag, remember, displayKey)
   const { event } = payload
   const sections = timelineSections(payload.items, item => item.status, item => Date.parse(item.shownStart))
   const upcoming = [...sections.next, ...sections.later]

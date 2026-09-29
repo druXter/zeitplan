@@ -61,8 +61,14 @@ test('sensible Seiten: noindex, kein Caching, kein Einbetten', async ({ request 
   }
 })
 
-test('Einmal-Links gehen nicht per Referer weiter', async ({ request }) => {
+test('Einmal-Links und Tafel-Links gehen nicht per Referer weiter', async ({ request }) => {
   const h = await headersOf(request, '/reset-password?token=abc')
   expect(h['referrer-policy']).toBe('no-referrer')
   expect(h['x-robots-tag']).toBe('noindex, nofollow')
+  // Die Tafel eines geschützten Events trägt ihren Schlüssel in der URL - und bleibt dabei nicht einbettbar.
+  const board = await headersOf(request, '/irgendein-event/tafel?k=abc')
+  expect(board['referrer-policy']).toBe('no-referrer')
+  expect(board['x-frame-options']).toBe('DENY')
+  // Die Gästeansicht selbst behält die normale Referrer-Policy.
+  expect((await headersOf(request, '/irgendein-event'))['referrer-policy']).toBe('strict-origin-when-cross-origin')
 })

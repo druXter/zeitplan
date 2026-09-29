@@ -199,8 +199,9 @@ Pro Event einstellbar:
 | `ACCOUNT` | nur mit Konto dieses Tools (oder per Föderation angemeldet) |
 | `RSVP` | nur mit Zusage im verknüpften rsvp-Termin (Abschnitt 8) |
 
-* Nach erfolgreichem Code oder RSVP-Link bekommt der Browser eine **Gast-Sitzung** (`__Host-guest`, in der DB nur als
-  Hash, gültig bis Eventende + 1 Tag). So braucht niemand jedes Mal einen neuen Link.
+* Nach erfolgreichem Code oder RSVP-Link bekommt der Browser eine **Gast-Sitzung** (`__Host-guest-<eventId>`, ein
+  Cookie pro Event, in der DB nur als Hash, gültig bis Eventende + 1 Tag). So braucht niemand jedes Mal einen neuen
+  Link.
 * Die **Anzeigetafel** hat bei geschütztem Zugang einen eigenen, per HMAC abgeleiteten Link (wie der Verwaltungslink in
   Seating), der sich neu erzeugen lässt – für den Fernseher im Saal, an dem sich niemand anmeldet.
 * Gästeansicht und Tafel: `noindex`, bei geschütztem Zugang `no-store`. Die Gästeansicht ist per iFrame einbettbar
@@ -352,8 +353,9 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   Polling-Endpunkt, Verwaltung, Anmeldung, Impressum und Datenschutz. Die Gästeansicht löst keine Aktionen aus, Clickjacking
   hat dort kein Ziel. Im iFrame öffnen Impressum und Datenschutz in einem neuen Tab, der Service Worker wird dort nicht
   angemeldet. Nur bestimmte Websites zulassen: `*` in `next.config.ts` durch deren Origins ersetzen und neu bauen.
-  Offen für Phase 5: Mit Zugang `CODE`/`RSVP` braucht die Gast-Sitzung ein Cookie, das in einem fremden iFrame als
-  Drittanbieter-Cookie meist nicht ankommt – dort dann auf den Link verweisen.
+  Mit Zugang `CODE`/`ACCOUNT`/`RSVP` braucht der Zugang ein Cookie, das in einem fremden iFrame als
+  Drittanbieter-Cookie meist nicht ankommt – eingebettet zeigt die Seite deshalb statt Code-Eingabe bzw. Anmeldung nur
+  „Ablauf in neuem Tab öffnen“ (Phase 5).
 * Föderation (`ExternalIdentity`, `/api/suite/*`, Verknüpfen unter „Mein Konto“) kommt vollständig mit Phase 6;
   `suite-kit` ist schon Abhängigkeit (`sanitizeNextPath`). (Annahme)
 * Löschfrist, solange es keine Programmpunkte gibt: 18 Monate nach dem Eventtag plus 2 Tage (Feiern über Mitternacht).
@@ -427,9 +429,9 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   unkritisch, Lasttest in Phase 8). `Cache-Control: no-store`; die Seite merkt sich den ETag selbst. Gefragt wird alle
   20–30 s (zufällig verteilt), nur bei sichtbarem Tab, sofort beim Zurückkehren und nach Verbindungsverlust. (Annahme)
 * Gästeansicht, Tafel und Endpunkt zeigen Events mit Status `PUBLISHED`, `LIVE` und `ENDED` (Rückblick). Entwurf und
-  Archiv ergeben 404, außer für Konten mit Zugriff aufs Event (Vorschau mit Hinweis). Bis Phase 5 zeigen Events mit
-  Zugang `CODE`/`ACCOUNT`/`RSVP` Gästen nur den Titel und "nur mit Zugang sichtbar", der Endpunkt antwortet 403 ohne
-  Inhalt; Konten mit Zugriff sehen eine Vorschau. (Annahme)
+  Archiv ergeben 404, außer für Konten mit Zugriff aufs Event (Vorschau mit Hinweis). Events mit Zugang
+  `CODE`/`ACCOUNT`/`RSVP` zeigen ohne gültigen Zugang nur den Titel, "nur mit Zugang sichtbar" und den Weg hinein, der
+  Endpunkt antwortet 403 ohne Inhalt; Konten mit Zugriff sehen eine Vorschau. (Annahme)
 * Den gezeigten Beginn (`guestShownStart`) speichert jede Anfrage von Gästeansicht, Tafel oder Endpunkt, sobald er sich
   ändert – ohne `Item.version` oder `liveVersion` zu erhöhen. Die Team-Ansicht rechnet ihn zur Anzeige mit, speichert
   aber nicht. (Annahme)
@@ -491,3 +493,26 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   Einschub, Vorbei, Verlauf (letzte 30 Aktionen mit Konto und Zeit), Event beenden. Lädt sich alle 15 Sekunden neu,
   nicht während einer Eingabe. Die Nachfrage "läuft noch?" steht oben mit "+5" und "Beendet". Team-Ansicht zeigt
   zusätzlich "letzte Meldung vor X Min" und den Ursprungsplan, wenn ein Punkt verlegt wurde. (Annahme)
+* Zugangscode (Phase 5, abgestimmt): frei wählbar oder als Vorschlag erzeugt (8 Zeichen ohne verwechselbare
+  Zeichen, z. B. `K7QM-4XPA`), mindestens 8 Buchstaben/Ziffern. Groß-/Kleinschreibung, Leerzeichen und Bindestriche
+  sind egal (NFKC, Großbuchstaben). Gespeichert als `HMAC(ACCESS_CODE_SECRET, access-code:<eventId>:<Code>)`, nach dem
+  Speichern einmal angezeigt, danach nie wieder; ein leeres Feld behält den Code.
+* Drosselung der Code-Eingabe (abgestimmt): Fehlversuche 20 pro IP und 100 pro Event in 15 Minuten, der
+  Versuch wird vor dem Vergleich reserviert, ein richtiger Code gibt ihn zurück. Die Event-Regel ist großzügig, weil
+  eine Sperre dort alle Gäste trifft (Saal-WLAN teilt oft eine IP); sie endet mit dem Zeitfenster.
+* Zugang `ACCOUNT` (abgestimmt): jedes angemeldete Konto dieses Tools (ab Phase 6 auch per Föderation) sieht
+  die Gästeansicht; Konten mit Zugriff aufs Event weiter die Vorschau.
+* Gast-Sitzung: ein Cookie pro Event (`__Host-guest-<eventId>`, HttpOnly, SameSite=Lax) statt eines gemeinsamen
+  `__Host-guest` – so bleibt der Zugang zum Polterabend, wenn danach der Code der Hochzeit eingegeben wird. Gültig bis
+  zum automatischen Ende des Events (`autoEndAt`) plus 1 Tag, mindestens 1 Tag ab jetzt. Eine vorhandene Sitzung des
+  Browsers wird dabei ersetzt. Code-Sitzungen gelten nur bei Zugang `CODE`, rsvp-Sitzungen (Phase 7b) nur bei `RSVP`;
+  ändern sich Zugang oder Code, löscht die Verwaltung alle Gast-Sitzungen des Events. (Annahme)
+* Tafel-Link: `/<slug>/tafel?k=<HMAC(DISPLAY_LINK_SECRET, display:<eventId>:<displayTokenVersion>)>`, mit
+  `DISPLAY_LINK_SECRET_PREVIOUS` für einen Schlüsselwechsel. Er gilt für Tafel und Polling-Endpunkt, nicht für die
+  Gästeansicht, und nie für Entwurf oder Archiv. Angezeigt wird er nur bei geschütztem Zugang, allen Konten mit Zugriff
+  (Moderator*innen richten den Fernseher ein); neu erzeugen (Version + 1) nur Besitzer*in und Admin. Die Tafel sendet
+  keinen Referer (`no-referrer`). (Annahme)
+* Fehlt `ACCESS_CODE_SECRET` bzw. `DISPLAY_LINK_SECRET` (oder ist kürzer als 32 Zeichen), gibt es keinen Zugang per
+  Code bzw. keinen Tafel-Link – kein Rückfall auf einen Standardwert; die Verwaltung weist darauf hin. (Annahme)
+* Mit gültigem Zugang merkt sich die Gästeansicht (und die Tafel) den Stand auch bei geschützten Events im Browser –
+  es sind nur Gästedaten, die das Gerät ohnehin gezeigt hat. (Annahme)

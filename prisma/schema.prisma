@@ -95,7 +95,7 @@ enum EventStatus {
   ARCHIVED
 }
 
-// Zugang der Gäste zu /<slug> (docs/KONZEPT.md Abschnitt 6). Bis Phase 5 wirkt nur PUBLIC.
+// Zugang der Gäste zu /<slug> (docs/KONZEPT.md Abschnitt 6, app/lib/guest/access.ts). RSVP kommt mit Phase 7b.
 enum GuestAccess {
   PUBLIC
   CODE
@@ -118,7 +118,7 @@ model Event {
   timezone    String      @default("Europe/Berlin")
   status      EventStatus @default(DRAFT)
 
-  // Zugang (Phase 5): accessCodeHmac ist der Zugangscode nur als HMAC, nie im Klartext.
+  // Zugang (Phase 5): accessCodeHmac ist der Zugangscode nur als HMAC, nie im Klartext (app/lib/guest/tokens.ts).
   access         GuestAccess @default(PUBLIC)
   accessCodeHmac String?
 
@@ -136,7 +136,7 @@ model Event {
   modsMayInsert   Boolean @default(false)
   modsMayEditPlan Boolean @default(false)
 
-  // displayTokenVersion: Teil des per HMAC abgeleiteten Tafel-Links (Phase 5) - erhöhen macht alte Links
+  // displayTokenVersion: Teil des per HMAC abgeleiteten Tafel-Links (app/lib/guest/tokens.ts) - erhöhen macht alte Links
   // ungültig. liveVersion: steigt mit JEDER Änderung an Plan oder Live-Stand (Planung ab Phase 2, Live ab
   // Phase 4) - Grundlage für den ETag des Polling-Endpunkts (Phase 3).
   displayTokenVersion Int @default(1)
@@ -327,8 +327,9 @@ model LiveAction {
   @@index([eventId, createdAt])
 }
 
-// Gast-Sitzung nach Zugangscode oder rsvp-Link (Phase 5/7b). Das Cookie trägt nur den Token, hier liegt
-// ausschließlich sein SHA-256-Hash. rsvpId: die Zusage in rsvp-app - eine Absage beendet ihre Sitzungen.
+// Gast-Sitzung nach Zugangscode oder rsvp-Link (Phase 5/7b, app/lib/guest/session.ts). Das Cookie
+// (__Host-guest-<eventId>) trägt nur den Token, hier liegt ausschließlich sein SHA-256-Hash. rsvpId: die Zusage in
+// rsvp-app - eine Absage beendet ihre Sitzungen. Ändern sich Zugang oder Code, werden alle Sitzungen gelöscht.
 model GuestSession {
   id        String   @id @default(cuid())
   eventId   String

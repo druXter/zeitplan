@@ -8,7 +8,7 @@ vi.mock('next/headers', () => ({
 // Die Datenbank wird für clientIp/loginRules nicht gebraucht.
 vi.mock('../../app/lib/prisma', () => ({ prisma: {} }))
 
-const { clientIp, loginRules, resetRules } = await import('../../app/lib/throttle')
+const { accessCodeRules, clientIp, loginRules, resetRules } = await import('../../app/lib/throttle')
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -56,5 +56,13 @@ describe('Regeln', () => {
     const [ip, email] = resetRules('203.0.113.7', 'a@b.de')
     expect(email.limit).toBe(3)
     expect(ip.limit).toBe(10)
+  })
+
+  it('Zugangscode: 20 pro IP, großzügiger pro Event (eine Sperre trifft dort alle Gäste), eigene Bereiche', () => {
+    const rules = accessCodeRules('203.0.113.7', 'event-1')
+    expect(rules.ip.limit).toBe(20)
+    expect(rules.event.limit).toBe(100)
+    expect(rules.event.identifier).toBe('event-1')
+    expect(new Set([rules.ip.scope, rules.event.scope, loginRules('x', 'y').ip.scope]).size).toBe(3)
   })
 })

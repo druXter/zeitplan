@@ -10,11 +10,17 @@ import { SMTP_PORT } from './tests/e2e/mail-server'
 const PORT = 3801
 export const BASE_URL = `http://127.0.0.1:${PORT}`
 export const TEST_CRON_SECRET = 'e2e-cron-secret'
+// Secrets für Zugangscode und Tafel-Link (app/lib/guest/tokens.ts) - auch im Testprozess gesetzt, damit
+// die Tests Codes direkt in der Datenbank festlegen und Tafel-Links ableiten können.
+const TEST_ACCESS_CODE_SECRET = 'e2e-access-code-secret-0123456789abcdef'
+const TEST_DISPLAY_LINK_SECRET = 'e2e-display-link-secret-0123456789abcdef'
 
 // Gilt für den Server UND für die Testprozesse (tests/e2e/helpers.ts greift direkt auf die
 // Datenbank zu). Relative SQLite-Pfade löst Prisma relativ zu prisma/schema.prisma auf.
 process.env.DATABASE_URL = 'file:./test.db'
 process.env.BASE_URL = BASE_URL
+process.env.ACCESS_CODE_SECRET = TEST_ACCESS_CODE_SECRET
+process.env.DISPLAY_LINK_SECRET = TEST_DISPLAY_LINK_SECRET
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -46,6 +52,8 @@ export default defineConfig({
       // Besucher-IPs zu simulieren.
       TRUST_PROXY_HOPS: '1',
       CRON_SECRET: TEST_CRON_SECRET,
+      ACCESS_CODE_SECRET: TEST_ACCESS_CODE_SECRET,
+      DISPLAY_LINK_SECRET: TEST_DISPLAY_LINK_SECRET,
       // Test-SMTP aus tests/e2e/mail-server.ts (in global-setup gestartet). Empfänger @nomail.test
       // lehnt er ab - dann greift der angezeigte Einladungslink.
       SMTP_HOST: '127.0.0.1',

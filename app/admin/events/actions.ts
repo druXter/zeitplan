@@ -3,7 +3,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { Prisma, type EventStatus } from '@prisma/client'
+import { Prisma, type EventStatus, type GuestAccess } from '@prisma/client'
 import { prisma } from '../../lib/prisma'
 import { requireUser, type CurrentUser } from '../../lib/auth'
 import { formString, normalizeEmail } from '../../lib/form'
@@ -16,6 +16,7 @@ import { createEventFromPlan, EMPTY_PLAN } from '../../lib/planning/create'
 import { bumpLiveVersion, loadPlan } from '../../lib/planning/store'
 import { SLUG_TAKEN, SlugTakenError, slugTaken } from '../../lib/planning/slug-store'
 import { daysBetween, shiftDays, utcToZonedDate } from '../../lib/timezone'
+import { accessCodeConfigured, accessCodeHmac, displayLinkConfigured, validateAccessCode } from '../../lib/guest/tokens'
 
 // Die Berechtigung prüft JEDE Aktion selbst (über loadEventForUser -> eventLevel), nie nur die Seite.
 // owner: Besitzer*in oder Admin - Einstellungen, Schalter, Status, Freigaben, Löschen (canManageEvent).
@@ -172,6 +173,62 @@ export async function updateEventOptions(_previous: FormState, formData: FormDat
     await bumpLiveVersion(event.id, tx)
   })
   return { errors: [], message: 'Einstellungen gespeichert.' }
+}
+
+// Zugang RSVP kommt mit der Anbindung an rsvp-app (Phase 7b).
+const SELECTABLE_ACCESS: GuestAccess[] = ['PUBLIC', 'CODE', 'ACCOUNT']
+
+/**
+ * Zugang der Gäste (docs/KONZEPT.md Abschnitt 6). Nur owner. Der Zugangscode wird nur als HMAC gespeichert und
+ * danach nie wieder angezeigt; ein leeres Feld behält den bisherigen. Ändern sich Zugang oder Code, enden alle
+ * Gast-Sitzungen des Events - wer den alten Code hatte, muss den neuen eingeben.
+ */
+export async function updateGuestAccess(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser('/admin/events')
+  const event = await loadEventForUser(formString(formData, 'eventId', 50), user)
+  if (!event || !canManageEvent(event.level)) redirect('/admin/events')
+
+  const access = formString(formData, 'access', 20) as GuestAccess
+  if (!SELECTABLE_ACCESS.includes(access)) return { errors: ['Zugang: Bitte wähle einen Zugang aus.'] }
+
+  const code = formString(formData, 'code', 200)
+  let codeHmac = event.accessCodeHmac
+  if (access === 'CODE') {
+    if (!accessCodeConfigured()) return { errors: ['Zugangscode: Auf dem Server fehlt ACCESS_CODE_SECRET (siehe .env.example).'] }
+    if (code) {
+      const error = validateAccessCode(code)
+      if (error) return { errors: [`Zugangscode: ${error}`] }
+      codeHmac = accessCodeHmac(event.id, code)
+    } else if (!codeHmac) {
+      return { errors: ['Zugangscode: Bitte lege einen Code fest.'] }
+    }
+  } else if (code) {
+    return { errors: ['Zugangscode: Einen Code gibt es nur beim Zugang „mit Zugangscode“.'] }
+  }
+
+  const changed = access !== event.access || codeHmac !== event.accessCodeHmac
+  await prisma.$transaction(async tx => {
+    await tx.event.update({ where: { id: event.id }, data: { access, accessCodeHmac: codeHmac } })
+    if (changed) await tx.guestSession.deleteMany({ where: { eventId: event.id } })
+  })
+  revalidatePath(`/admin/events/${event.id}`)
+  if (access === 'CODE' && code) {
+    return { errors: [], message: `Gespeichert. Der Zugangscode lautet „${code}“ – notiere ihn jetzt, er wird nicht noch einmal angezeigt.` }
+  }
+  return { errors: [], message: changed ? 'Zugang gespeichert.' : 'Keine Änderung.' }
+}
+
+/**
+ * Neuer Tafel-Link: displayTokenVersion + 1 macht alle bisherigen Links ungültig (z. B. wenn ein Foto des
+ * Fernsehers mit der Adresse herumgeht). Nur owner.
+ */
+export async function regenerateDisplayLink(formData: FormData) {
+  const user = await requireUser('/admin/events')
+  const event = await loadEventForUser(formString(formData, 'eventId', 50), user)
+  if (!event || !canManageEvent(event.level) || !displayLinkConfigured()) redirect('/admin/events')
+
+  await prisma.event.update({ where: { id: event.id }, data: { displayTokenVersion: { increment: 1 } } })
+  redirect(`/admin/events/${event.id}?display=1`)
 }
 
 /** Entwurf, veröffentlicht, archiviert (allowedStatusChanges). LIVE/ENDED setzt die Live-Steuerung. Nur owner. */

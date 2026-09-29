@@ -6,8 +6,9 @@ import Link from 'next/link'
 // Änderung der Datenverarbeitung mitpflegen. Stand: Phase 4 (Konten für Planung und Moderation,
 // Einladungen, Events mit Freigaben, Programmpunkte mit internen Notizen und geheimen Punkten, Reihen,
 // Export/Import, Drosselung, Löschfristen, installierbare App mit Service Worker, Gästeansicht und Tafel mit
-// Offline-Stand im Browser, Phase 4: Live-Steuerung mit Verlauf). Mit den folgenden Phasen kommen
-// Gast-Sitzungen, Föderation und die Anbindung an rsvp-app dazu - dann hier ergänzen.
+// Offline-Stand im Browser, Phase 4: Live-Steuerung mit Verlauf, Phase 5: Zugangscode mit Gast-Sitzung und
+// Drosselung, Zugang per Konto, Tafel-Link). Mit den folgenden Phasen kommen Föderation und die Anbindung an
+// rsvp-app dazu - dann hier ergänzen.
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -107,9 +108,16 @@ export default function DatenschutzPage() {
         <div>
           <h2 className="font-bold text-lg">5. Ablauf für Gäste</h2>
           <p className="mt-2">
-            Die Seite mit dem Ablauf einer Veranstaltung (und die Anzeigetafel vor Ort) kannst du ohne Konto und ohne
-            Anmeldung aufrufen. Wir speichern dabei nichts über dich und setzen keine Cookies. Damit die Seite aktuell
+            Die Seite mit dem Ablauf einer Veranstaltung (und die Anzeigetafel vor Ort) kannst du ohne Konto aufrufen.
+            Ist sie öffentlich, speichern wir dabei nichts über dich und setzen keine Cookies. Damit die Seite aktuell
             bleibt, fragt dein Browser alle 20 bis 30 Sekunden den neuesten Stand ab, solange die Seite geöffnet ist.
+          </p>
+          <p className="mt-2">
+            Ist der Ablauf mit einem <strong>Zugangscode</strong> geschützt (z. B. von der Einladung), merkt sich dein
+            Browser nach der richtigen Eingabe den Zugang in einem Cookie (siehe Punkt 8). Bei uns liegt dazu nur ein
+            Hash dieses Cookies, die Veranstaltung und das Ablaufdatum – kein Name, keine E-Mail-Adresse. Der Zugang
+            endet einen Tag nach der Veranstaltung oder früher, wenn die Veranstalter*innen den Code ändern. Bei
+            Veranstaltungen, die nur mit Konto sichtbar sind, gilt deine Anmeldung (Punkt 3).
           </p>
           <p className="mt-2">
             Damit du den Ablauf auch bei schlechtem Empfang siehst, merkt sich dein Browser den zuletzt geladenen Stand
@@ -123,9 +131,10 @@ export default function DatenschutzPage() {
           <h2 className="font-bold text-lg">6. Schutz vor Missbrauch (Drosselung)</h2>
           <p className="mt-2">
             Um das Erraten von Passwörtern und das massenhafte Auslösen von Mails zu verhindern, zählen wir
-            fehlgeschlagene Anmeldeversuche und Passwort-Reset-Anfragen. Dazu wird deine <strong>IP-Adresse</strong>{' '}
-            ausgelesen und zusammen mit der eingegebenen E-Mail-Adresse <strong>nur als nicht umkehrbarer Hash</strong>{' '}
-            für ein kurzes Zeitfenster (15 Minuten bzw. 1 Stunde) gespeichert; veraltete Zähler werden nach spätestens
+            fehlgeschlagene Anmeldeversuche, Passwort-Reset-Anfragen und falsch eingegebene Zugangscodes. Dazu wird
+            deine <strong>IP-Adresse</strong> ausgelesen und – zusammen mit der eingegebenen E-Mail-Adresse bzw. der
+            Veranstaltung – <strong>nur als nicht umkehrbarer Hash</strong> für ein kurzes Zeitfenster (15 Minuten bzw.
+            1 Stunde) gespeichert; veraltete Zähler werden nach spätestens
             24 Stunden entfernt. Rechtsgrundlage ist unser berechtigtes Interesse an der Sicherheit der Anwendung (Art. 6
             Abs. 1 lit. f DSGVO).
           </p>
@@ -149,10 +158,15 @@ export default function DatenschutzPage() {
           <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
             <li><code>__Host-session</code> - Anmeldung an deinem Konto (30 Tage)</li>
             <li><code>invite_link</code> - nur kurz (2 Minuten), wenn ein Konto einen Einladungslink zum Weitergeben angezeigt bekommt</li>
+            <li>
+              <code>__Host-guest-…</code> - nur nach Eingabe eines Zugangscodes, je Veranstaltung eins: dein Zugang zum
+              Ablauf, bis einen Tag nach der Veranstaltung
+            </li>
           </ul>
           <p className="mt-2">
-            Gäste bekommen keine Cookies. Den zuletzt geladenen Ablauf legt die Seite im lokalen Speicher deines Browsers
-            ab (siehe Punkt 5) - ebenfalls technisch notwendig, damit die Seite ohne Verbindung weiter funktioniert.
+            Bei öffentlichen Abläufen bekommen Gäste keine Cookies. Den zuletzt geladenen Ablauf legt die Seite im lokalen
+            Speicher deines Browsers ab (siehe Punkt 5) - ebenfalls technisch notwendig, damit die Seite ohne Verbindung
+            weiter funktioniert.
           </p>
           <p className="mt-2">
             <strong>Installation als App:</strong> Der Zeitplan lässt sich auf dem Gerät als App installieren. Dafür
@@ -186,8 +200,8 @@ export default function DatenschutzPage() {
             Adresse um frühere Löschung deines Kontos bitten.
           </p>
           <p className="mt-2">
-            Sitzungen laufen nach 30 Tagen ab, Einladungs- und Reset-Links nach 7 Tagen bzw. 1 Stunde und werden dann
-            entfernt. Drossel-Zähler siehe Punkt 6.
+            Sitzungen laufen nach 30 Tagen ab, Einladungs- und Reset-Links nach 7 Tagen bzw. 1 Stunde, Gast-Zugänge einen
+            Tag nach der Veranstaltung; sie werden dann entfernt. Drossel-Zähler siehe Punkt 6.
           </p>
           <p className="mt-2">
             Veranstaltungen werden <strong>18 Monate nach ihrem Ende</strong> automatisch gelöscht, samt Ablauf,
@@ -214,7 +228,8 @@ export default function DatenschutzPage() {
           <p className="mt-2">
             Die Übertragung erfolgt verschlüsselt (TLS/HTTPS). Anmelde-Cookies sind <code>httpOnly</code> gesetzt und
             damit per JavaScript nicht auslesbar. Passwörter, Sitzungs-Tokens und Einmal-Links werden nur als Hash
-            gespeichert, sodass eine Kopie der Datenbank allein keinen Zugang zu Konten ermöglicht.
+            gespeichert, Zugangscodes nur als Prüfwert mit geheimem Schlüssel (HMAC), sodass eine Kopie der Datenbank allein
+            keinen Zugang zu Konten oder geschützten Abläufen ermöglicht.
           </p>
         </div>
 

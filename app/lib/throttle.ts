@@ -25,7 +25,7 @@ import { prisma } from './prisma'
  * Zeitfenster (es gleitet nicht - gesperrte Versuche verlängern die Sperre also nicht).
  *
  * Gespeichert werden nur SHA-256-Hashes von Bereich + Kennung, keine E-Mails/IPs im Klartext.
- * Die Eingabe von Zugangscodes für Gäste (Phase 5) bekommt eigene Regeln nach demselben Muster.
+ * Die Eingabe von Zugangscodes für Gäste hat eigene Regeln nach demselben Muster (accessCodeRules).
  */
 
 export type ThrottleRule = { scope: string; identifier: string; limit: number; windowMs: number }
@@ -123,4 +123,18 @@ export function resetRules(ip: string, email: string): ThrottleRule[] {
 /** Regel für die Passwort-Abfrage bei "Passwort ändern" (Schutz gegen eine gekaperte Sitzung). */
 export function passwordChangeRule(userId: string): ThrottleRule {
   return { scope: 'pwchange:user', identifier: userId, limit: 10, windowMs: LOGIN_WINDOW_MS }
+}
+
+/**
+ * Regeln für den Zugangscode der Gäste (docs/KONZEPT.md Abschnitt 6). Gezählt werden nur Fehlversuche (ein
+ * richtiger Code gibt seinen Versuch zurück), weil Gäste im Saal oft EINE IP teilen (WLAN, Mobilfunk-NAT).
+ * - pro IP: 20 in 15 Minuten - bremst Raten von einem Anschluss aus.
+ * - pro Event: 100 in 15 Minuten - begrenzt verteiltes Raten über viele IPs. Großzügig, weil eine Sperre hier
+ *   alle Gäste trifft; sie endet mit dem Zeitfenster.
+ */
+export function accessCodeRules(ip: string, eventId: string): { ip: ThrottleRule; event: ThrottleRule } {
+  return {
+    ip: { scope: 'code:ip', identifier: ip, limit: 20, windowMs: LOGIN_WINDOW_MS },
+    event: { scope: 'code:event', identifier: eventId, limit: 100, windowMs: LOGIN_WINDOW_MS }
+  }
 }

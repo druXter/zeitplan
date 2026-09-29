@@ -7,8 +7,9 @@ import { canAddRemoveItems, canCreateEvents, canEditPlan, canManageEvent } from 
 import { allowedStatusChanges, STATUS_LABELS } from '../../../lib/events/settings'
 import { isGuestVisibleStatus } from '../../../lib/guest/access'
 import { formatDate, utcToZonedDate } from '../../../lib/timezone'
-import { changeEventStatus, deleteEvent, shareEvent, unshareEvent } from '../actions'
-import { EventOptionsForm, EventSettingsForm } from '../event-forms'
+import { accessCodeConfigured, displayLinkConfigured, displayToken, suggestAccessCode } from '../../../lib/guest/tokens'
+import { changeEventStatus, deleteEvent, regenerateDisplayLink, shareEvent, unshareEvent } from '../actions'
+import { EventOptionsForm, EventSettingsForm, GuestAccessForm } from '../event-forms'
 import ConfirmForm from '../../../ui/confirm-form'
 import CopyableField from '../../../ui/copyable-field'
 import StatusBadge from '../../../ui/status-badge'
@@ -16,7 +17,9 @@ import Notice from '../../../ui/notice'
 
 export const dynamic = 'force-dynamic'
 
-type Search = { created?: string; imported?: string; duplicated?: string; status?: string; shared?: string; unshared?: string; shareError?: string }
+type Search = { created?: string; imported?: string; duplicated?: string; status?: string; shared?: string; unshared?: string; shareError?: string; display?: string }
+
+const ACCESS_LABELS = { PUBLIC: 'jede*r mit Link', CODE: 'nur mit Zugangscode', ACCOUNT: 'nur mit Konto', RSVP: 'nur mit Zusage in rsvp-app' } as const
 
 const STATUS_ACTIONS: Record<string, string> = {
   PUBLISHED: 'Veröffentlichen',
@@ -25,9 +28,9 @@ const STATUS_ACTIONS: Record<string, string> = {
 }
 
 /**
- * Übersicht eines Events. owner (Besitzer*in, Admin) sieht Status, Einstellungen, Rechte der Moderator*innen,
- * Freigaben und Löschen; freigegebene Konten den Weg zum Ablauf und ihre Rechte. Für alle: Links zu Team-Ansicht,
- * Live-Steuerung, Gästeansicht, Tafel und QR-Code.
+ * Übersicht eines Events. owner (Besitzer*in, Admin) sieht Status, Einstellungen, Zugang der Gäste, Rechte der
+ * Moderator*innen, Freigaben und Löschen; freigegebene Konten den Weg zum Ablauf und ihre Rechte. Für alle: Links
+ * zu Team-Ansicht, Live-Steuerung, Gästeansicht, Tafel (bei geschütztem Zugang mit Tafel-Link) und QR-Code.
  */
 export default async function EventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
   const { id } = await params
@@ -36,7 +39,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
   const search = await searchParams
   const isOwner = canManageEvent(event.level)
 
-  const [shares, series, itemCount] = await Promise.all([
+  const [shares, series, itemCount, activeGuestSessions] = await Promise.all([
     isOwner
       ? prisma.eventAccess.findMany({ where: { eventId: event.id }, include: { user: { select: { email: true } } }, orderBy: { createdAt: 'asc' } })
       : Promise.resolve([]),
@@ -47,8 +50,15 @@ export default async function EventPage({ params, searchParams }: { params: Prom
           select: { id: true, title: true }
         })
       : Promise.resolve([]),
-    prisma.item.count({ where: { eventId: event.id } })
+    prisma.item.count({ where: { eventId: event.id } }),
+    isOwner ? prisma.guestSession.count({ where: { eventId: event.id, expiresAt: { gt: new Date() } } }) : Promise.resolve(0)
   ])
+
+  // Tafel-Link: bei geschütztem Zugang per HMAC abgeleitet (für den Fernseher, an dem sich niemand anmeldet).
+  const protectedAccess = event.access !== 'PUBLIC'
+  const boardLink = protectedAccess && displayLinkConfigured()
+    ? `${baseUrl()}/${event.slug}/tafel?k=${displayToken(event.id, event.displayTokenVersion)}`
+    : `${baseUrl()}/${event.slug}/tafel`
 
   return (
     <main className="bg-gray-50 py-6 px-4">
@@ -67,6 +77,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
         {search.unshared === '1' && <Notice tone="success">Freigabe entfernt.</Notice>}
         {search.shareError === 'notfound' && <Notice tone="error">Zu dieser Adresse gibt es kein Konto. Lade die Person zuerst unter „Nutzer*innen“ ein.</Notice>}
         {search.shareError === 'owner' && <Notice tone="error">Diesem Konto gehört das Event bereits.</Notice>}
+        {search.display === '1' && <Notice tone="success">Neuer Tafel-Link erzeugt. Der bisherige funktioniert nicht mehr.</Notice>}
 
         <div className="bg-white rounded-lg shadow p-4 space-y-3">
           <h2 className="font-bold">Ablauf</h2>
@@ -86,10 +97,25 @@ export default async function EventPage({ params, searchParams }: { params: Prom
         <div className="bg-white rounded-lg shadow p-4 space-y-3">
           <h2 className="font-bold">Ansichten</h2>
           <CopyableField label="Link für Gäste" value={`${baseUrl()}/${event.slug}`} />
-          <CopyableField label="Link für die Anzeigetafel (Beamer, TV)" value={`${baseUrl()}/${event.slug}/tafel`} />
+          <CopyableField label="Link für die Anzeigetafel (Beamer, TV)" value={boardLink} />
+          {protectedAccess && (
+            displayLinkConfigured() ? (
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                <span>Der Tafel-Link enthält einen Schlüssel und zeigt den Ablauf ohne Anmeldung – gib ihn nur für die Geräte vor Ort weiter.</span>
+                {isOwner && (
+                  <ConfirmForm action={regenerateDisplayLink} message="Neuen Tafel-Link erzeugen? Der bisherige funktioniert danach nicht mehr.">
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <button type="submit" className="text-blue-700 hover:underline">Neuen Tafel-Link erzeugen</button>
+                  </ConfirmForm>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-amber-900">Auf dem Server fehlt <code>DISPLAY_LINK_SECRET</code> – ohne ihn zeigt die Tafel bei geschütztem Zugang nichts (siehe README).</p>
+            )
+          )}
           <p className="text-xs text-gray-600">
             {isGuestVisibleStatus(event.status)
-              ? 'Gäste sehen den öffentlichen Ablauf mit der aktuellen Prognose; die Seite aktualisiert sich selbst.'
+              ? `Gäste (${ACCESS_LABELS[event.access]}) sehen den öffentlichen Ablauf mit der aktuellen Prognose; die Seite aktualisiert sich selbst.`
               : 'Gäste sehen den Ablauf erst, wenn das Event veröffentlicht ist. Bis dahin siehst nur du (und wer Zugriff hat) eine Vorschau.'}
           </p>
           <div className="flex flex-wrap gap-2 text-sm">
@@ -106,8 +132,8 @@ export default async function EventPage({ params, searchParams }: { params: Prom
             <div className="bg-white rounded-lg shadow p-4 space-y-3">
               <h2 className="font-bold">Status: {STATUS_LABELS[event.status]}</h2>
               <p className="text-xs text-gray-600">
-                Entwürfe und archivierte Events sehen nur Konten mit Zugriff. Veröffentlichte Events zeigen jeder*m mit Link
-                den Ablauf. Live schalten und beenden geht in der Live-Steuerung (auch für Moderator*innen); einige Stunden
+                Entwürfe und archivierte Events sehen nur Konten mit Zugriff. Veröffentlichte Events zeigen den Ablauf allen
+                Gästen mit Zugang (siehe unten). Live schalten und beenden geht in der Live-Steuerung (auch für Moderator*innen); einige Stunden
                 nach dem letzten Punkt endet das Event automatisch.
               </p>
               <div className="flex flex-wrap gap-2">
@@ -129,6 +155,18 @@ export default async function EventPage({ params, searchParams }: { params: Prom
                 values={{ title: event.title, slug: event.slug, date: utcToZonedDate(event.date, event.timezone), description: event.description }}
                 series={series}
                 seriesId={event.seriesId}
+              />
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-4 space-y-3">
+              <h2 className="font-bold">Zugang für Gäste</h2>
+              <GuestAccessForm
+                eventId={event.id}
+                access={event.access}
+                hasCode={event.accessCodeHmac !== null}
+                suggestion={suggestAccessCode()}
+                codeConfigured={accessCodeConfigured()}
+                activeSessions={activeGuestSessions}
               />
             </div>
 

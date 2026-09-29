@@ -6,7 +6,7 @@ import { loadGuestPayload, payloadEtag, resolveGuestEvent } from '../../../lib/g
  * HTML, nur als JSON. Mit If-None-Match antwortet er 304, solange sich für Gäste nichts geändert hat.
  *
  * Dieselbe Sichtbarkeit wie die Seiten (resolveGuestEvent): Entwürfe, Archiv und Unbekanntes 404, geschützte
- * Events ohne Konto 403 - jeweils ohne Inhalt. `no-store`: Nichts landet in Browser- oder Proxy-Caches (auch
+ * Events ohne gültigen Zugang (Gast-Sitzung, Konto, Tafel-Link ?k=...) 403 - jeweils ohne Inhalt. `no-store`: Nichts landet in Browser- oder Proxy-Caches (auch
  * keine Vorschau eines Entwurfs); die Seite merkt sich den ETag selbst und schickt ihn mit.
  */
 const HEADERS = {
@@ -15,7 +15,8 @@ const HEADERS = {
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ slug: string }> }) {
-  const resolved = await resolveGuestEvent((await params).slug)
+  const k = new URL(request.url).searchParams.getAll('k')
+  const resolved = await resolveGuestEvent((await params).slug, k.length === 1 ? k[0] : undefined)
   if (!resolved) return NextResponse.json({ error: 'not-found' }, { status: 404, headers: HEADERS })
   if (resolved.visibility === 'protected') return NextResponse.json({ error: 'protected' }, { status: 403, headers: HEADERS })
 

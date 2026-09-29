@@ -7,7 +7,9 @@ import { loadGuestPayload, payloadEtag, resolveGuestEvent } from '../lib/guest/s
 import { loadPublicSeries } from '../lib/guest/series'
 import { formatDate } from '../lib/timezone'
 import Notice from '../ui/notice'
+import { accessCodeConfigured } from '../lib/guest/tokens'
 import GuestTimeline from './guest-timeline'
+import AccessGate from './access-gate'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +19,7 @@ export const dynamic = 'force-dynamic'
  *
  * Gästeansicht: Sichtbarkeit nach app/lib/guest/access.ts. Der Ablauf kommt ausschließlich aus
  * loadGuestPayload (toGuestView) - dieselben Daten wie der Polling-Endpunkt, mit dem die Seite sich aktualisiert.
+ * Geschützte Events ohne gültigen Zugang zeigen nur Titel und den Weg hinein (AccessGate) - nie den Ablauf.
  */
 async function resolve(slug: string) {
   const event = await resolveGuestEvent(slug)
@@ -62,12 +65,12 @@ export default async function GuestPage({ params }: { params: Promise<{ slug: st
 
   const { event, visibility } = resolved
   if (visibility === 'protected') {
-    // Zugang per Code, Konto oder rsvp-Link folgt mit Phase 5/7b - bis dahin kein Inhalt außer dem Titel.
     return (
       <main className="bg-gray-50 py-6 px-4">
         <div className="max-w-2xl mx-auto space-y-4 text-gray-900">
           <h1 className="text-2xl font-bold">{event.title}</h1>
           <Notice tone="info">Dieser Ablauf ist nur mit Zugang sichtbar.</Notice>
+          <AccessGate slug={event.slug} access={event.access} codeAvailable={event.access === 'CODE' && event.hasAccessCode && accessCodeConfigured()} />
         </div>
       </main>
     )

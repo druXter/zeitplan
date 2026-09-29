@@ -5,18 +5,25 @@ import { getCurrentUser } from '../auth'
 import { loadEventForUser } from '../events/store'
 import { validateSlug } from '../slugs'
 import { project, toGuestView, type GuestSourceItem } from '../schedule'
-import { guestVisibility, needsAccountCheck, type GuestVisibility } from './access'
+import { guestVisibility, isGuestVisibleStatus, needsAccountCheck, type GuestVisibility } from './access'
+import { hasGuestSession } from './session'
+import { displayTokenValid } from './tokens'
 import { buildGuestPayload, type GuestPayload } from './payload'
 
 const guestEventSelect = {
   id: true, slug: true, title: true, description: true, date: true, timezone: true, status: true, access: true,
+  displayTokenVersion: true,
   autoCreep: true, creepNudgeMin: true, creepCapMin: true,
   guestRoundingMin: true, hysteresisMin: true, showDelayToGuests: true, guestHorizonMin: true,
   series: { select: { slug: true, title: true } }
 } as const
 
+/** accessCodeHmac selbst verlässt diese Datei nie - Seiten erfahren nur, ob ein Code festgelegt ist. */
 async function findGuestEvent(slug: string) {
-  return prisma.event.findUnique({ where: { slug }, select: guestEventSelect })
+  const row = await prisma.event.findUnique({ where: { slug }, select: { ...guestEventSelect, accessCodeHmac: true } })
+  if (!row) return null
+  const { accessCodeHmac, ...event } = row
+  return { ...event, hasAccessCode: accessCodeHmac !== null }
 }
 
 export type GuestEvent = NonNullable<Awaited<ReturnType<typeof findGuestEvent>>>
@@ -25,19 +32,27 @@ export type ResolvedGuestEvent = { event: GuestEvent; visibility: Exclude<GuestV
 
 /**
  * Event zu /<slug> samt Sichtbarkeit (app/lib/guest/access.ts) - für Gästeansicht, Tafel und Polling-Endpunkt
- * gleich. null: gibt es nicht oder nicht sichtbar (nach außen gleich). Die Anmeldung wird nur gelesen, wenn das
- * Event nicht ohnehin öffentlich ist. Pro Anfrage zwischengespeichert (Metadaten und Seite teilen sich den Aufruf).
+ * gleich. null: gibt es nicht oder nicht sichtbar (nach außen gleich). Anmeldung, Gast-Sitzung und Tafel-Link
+ * werden nur geprüft, wenn das Event nicht ohnehin öffentlich ist. displayKey: Tafel-Link (nur Tafel und
+ * Endpunkt reichen ihn herein, nie die Gästeansicht). Pro Anfrage zwischengespeichert (Metadaten und Seite
+ * teilen sich den Aufruf).
  */
-export const resolveGuestEvent = cache(async (slug: string): Promise<ResolvedGuestEvent | null> => {
+export const resolveGuestEvent = cache(async (slug: string, displayKey?: string): Promise<ResolvedGuestEvent | null> => {
   if (validateSlug(slug) !== null) return null
   const event = await findGuestEvent(slug)
   if (!event) return null
-  let hasAccess = false
+  let accountAccess = false
+  let guestAccess = false
   if (needsAccountCheck(event)) {
     const user = await getCurrentUser()
-    hasAccess = user !== null && (await loadEventForUser(event.id, user)) !== null
+    accountAccess = user !== null && (await loadEventForUser(event.id, user)) !== null
+    if (!accountAccess && isGuestVisibleStatus(event.status)) {
+      guestAccess = (event.access === 'ACCOUNT' && user !== null)
+        || (displayKey !== undefined && displayTokenValid(event.id, event.displayTokenVersion, displayKey))
+        || (await hasGuestSession(event, new Date()))
+    }
   }
-  const visibility = guestVisibility(event, hasAccess)
+  const visibility = guestVisibility(event, { accountAccess, guestAccess })
   return visibility === 'hidden' ? null : { event, visibility }
 })
 

@@ -17,7 +17,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 2 | Datenmodell komplett und Planung (Punkte, Spuren, Anker, Sichtbarkeit, Reihen, Import/Export, Vorlage) | ✅ umgesetzt |
 | 3 | Gästeansicht, Tafel, Polling-Endpunkt, QR-Code, Reihen-Übersicht, Team-Ansicht | ✅ umgesetzt |
 | 4 | Live-Steuerung | ✅ umgesetzt |
-| 5 | Zugang per Code und Konto, Gast-Sitzungen, Tafel-Link | offen |
+| 5 | Zugang per Code und Konto, Gast-Sitzungen, Tafel-Link | ✅ umgesetzt |
 | 6 | Konto-Föderation über `suite-kit` | offen |
 | 7 | Anbindung an rsvp-app (Zugang `RSVP`) | offen |
 | 8 | Abschluss, Test auf echtem Handy und Fernseher, Lasttest | offen |
@@ -25,8 +25,8 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 Bisher gibt es das Gerüst (Anmelden, Konten einladen, Events anlegen und freigeben), den rechnerischen Kern der
 Prognose, die Planung (Programmpunkte, Spuren, geheime Punkte, Reihen, Import/Export, Vorlage „Hochzeit“) und die
 Ansichten (Gästeansicht mit Prognose, Anzeigetafel, Reihen-Übersicht, QR-Code, Team-Ansicht) und die Live-Steuerung
-fürs Handy (Weiter, Verspätung, Tauschen, Zurückstellen, Ausfall, Einschub, Rückgängig, Verlauf). Zugang per Code oder
-Konto für geschützte Events folgt mit Phase 5.
+fürs Handy (Weiter, Verspätung, Tauschen, Zurückstellen, Ausfall, Einschub, Rückgängig, Verlauf) sowie geschützte
+Events mit Zugangscode oder Konto samt eigenem Tafel-Link. Als Nächstes folgen Föderation und die Anbindung an rsvp-app.
 
 ## Konten
 
@@ -81,6 +81,8 @@ Unter `/admin/events` legen Creator und Admins Events an, Moderator\*innen sehen
 * **Freigaben:** Besitzer\*in oder Admin gibt das Event per E-Mail-Adresse einem bestehenden Konto frei. Freigegebene
   Konten sehen das Event mit internen Notizen und steuern später den Ablauf live; Einstellungen ändern, löschen und
   weiter freigeben können sie nicht. Admins sehen alle Events.
+* **Zugang für Gäste** (nur Besitzer\*in oder Admin, siehe „Zugang für Gäste“ unten): öffentlich, mit Zugangscode
+  oder nur mit Konto.
 * **Rechte der Moderator\*innen** – zwei Schalter pro Event, beide standardmäßig aus:
   * *Plan bearbeiten:* Punkte ändern, verschieben, anlegen und löschen (vor und nach dem Event). Spuren, Einstellungen,
     Schalter und Freigaben bleiben bei Besitzer\*in und Admin.
@@ -161,19 +163,54 @@ Die Regeln stehen als reine Funktionen in `app/lib/schedule/live.ts` (`applyLive
 Beschreibungen); `app/lib/live/store.ts` schreibt sie in die Datenbank, die Server Action
 `app/admin/events/[id]/live/actions.ts` prüft Rechte, Status und SECRET.
 
+## Zugang für Gäste
+
+Pro Event unter „Zugang für Gäste“ (nur Besitzer\*in oder Admin):
+
+| Zugang | Wer sieht den Ablauf |
+| --- | --- |
+| **Öffentlich** (Standard) | jede\*r mit Link |
+| **Mit Zugangscode** | wer einmal den Code eingibt (z. B. von der Einladung); der Browser merkt sich den Zugang |
+| **Nur mit Konto** | jedes angemeldete Konto dieses Tools (ab Phase 6 auch per Föderation) |
+| Zusage in rsvp-app | kommt mit Phase 7 |
+
+* **Zugangscode:** frei wählbar oder per „Vorschlag“ (z. B. `K7QM-4XPA`), mindestens 8 Buchstaben oder Ziffern.
+  Groß-/Kleinschreibung, Leerzeichen und Bindestriche sind für Gäste egal. Gespeichert wird nur ein HMAC (an das
+  Event gebunden) – die Seite zeigt den Code nach dem Speichern **einmal** an, danach nie wieder. Ein leeres Feld
+  behält den bisherigen Code.
+* **Gast-Sitzung:** Nach dem richtigen Code setzt der Server ein Cookie `__Host-guest-<eventId>` (eins pro Event, damit
+  der Zugang zum Polterabend neben dem zur Hochzeit bestehen bleibt). In der Datenbank liegt nur der Hash des Tokens.
+  Gültig bis einen Tag nach dem Ende des Events. **Ändern sich Zugang oder Code, enden alle Gast-Sitzungen** – z. B.
+  wenn ein Code in falsche Hände geraten ist. Die Verwaltung zeigt, wie viele Gast-Zugänge gerade aktiv sind.
+* **Drosselung:** 20 Fehlversuche pro IP und 100 pro Event in 15 Minuten; ein richtiger Code zählt nicht mit (im Saal
+  teilen sich viele Gäste eine IP). Der Versuch wird vor dem Vergleich reserviert, wie beim Login.
+* **Tafel-Link:** Bei geschütztem Zugang bekommt die Tafel einen eigenen Link mit Schlüssel
+  (`/<adresse>/tafel?k=…`, per HMAC abgeleitet, nicht gespeichert) – für den Fernseher im Saal, an dem sich niemand
+  anmeldet. Er gilt nur für Tafel und Polling-Endpunkt, nicht für die Gästeansicht und nie für Entwürfe. Alle Konten
+  mit Zugriff sehen ihn in der Verwaltung; „Neuen Tafel-Link erzeugen“ (nur Besitzer\*in oder Admin) macht den alten
+  sofort ungültig, auch auf einer offenen Tafel.
+* **Eingebettet** (iFrame auf der Hochzeits-Website) kommen Cookies als Drittanbieter-Cookies meist nicht an. Ein
+  geschütztes Event zeigt dort deshalb nur „Ablauf in neuem Tab öffnen“ statt Code-Eingabe oder Anmeldung.
+* **Ohne Secrets** (`ACCESS_CODE_SECRET`, `DISPLAY_LINK_SECRET`, je mindestens 32 Zeichen) gibt es keinen Zugangscode
+  bzw. keinen Tafel-Link – bewusst ohne Rückfall auf einen Standardwert; die Verwaltung weist darauf hin.
+
+Regeln und Tokens stehen in `app/lib/guest/access.ts` (Sichtbarkeit, rein) und `app/lib/guest/tokens.ts` (Code und
+Tafel-Link), Sitzungen in `app/lib/guest/session.ts`, die Code-Eingabe in `app/[slug]/actions.ts`.
+
 ## Ansichten
 
 | Ansicht | Adresse | Für |
 | --- | --- | --- |
-| Gästeansicht | `/<adresse>` | Gäste – jede\*r mit Link (Zugang `PUBLIC`) |
-| Anzeigetafel | `/<adresse>/tafel` | Beamer oder Fernseher vor Ort |
+| Gästeansicht | `/<adresse>` | Gäste – je nach Zugang mit Link, Code oder Konto |
+| Anzeigetafel | `/<adresse>/tafel` (geschützt: `?k=…`) | Beamer oder Fernseher vor Ort |
 | Reihen-Übersicht | `/<reihen-adresse>` | Gäste |
 | Team-Ansicht | `/admin/events/<id>/team` | alle Konten mit Zugriff aufs Event |
 | QR-Code | `/admin/events/<id>/qr` | zum Ausdrucken (Tischkarten, Menükarte) |
 
 * **Sichtbar** sind Gästeansicht und Tafel für veröffentlichte, laufende und beendete Events (Rückblick). Entwürfe und
-  archivierte Events ergeben 404 – Konten mit Zugriff sehen stattdessen eine Vorschau mit Hinweis. Events mit Zugang
-  per Code, Konto oder rsvp-app zeigen Gästen bis Phase 5 nur den Titel („nur mit Zugang sichtbar“).
+  archivierte Events ergeben 404 – Konten mit Zugriff sehen stattdessen eine Vorschau mit Hinweis. Geschützte Events
+  zeigen ohne gültigen Zugang nur den Titel („nur mit Zugang sichtbar“) und den Weg hinein (siehe „Zugang für
+  Gäste“).
 * **Gästeansicht:** „Jetzt“ hervorgehoben, „Als Nächstes“, danach der Rest, Vergangenes eingeklappt; Ort und
   Beschreibung je Punkt, ausgefallene Punkte durchgestrichen mit Grund. Weicht die Prognose ab, steht dort die neue
   Uhrzeit („neu: ca. 15:40“, auf 5 Minuten gerundet, mit Horizont und Hysterese); „+10“ nur, wenn in den Einstellungen
@@ -187,8 +224,8 @@ Beschreibungen); `app/lib/live/store.ts` schreibt sie in die Datenbank, die Serv
   5 Events, nie bei einer Vorschau) und zeigt ihn mit „Stand: 15:32, keine Verbindung“. Auch wenn die Seite ohne
   Verbindung neu geladen wird, zeigt die Offline-Seite des Service Workers diesen Stand.
 * **Tafel:** Vollbild in dunklem Design für 16:9 – Uhr, laufende Punkte groß, darunter die nächsten 3–4; lange Titel
-  werden gekürzt, nichts scrollt. Gedacht für einen Browser im Vollbild-/Kiosk-Modus. Bei geschütztem Zugang kommt der
-  eigene Tafel-Link mit Phase 5.
+  werden gekürzt, nichts scrollt. Gedacht für einen Browser im Vollbild-/Kiosk-Modus. Bei geschütztem Zugang mit
+  eigenem Tafel-Link.
 * **Team-Ansicht** (nur lesen): chronologisch wie für Gäste, aber minutengenau mit geplanter und erwarteter Zeit,
   „letzte Meldung vor X Min“, Ursprungsplan bei verlegten Punkten,
   Abweichung, Team- und geheimen Punkten (Inhalt nur für eingetragene Konten), internen Notizen, Konflikten mit Ankern,
@@ -281,6 +318,10 @@ Admin-Bereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im Brow
   `loadPlan`) – eine Stelle für Planung, Team-Ansicht, Export und Duplizieren.
 * **Gäste** bekommen nur, was `toGuestView` freigibt (siehe „Ansichten“); interne Notizen liest die Gästeanfrage gar
   nicht erst aus der Datenbank.
+* **Geschützte Events:** kein Inhalt ohne gültige Gast-Sitzung, Konto oder Tafel-Link – auch nicht über den
+  Polling-Endpunkt (`403`). Zugangscode nur als HMAC, Gast-Sitzung nur als Hash, Tafel-Link per HMAC abgeleitet,
+  Code-Eingabe gedrosselt (siehe „Zugang für Gäste“). Die Tafel sendet keinen Referer (`Referrer-Policy:
+  no-referrer`), damit der Schlüssel in ihrer Adresse nicht weitergegeben wird.
 * **Grenze:** Geheime Programmpunkte (`SECRET`) sehen in der Oberfläche nur eingetragene Konten – auch nicht
   Besitzer\*in oder Admin. Gegenüber dem Betreiber mit Zugriff auf die Datenbank gibt es aber **keine echte
   Geheimhaltung**.
@@ -294,7 +335,7 @@ Ein externer Scheduler (z. B. Uptime Kuma) ruft **einmal täglich** auf:
 Ein leeres oder fehlendes `CRON_SECRET` lässt niemanden durch. Gelöscht werden (suite-weit gleiche Fristen): Events
 18 Monate nach ihrem Ende (samt Ablauf und Freigaben; als Ende gilt vorerst der Eventtag plus Spielraum für Feiern über
 Mitternacht), Konten nach 2 Jahren ohne Anmeldung (Admin-Konten und Konten, denen noch Events gehören, ausgenommen),
-abgelaufene Sitzungen, Einladungs-/Reset-Links und Drossel-Zähler.
+abgelaufene Sitzungen und Gast-Sitzungen, Einladungs-/Reset-Links und Drossel-Zähler.
 
 ## Setup
 
@@ -316,7 +357,8 @@ npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, For
                     # Event-Formular und -Einstellungen, Reihen, Prognose-Kern (tests/unit/schedule), Planung
                     # (tests/unit/planning: Punkt-Formular, SECRET-Filter, Reihenfolge, Export/Import, Vorlage),
                     # Gästeansicht (tests/unit/guest: Sichtbarkeit, Payload), Abschnitte Jetzt/Als Nächstes/Vorbei,
-                    # Live-Steuerung (tests/unit/schedule/live.test.ts, tests/unit/live: Verlauf und Rückgängig)
+                    # Live-Steuerung (tests/unit/schedule/live.test.ts, tests/unit/live: Verlauf und Rückgängig),
+                    # Zugang (tests/unit/guest: Sichtbarkeit mit Sitzung/Konto/Tafel-Link, Zugangscode, Tafel-Link)
 npm run test:e2e    # Playwright gegen eine frisch gebaute Instanz auf http://127.0.0.1:3801
 npm run build
 npm run lint
@@ -365,7 +407,18 @@ Entfernen samt Abhängigkeiten) und nie über eine spätere Änderung hinweg; Mo
 SECRET-Eintrag – nachgespielte Einschübe, Weiter, Verspätung, Ausfall, Zurückstellen und Tauschen wirkungslos, mit
 Schalter bzw. als Eingetragene wirksam; Bedienung bei 390 px (nichts ragt heraus, Knöpfe mindestens 44 px,
 Rückgängig unten erreichbar, Nachfrage bei Überziehen); automatisches Beenden per Cron und beim Öffnen, danach
-gesperrt. Installierbare App: Manifest, Icons, `sw.js`-Header, Worker speichert nur die Offline-Seite.
+gesperrt. Für den Zugang (`tests/e2e/access.spec.ts`): ohne Sitzung kein Inhalt in HTML, RSC-Daten, Tafel oder Endpunkt
+(`403`), mit richtigem Code (abgetippt in Kleinbuchstaben) Gast-Sitzung als `__Host-guest-<id>` (HttpOnly, Secure,
+Lax) und nur als Hash in der Datenbank, Code nirgends im Klartext; Sitzung gilt nicht für ein anderes Event, ein
+erfundenes Cookie hilft nicht, abgelaufene Sitzung und Wechsel des Zugangs beenden den Zugang; neuer Code in der
+Verwaltung beendet alte Sitzungen, der alte Code gilt nicht mehr, Moderator\*in ändert den Zugang auch per
+nachgespieltem POST nicht (Positivkontrolle als Besitzer\*in); Drosselung beim 21. Fehlversuch pro IP (auch mit
+richtigem Code, andere IP weiter möglich, Erfolg zählt nicht) und nach 100 Fehlversuchen pro Event von verschiedenen
+IPs (anderes Event unberührt); Zugang per Konto samt Rückkehr nach der Anmeldung; Tafel-Link ohne Anmeldung, falscher
+und fremder Schlüssel wirkungslos, Gästeansicht nicht per Schlüssel, offene Tafel aktualisiert sich, alter Link nach
+Neuerzeugung ungültig (auch auf der offenen Tafel), Neuerzeugen nicht für Moderator\*innen, Entwurf trotz Schlüssel
+404; eingebettet nur der Link auf einen neuen Tab; Cron löscht abgelaufene Gast-Sitzungen. Installierbare App: Manifest,
+Icons, `sw.js`-Header, Worker speichert nur die Offline-Seite.
 
 Mails fängt ein Test-SMTP ab (`tests/e2e/mail-server.ts`, Port 2527, Pakete `smtp-server` und `mailparser`, nur für die
 Tests), der sie als `.eml` in `data/test-mails` ablegt; Empfänger unter `@nomail.test` lehnt er ab (gescheiterter
@@ -402,6 +455,8 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | `BASE_URL` | öffentliche Adresse ohne Slash – für Links in Mails, Gästelink, QR-Code und später die Kennung in der Suite |
 | `TRUST_PROXY_HOPS` | Anzahl eigener Reverse Proxys (für die IP der Drosselung) |
 | `CRON_SECRET` | Schutz des Aufräum-Endpunkts |
+| `ACCESS_CODE_SECRET` | Schlüssel für Zugangscodes (HMAC), mindestens 32 Zeichen; leer = kein Zugang per Code |
+| `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events; der vorherige hält alte Links beim Wechsel gültig |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mailversand für Einladungen und Passwort-Reset (optional) |
 | `IMPRESSUM_*` | Angaben für Impressum und Datenschutzerklärung |
 

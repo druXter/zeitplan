@@ -2,7 +2,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { createEvent, duplicateEvent, importEvent, updateEventOptions, updateEventSettings, type FormState } from './actions'
+import { createEvent, duplicateEvent, importEvent, updateEventOptions, updateEventSettings, updateGuestAccess, type FormState } from './actions'
 import { suggestSlug, SLUG_MAX_LENGTH } from '../../lib/slugs'
 import { DESCRIPTION_MAX_LENGTH, OPTION_BOUNDS, TITLE_MAX_LENGTH, type EventOptions } from '../../lib/events/settings'
 import SubmitButton from '../../ui/submit-button'
@@ -210,6 +210,70 @@ export function EventOptionsForm({ eventId, options, modsMayEditPlan, modsMayIns
         <MinutesField name="creepCapMin" label="Deckel" value={options.creepCapMin} hint="Weiter wächst die Verspätung ohne Bestätigung nicht; das Team sieht dann „unklar“." />
       </fieldset>
       <SubmitButton disabled={pending}>Speichern</SubmitButton>
+    </form>
+  )
+}
+
+const ACCESS_OPTIONS = [
+  { value: 'PUBLIC', label: 'Öffentlich', hint: 'Jede*r mit Link sieht den Ablauf.' },
+  { value: 'CODE', label: 'Mit Zugangscode', hint: 'Gäste geben einmal den Code von der Einladung ein; ihr Browser merkt sich den Zugang bis einen Tag nach dem Event.' },
+  { value: 'ACCOUNT', label: 'Nur mit Konto', hint: 'Nur wer mit einem Konto dieses Tools angemeldet ist.' }
+] as const
+
+/**
+ * Zugang der Gäste (docs/KONZEPT.md Abschnitt 6). Der Code wird nur als HMAC gespeichert: Nach dem Speichern
+ * zeigt die Seite ihn ein einziges Mal an, danach nicht mehr. suggestion: frisch auf dem Server erzeugter
+ * Vorschlag (app/lib/guest/tokens.ts suggestAccessCode).
+ */
+export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConfigured, activeSessions }: {
+  eventId: string; access: string; hasCode: boolean; suggestion: string; codeConfigured: boolean; activeSessions: number
+}) {
+  const [state, action, pending] = useActionState(updateGuestAccess, null)
+  const [selected, setSelected] = useState(access)
+  const [code, setCode] = useState('')
+  return (
+    <form action={action} className="space-y-4">
+      <input type="hidden" name="eventId" value={eventId} />
+      <Feedback state={state} />
+      <fieldset className="space-y-2">
+        <legend className="sr-only">Zugang</legend>
+        {ACCESS_OPTIONS.map(option => (
+          <label key={option.value} className="flex items-start gap-2 text-sm">
+            <input type="radio" name="access" value={option.value} checked={selected === option.value} onChange={() => setSelected(option.value)} className="mt-1" />
+            <span>{option.label}<span className="block text-xs text-gray-600">{option.hint}</span></span>
+          </label>
+        ))}
+        <p className="text-xs text-gray-600">Zugang über die Zusage in rsvp-app kommt mit der Anbindung an rsvp-app.</p>
+      </fieldset>
+      {selected === 'CODE' && (
+        codeConfigured ? (
+          <div>
+            <label htmlFor="access-code" className={labelClass}>{hasCode ? 'Neuer Zugangscode (optional)' : 'Zugangscode'}</label>
+            <div className="flex gap-2">
+              <input
+                id="access-code" name="code" value={code} onChange={event => setCode(event.currentTarget.value)} maxLength={60}
+                autoComplete="off" spellCheck={false} className={input} aria-describedby="access-code-hint" required={!hasCode}
+              />
+              <button type="button" onClick={() => setCode(suggestion)} className="shrink-0 text-sm py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">
+                Vorschlag
+              </button>
+            </div>
+            <p id="access-code-hint" className="text-xs text-gray-600 mt-1">
+              {hasCode ? 'Ein Code ist festgelegt. Leer lassen, um ihn zu behalten. ' : ''}
+              Mindestens 8 Zeichen, nicht leicht zu raten (kein Name, kein Datum). Groß- und Kleinschreibung, Leerzeichen und
+              Bindestriche sind für Gäste egal. Der Code wird nicht im Klartext gespeichert und nach dem Speichern nicht mehr
+              angezeigt. Ein neuer Code beendet alle bisherigen Zugänge.
+            </p>
+          </div>
+        ) : (
+          <Notice tone="warning">Auf dem Server fehlt <code>ACCESS_CODE_SECRET</code> – ohne ihn gibt es keinen Zugangscode (siehe README).</Notice>
+        )
+      )}
+      <p className="text-xs text-gray-600">
+        {activeSessions === 1 ? '1 Gast-Zugang ist' : `${activeSessions} Gast-Zugänge sind`} gerade aktiv. Ändert sich der Zugang oder
+        der Code, enden sie alle.
+      </p>
+      <SubmitButton disabled={pending}>Zugang speichern</SubmitButton>
     </form>
   )
 }

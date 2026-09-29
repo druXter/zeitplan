@@ -20,8 +20,9 @@ export type Connection = {
 /**
  * Hält Gästeansicht und Tafel aktuell: fragt /api/view/<slug> mit dem letzten ETag ab (304 = unverändert), nur
  * solange der Tab sichtbar ist, und merkt sich jeden Stand im Browser (remember - nicht bei der Vorschau).
+ * displayKey: Tafel-Link eines geschützten Events (?k=...); Gästeansichten schicken stattdessen ihr Cookie mit.
  */
-export function useGuestView(slug: string, initial: GuestPayload, initialEtag: string, remember: boolean) {
+export function useGuestView(slug: string, initial: GuestPayload, initialEtag: string, remember: boolean, displayKey?: string) {
   const [payload, setPayload] = useState(initial)
   const [connection, setConnection] = useState<Connection>(() => ({ lastOk: Date.now(), offline: false, gone: false }))
   const etag = useRef(initialEtag)
@@ -39,7 +40,8 @@ export function useGuestView(slug: string, initial: GuestPayload, initialEtag: s
       if (running) return
       running = true
       try {
-        const response = await fetch(`/api/view/${encodeURIComponent(slug)}`, { cache: 'no-store', headers: { 'If-None-Match': etag.current } })
+        const query = displayKey ? `?k=${encodeURIComponent(displayKey)}` : ''
+        const response = await fetch(`/api/view/${encodeURIComponent(slug)}${query}`, { cache: 'no-store', headers: { 'If-None-Match': etag.current } })
         if (response.status === 200) {
           const next = (await response.json()) as GuestPayload
           etag.current = response.headers.get('ETag') ?? ''
@@ -84,7 +86,7 @@ export function useGuestView(slug: string, initial: GuestPayload, initialEtag: s
       document.removeEventListener('visibilitychange', wake)
       window.removeEventListener('online', wake)
     }
-  }, [slug, remember])
+  }, [slug, remember, displayKey])
 
   return { payload, connection }
 }

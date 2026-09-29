@@ -59,6 +59,10 @@ const nextConfig: NextConfig = {
       { source: "/", headers: NO_FRAMING },
       { source: "/:first/:rest+", headers: NO_FRAMING },
 
+      // Die Tafel eines geschützten Events trägt ihren Schlüssel in der URL (/<slug>/tafel?k=...) - er darf
+      // nicht per Referer weitergegeben werden (wie beim Reset-Link).
+      { source: "/:slug/tafel", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+
       // 3. Gästeansicht und Reihen-Übersicht (app/[slug]) sind einbettbar.
       { source: "/:slug", headers: EMBEDDABLE },
 

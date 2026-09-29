@@ -140,3 +140,26 @@ export function shiftDays(date: Date, days: number, timeZone: string = DEFAULT_T
 export function formatClock(date: Date, timeZone: string = DEFAULT_TIMEZONE): string {
   return formatTime(date, timeZone)
 }
+
+const WEEKDAYS = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+
+/**
+ * Uhrzeit eines Programmpunkts: "14:00", an einem anderen Tag als dem Eventtag mit Wochentag ("So 00:45") -
+ * für Abläufe über Mitternacht. eventDate: Beginn des Eventtags (siehe zonedDateToUtc). Auch im Browser nutzbar;
+ * die Wochentage stehen hier fest, weil Node und Browser sie per Intl unterschiedlich abkürzen ("So"/"So.") und
+ * die Seite sonst beim Hydrieren abweicht.
+ */
+export function formatItemClock(date: Date, eventDate: Date, timeZone: string = DEFAULT_TIMEZONE): string {
+  const time = formatTime(date, timeZone)
+  const day = utcToZonedDate(date, timeZone)
+  if (day === utcToZonedDate(eventDate, timeZone)) return time
+  const [year, month, dayOfMonth] = day.split('-').map(Number)
+  return `${WEEKDAYS[new Date(Date.UTC(year, month - 1, dayOfMonth)).getUTCDay()]} ${time}`
+}
+
+/** Dauer: "45 Min", "2 Std", "1 Std 30 Min". */
+export function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} Min`
+  const hours = Math.floor(minutes / 60)
+  return minutes % 60 === 0 ? `${hours} Std` : `${hours} Std ${minutes % 60} Min`
+}

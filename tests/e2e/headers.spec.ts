@@ -2,13 +2,14 @@ import { expect, test } from '@playwright/test'
 
 // Prüft die Header-Regeln aus next.config.ts - insbesondere die Reihenfolge (spätere Regel
 // gewinnt): sensible Bereiche müssen ihre strengeren Werte behalten. Übernommen aus Seating; anders
-// als dort ist hier nichts einbettbar (auch nicht die künftige Gästeansicht /<slug>).
+// als dort ist hier nichts einbettbar (auch nicht die Gästeansicht /<slug>).
 
 const PUBLIC = ['/', '/impressum', '/datenschutz']
 const PRIVATE = ['/login', '/forgot-password', '/reset-password', '/account', '/admin', '/admin/users', '/admin/events', '/admin/events/new', '/admin/events/x',
-  '/admin/events/import', '/admin/events/x/plan', '/admin/events/x/items/new', '/admin/events/x/export', '/admin/series', '/admin/series/x']
-// Pfade der Gästeansicht und der Tafel (ab Phase 3) - schon jetzt ohne Einbetten.
-const GUEST = ['/irgendein-event', '/irgendein-event/tafel']
+  '/admin/events/import', '/admin/events/x/plan', '/admin/events/x/items/new', '/admin/events/x/export', '/admin/events/x/team',
+  '/admin/events/x/qr', '/admin/series', '/admin/series/x']
+// Gästeansicht, Tafel und Polling-Endpunkt - ohne Einbetten.
+const GUEST = ['/irgendein-event', '/irgendein-event/tafel', '/api/view/irgendein-event']
 
 async function headersOf(request: import('@playwright/test').APIRequestContext, path: string) {
   const response = await request.get(path, { maxRedirects: 0 })

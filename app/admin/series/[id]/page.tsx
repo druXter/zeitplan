@@ -44,7 +44,10 @@ export default async function SeriesDetailPage({ params, searchParams }: { param
               ))}
             </ul>
           )}
-          <p className="text-xs text-gray-600">Die Übersichtsseite für Gäste folgt in einer späteren Ausbaustufe.</p>
+          <p className="text-xs text-gray-600">
+            Die Übersicht für Gäste unter <Link href={`/${series.slug}`} className="text-blue-700 hover:underline">{baseUrl()}/{series.slug}</Link>{' '}
+            zeigt Titel, Datum und Link der veröffentlichten, laufenden und beendeten Events.
+          </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow space-y-3">
           <h2 className="font-bold">Einstellungen</h2>

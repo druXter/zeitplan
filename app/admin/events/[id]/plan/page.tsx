@@ -7,10 +7,11 @@ import { allRows, trackRows, type PlanRow } from '../../../../lib/planning/order
 import { ITEM_VISIBILITY_LABELS, TRACK_VISIBILITY_LABELS } from '../../../../lib/planning/rules'
 import { loadPlan, type PlanTrack } from '../../../../lib/planning/store'
 import type { PlanItem } from '../../../../lib/planning/items'
-import { formatClock, utcToZonedDate } from '../../../../lib/timezone'
+import { formatDuration as minutes, formatItemClock } from '../../../../lib/timezone'
 import { createTrack, deleteTrack, moveItem, moveTrack, updateTrack } from '../../plan-actions'
 import StatusBadge from '../../../../ui/status-badge'
 import Notice from '../../../../ui/notice'
+import Badge from '../../../../ui/badge'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,17 +38,6 @@ const TRACK_ERRORS: Record<string, string> = {
   missing: 'Spur: Diese Spur gibt es nicht mehr.'
 }
 
-function minutes(value: number): string {
-  if (value < 60) return `${value} Min`
-  const hours = Math.floor(value / 60)
-  return value % 60 === 0 ? `${hours} Std` : `${hours} Std ${value % 60} Min`
-}
-
-function Badge({ children, tone = 'gray' }: { children: React.ReactNode; tone?: 'gray' | 'amber' | 'purple' | 'blue' }) {
-  const tones = { gray: 'bg-gray-100 text-gray-800', amber: 'bg-amber-100 text-amber-900', purple: 'bg-purple-100 text-purple-900', blue: 'bg-blue-100 text-blue-900' }
-  return <span className={`text-xs rounded px-1.5 py-0.5 ${tones[tone]}`}>{children}</span>
-}
-
 /**
  * Planung (docs/KONZEPT.md Abschnitt 4): Tabs "Alle" und je Spur, Liste mit Uhrzeit, Dauer und Ende, Puffer
  * und Überschneidungen als Zeilen dazwischen, Umsortieren per nach oben/unten (tauscht mit dem Nachbarn, siehe
@@ -70,13 +60,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
 
   // Vorschau aus dem Prognose-Kern: Konflikte mit Ankern und Kreise - dieselben Regeln wie live.
   const projection = project(items, new Date(), event)
-  const day = utcToZonedDate(event.date, event.timezone)
-  const clock = (date: Date) => {
-    const time = formatClock(date, event.timezone)
-    const offset = utcToZonedDate(date, event.timezone)
-    if (offset === day) return time
-    return `${new Intl.DateTimeFormat('de-DE', { timeZone: event.timezone, weekday: 'short' }).format(date)} ${time}`
-  }
+  const clock = (date: Date) => formatItemClock(date, event.date, event.timezone)
   const trackQuery = current ? current.id : 'all'
 
   return (

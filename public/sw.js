@@ -11,9 +11,10 @@
 //     fasst dieser Worker gar nicht an - der Browser verhält sich wie ohne Service Worker.
 // Im Cache liegt ausschließlich die statische Offline-Seite. Ändert sich /offline.html, VERSION erhöhen.
 // Den letzten Stand der Gästeansicht bei schlechtem Empfang (docs/KONZEPT.md Abschnitt 5) merkt sich die
-// Gästeansicht selbst im Browser - nicht dieser Worker.
+// Gästeansicht selbst im Browser (localStorage) - nicht dieser Worker. Wird sie ohne Verbindung neu geladen,
+// liest die Offline-Seite diesen Stand und zeigt ihn an.
 
-const VERSION = 'v1'
+const VERSION = 'v2'
 const CACHE = `zeitplan-offline-${VERSION}`
 const OFFLINE_URL = '/offline.html'
 

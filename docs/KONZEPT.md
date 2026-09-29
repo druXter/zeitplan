@@ -176,9 +176,9 @@ Einschub kommt.
 | Reihen-Übersicht `/<reihen-slug>` | Gäste | Liste der Events einer Reihe mit Datum und Link |
 | Planung | Creator, Admin | Abschnitt 4 |
 
-**Aktualisierung:** Polling alle ~20–30 s auf einen kleinen Endpunkt mit `ETag` (Version + Minute, weil sich die
-Prognose durch "Fortschreiben" auch ohne Aktion ändert), sofort beim Zurückkehren in den Tab. Robuster als SSE hinter
-Cloudflare und in Sälen mit schlechtem Empfang. SSE kann später dazukommen.
+**Aktualisierung:** Polling alle ~20–30 s auf einen kleinen Endpunkt mit `ETag` (aus dem ausgelieferten Inhalt, weil
+sich die Prognose durch "Fortschreiben" auch ohne Aktion ändert – siehe "Entschieden"), sofort beim Zurückkehren in den
+Tab. Robuster als SSE hinter Cloudflare und in Sälen mit schlechtem Empfang. SSE kann später dazukommen.
 
 **Schlechter Empfang:** Die Gästeansicht merkt sich den letzten Stand im Browser und zeigt ihn mit "Stand: 15:32,
 keine Verbindung". Das betrifft nur die Gästeansicht, nie Team-Daten.
@@ -415,3 +415,37 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   Umnummerieren der Reihenfolge) und schützt Formulare vor veralteten Ständen. (Annahme)
 * Standard-Zugang neuer Events ist `PUBLIC`: Ein veröffentlichtes Event ist ab Phase 3 für jede*n mit Link sichtbar,
   bis Phase 5 Zugangscode und Konto bringt. Wer das nicht will, veröffentlicht erst danach.
+* Polling-Endpunkt `GET /api/view/<slug>` liefert denselben Inhalt wie das erste HTML (Event-Titel, -Beschreibung,
+  -Tag, Reihe und die Punkte aus `toGuestView`). Der `ETag` ist ein Hash dieses Inhalts statt "Version + Minute": Er
+  ändert sich genau dann, wenn Gäste etwas anderes sähen – auch durch Fortschreiben, Horizont, Einstellungen oder einen
+  neuen Eventtitel, die `liveVersion` nicht erfasst. Jede Anfrage rechnet dafür die Prognose (bei SQLite und 200 Gästen
+  unkritisch, Lasttest in Phase 8). `Cache-Control: no-store`; die Seite merkt sich den ETag selbst. Gefragt wird alle
+  20–30 s (zufällig verteilt), nur bei sichtbarem Tab, sofort beim Zurückkehren und nach Verbindungsverlust. (Annahme)
+* Gästeansicht, Tafel und Endpunkt zeigen Events mit Status `PUBLISHED`, `LIVE` und `ENDED` (Rückblick). Entwurf und
+  Archiv ergeben 404, außer für Konten mit Zugriff aufs Event (Vorschau mit Hinweis). Bis Phase 5 zeigen Events mit
+  Zugang `CODE`/`ACCOUNT`/`RSVP` Gästen nur den Titel und "nur mit Zugang sichtbar", der Endpunkt antwortet 403 ohne
+  Inhalt; Konten mit Zugriff sehen eine Vorschau. (Annahme)
+* Den gezeigten Beginn (`guestShownStart`) speichert jede Anfrage von Gästeansicht, Tafel oder Endpunkt, sobald er sich
+  ändert – ohne `Item.version` oder `liveVersion` zu erhöhen. Die Team-Ansicht rechnet ihn zur Anzeige mit, speichert
+  aber nicht. (Annahme)
+* Gästeansicht: Abschnitte "Jetzt" (hervorgehoben), "Als Nächstes" (die nächsten Punkte mit gleichem Beginn),
+  "Danach" und "Vorbei" (eingeklappt, offen, wenn nichts mehr kommt). Ausgefallene Punkte stehen mit Planzeit an ihrem
+  Platz und gelten als vorbei, sobald ein späterer Punkt läuft. Abweichende Zeiten als "neu: ca. 15:40", mit
+  `showDelayToGuests` als "ca. 15:40 +10". Zeiten an einem anderen Tag als dem Eventtag mit Wochentag ("So 00:45").
+  Mehrere öffentliche Spuren: Spurname je Punkt. (Annahme)
+* Offline-Stand: Die Gästeansicht (und die Tafel) legt jeden Stand im `localStorage` ab (höchstens 5 Events, nie bei
+  einer Vorschau). Wird die Seite ohne Verbindung neu geladen, zeigt die Offline-Seite des Service Workers diesen Stand
+  mit "Stand: 15:32, keine Verbindung". Verschwindet ein Event (z. B. zurück zum Entwurf), löscht die offene Seite
+  ihren Stand. (Annahme)
+* Tafel: liegt als Vollbild über Kopf- und Fußzeile. Läuft etwas: bis zu zwei laufende Punkte und die nächsten drei
+  (bei einem laufenden vier); sonst der nächste groß und vier danach. Lange Titel werden gekürzt, Schrift in `vh`, so
+  dass nichts scrollt (geprüft bei 1920×1080 und 1280×720). Die Uhr ist die des Geräts. (Annahme)
+* Reihen-Übersicht: Titel, Datum und Link der Events mit Status `PUBLISHED`, `LIVE` oder `ENDED` – auch geschützter;
+  ihr Inhalt bleibt hinter dem Zugang des Events. (Annahme)
+* Team-Ansicht unter `/admin/events/<id>/team` für alle Konten mit Zugriff: chronologisch wie die Gästeansicht,
+  minutengenau mit Plan- und erwarteter Zeit, Abweichung, "nicht bestätigt", "überzogen", "unklar" (Deckel), "läuft
+  noch?", Konflikten, internen Notizen, zurückgestellten Punkten und der Zeit, die Gäste sehen, wenn sie abweicht. Lädt
+  sich alle 30 s neu (`router.refresh`, kein eigener Endpunkt). "Letzte Meldung vor X Min" kommt mit dem Verlauf in
+  Phase 4. (Annahme)
+* QR-Code zur Gästeansicht als SVG, serverseitig erzeugt (Paket `qrcode` wie in rsvp-app), auf einer Druckseite in der
+  Verwaltung mit Download – für alle Konten mit Zugriff. (Annahme)

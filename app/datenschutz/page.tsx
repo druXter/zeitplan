@@ -3,11 +3,11 @@ import Link from 'next/link'
 
 // ENTWURF: Beschreibt, was dieses Tool tatsächlich speichert und verarbeitet. Er ersetzt keine
 // Rechtsberatung - vor dem Einsatz mit Externen bitte einmal prüfen lassen und bei jeder
-// Änderung der Datenverarbeitung mitpflegen. Stand: Phase 2 (Konten für Planung und Moderation,
+// Änderung der Datenverarbeitung mitpflegen. Stand: Phase 3 (Konten für Planung und Moderation,
 // Einladungen, Events mit Freigaben, Programmpunkte mit internen Notizen und geheimen Punkten, Reihen,
-// Export/Import, Drosselung, Löschfristen, installierbare App mit Service Worker). Mit den folgenden
-// Phasen kommen Gästeansicht, Live-Steuerung mit Verlauf, Gast-Sitzungen, Föderation und die Anbindung an
-// rsvp-app dazu - dann hier ergänzen.
+// Export/Import, Drosselung, Löschfristen, installierbare App mit Service Worker, Gästeansicht und Tafel mit
+// Offline-Stand im Browser). Mit den folgenden Phasen kommen Live-Steuerung mit Verlauf, Gast-Sitzungen,
+// Föderation und die Anbindung an rsvp-app dazu - dann hier ergänzen.
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -98,7 +98,22 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">5. Schutz vor Missbrauch (Drosselung)</h2>
+          <h2 className="font-bold text-lg">5. Ablauf für Gäste</h2>
+          <p className="mt-2">
+            Die Seite mit dem Ablauf einer Veranstaltung (und die Anzeigetafel vor Ort) kannst du ohne Konto und ohne
+            Anmeldung aufrufen. Wir speichern dabei nichts über dich und setzen keine Cookies. Damit die Seite aktuell
+            bleibt, fragt dein Browser alle 20 bis 30 Sekunden den neuesten Stand ab, solange die Seite geöffnet ist.
+          </p>
+          <p className="mt-2">
+            Damit du den Ablauf auch bei schlechtem Empfang siehst, merkt sich dein Browser den zuletzt geladenen Stand
+            im <strong>lokalen Speicher</strong> (localStorage) deines Geräts – nur den Ablauf, wie ihn alle Gäste
+            sehen, für höchstens fünf Veranstaltungen, keine personenbezogenen Daten. Diese Daten verlassen dein Gerät
+            nicht; du kannst sie über die Website-Einstellungen deines Browsers jederzeit löschen.
+          </p>
+        </div>
+
+        <div>
+          <h2 className="font-bold text-lg">6. Schutz vor Missbrauch (Drosselung)</h2>
           <p className="mt-2">
             Um das Erraten von Passwörtern und das massenhafte Auslösen von Mails zu verhindern, zählen wir
             fehlgeschlagene Anmeldeversuche und Passwort-Reset-Anfragen. Dazu wird deine <strong>IP-Adresse</strong>{' '}
@@ -110,7 +125,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">6. E-Mails</h2>
+          <h2 className="font-bold text-lg">7. E-Mails</h2>
           <p className="mt-2">
             Wir verschicken E-Mails nur für Kontofunktionen: die Einladung zu einem neuen Konto und einen auf Wunsch
             angeforderten Passwort-Reset. Gäste bekommen von diesem Dienst keine Mails. Werbung oder Newsletter gibt es nicht.
@@ -118,7 +133,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">7. Cookies</h2>
+          <h2 className="font-bold text-lg">8. Cookies</h2>
           <p className="mt-2">
             Wir setzen ausschließlich technisch notwendige Cookies ein (Art. 6 Abs. 1 lit. b/f DSGVO, § 25 Abs. 2 Nr. 2
             TDDDG) - eine Einwilligung ist dafür nicht erforderlich. Es gibt keine Tracking-, Analyse- oder
@@ -129,16 +144,20 @@ export default function DatenschutzPage() {
             <li><code>invite_link</code> - nur kurz (2 Minuten), wenn ein Konto einen Einladungslink zum Weitergeben angezeigt bekommt</li>
           </ul>
           <p className="mt-2">
+            Gäste bekommen keine Cookies. Den zuletzt geladenen Ablauf legt die Seite im lokalen Speicher deines Browsers
+            ab (siehe Punkt 5) - ebenfalls technisch notwendig, damit die Seite ohne Verbindung weiter funktioniert.
+          </p>
+          <p className="mt-2">
             <strong>Installation als App:</strong> Der Zeitplan lässt sich auf dem Gerät als App installieren. Dafür
             registriert dein Browser einen Service Worker. Er speichert ausschließlich eine statische Seite
             (&quot;Du bist offline&quot;) zwischen - keine Abläufe, keine Konto- oder Verwaltungsseiten und keine
-            personenbezogenen Daten. Er schickt nichts an uns und ist über die Website-Einstellungen deines Browsers
+            personenbezogenen Daten. Ist die Verbindung weg, zeigt diese Seite den im Browser gemerkten Ablauf (Punkt 5) an. Er schickt nichts an uns und ist über die Website-Einstellungen deines Browsers
             jederzeit entfernbar.
           </p>
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">8. Empfänger und Auftragsverarbeiter</h2>
+          <h2 className="font-bold text-lg">9. Empfänger und Auftragsverarbeiter</h2>
           <p className="mt-2">
             <strong>E-Mail-Versand:</strong> Einladungs- und Passwort-Reset-Mails versenden wir über den E-Mail-Server{' '}
             <code>{smtpHost}</code>. Mit dem Betreiber dieses Servers besteht, soweit es sich um einen externen Anbieter
@@ -152,7 +171,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">9. Speicherdauer</h2>
+          <h2 className="font-bold text-lg">10. Speicherdauer</h2>
           <p className="mt-2">
             Ein Konto wird automatisch gelöscht, wenn du dich <strong>2 Jahre</strong> lang nicht mehr angemeldet
             hast und dir keine Veranstaltungen mehr gehören - inklusive Sitzungen und Freigaben. Administrator-Konten sind
@@ -161,7 +180,7 @@ export default function DatenschutzPage() {
           </p>
           <p className="mt-2">
             Sitzungen laufen nach 30 Tagen ab, Einladungs- und Reset-Links nach 7 Tagen bzw. 1 Stunde und werden dann
-            entfernt. Drossel-Zähler siehe Punkt 5.
+            entfernt. Drossel-Zähler siehe Punkt 6.
           </p>
           <p className="mt-2">
             Veranstaltungen werden <strong>18 Monate nach ihrem Ende</strong> automatisch gelöscht, samt Ablauf,
@@ -170,7 +189,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">10. Deine Rechte</h2>
+          <h2 className="font-bold text-lg">11. Deine Rechte</h2>
           <p className="mt-2">
             Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16 DSGVO), Löschung (Art. 17 DSGVO),
             Einschränkung der Verarbeitung (Art. 18 DSGVO), Datenübertragbarkeit (Art. 20 DSGVO) und Widerspruch (Art.
@@ -184,7 +203,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">11. Datensicherheit</h2>
+          <h2 className="font-bold text-lg">12. Datensicherheit</h2>
           <p className="mt-2">
             Die Übertragung erfolgt verschlüsselt (TLS/HTTPS). Anmelde-Cookies sind <code>httpOnly</code> gesetzt und
             damit per JavaScript nicht auslesbar. Passwörter, Sitzungs-Tokens und Einmal-Links werden nur als Hash

@@ -15,7 +15,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 0 | Gerüst: Konten, Rollen, Einladungen, Events mit Freigaben, Sicherheits-Header, Slugs, PWA, Impressum/Datenschutz, Docker, Unit- und E2E-Setup | ✅ umgesetzt |
 | 1 | Prognose-Kern als reine Funktionen (`project`, `swapAdjacent`, `insertAfter`, `toGuestView`) | ✅ umgesetzt |
 | 2 | Datenmodell komplett und Planung (Punkte, Spuren, Anker, Sichtbarkeit, Reihen, Import/Export, Vorlage) | ✅ umgesetzt |
-| 3 | Gästeansicht, Tafel, Polling-Endpunkt, QR-Code, Reihen-Übersicht, Team-Ansicht | offen |
+| 3 | Gästeansicht, Tafel, Polling-Endpunkt, QR-Code, Reihen-Übersicht, Team-Ansicht | ✅ umgesetzt |
 | 4 | Live-Steuerung | offen |
 | 5 | Zugang per Code und Konto, Gast-Sitzungen, Tafel-Link | offen |
 | 6 | Konto-Föderation über `suite-kit` | offen |
@@ -23,8 +23,9 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 8 | Abschluss, Test auf echtem Handy und Fernseher, Lasttest | offen |
 
 Bisher gibt es das Gerüst (Anmelden, Konten einladen, Events anlegen und freigeben), den rechnerischen Kern der
-Prognose und die Planung (Programmpunkte, Spuren, geheime Punkte, Reihen, Import/Export, Vorlage „Hochzeit“). Die
-Gästeansicht und die Live-Steuerung folgen mit den nächsten Phasen.
+Prognose, die Planung (Programmpunkte, Spuren, geheime Punkte, Reihen, Import/Export, Vorlage „Hochzeit“) und die
+Ansichten (Gästeansicht mit Prognose, Anzeigetafel, Reihen-Übersicht, QR-Code, Team-Ansicht). Die Live-Steuerung folgt
+mit Phase 4 – bis dahin ändert sich die Prognose nur durch die Planung und die Uhr.
 
 ## Konten
 
@@ -65,7 +66,7 @@ Unter `/admin/events` legen Creator und Admins Events an, Moderator\*innen sehen
 * **Anlegen:** Titel, Adresse (Vorschlag aus dem Titel), Datum, Beschreibung – leer (mit einer Spur „Ablauf“) oder mit
   der **Vorlage „Hochzeit“** (`app/lib/planning/template.ts`: Trauung, Empfang, Abendessen als Anker, Party bis nach
   Mitternacht, Spur „Brautpaar“ mit Zusammenführung, Team-Spur, ein geheimer Punkt). Neue Events sind ein Entwurf.
-* **Adresse** (`/<adresse>`, dort erscheint ab Phase 3 die Gästeansicht): Kleinbuchstaben, Ziffern, Bindestriche;
+* **Adresse** (`/<adresse>`, dort liegt die Gästeansicht): Kleinbuchstaben, Ziffern, Bindestriche;
   reservierte Namen (alle Pfade des Tools, `app/lib/slugs.ts`) und vergebene Adressen werden abgelehnt – Events und
   Reihen teilen sich dabei einen Namensraum.
 * **Datum:** der Tag, an dem der Ablauf beginnt – gespeichert als Beginn dieses Tages in der Zeitzone des Events
@@ -110,7 +111,7 @@ Unter `/admin/events/<id>/plan` (für alle Konten mit Zugriff; bearbeiten nur mi
   Auswahl bei „wartet auf“.
 * **Gleichzeitige Änderungen:** Jeder Punkt hat eine Version; wer einen veralteten Stand speichert, bekommt einen
   Hinweis statt die Änderung eines anderen zu überschreiben. Tauschen ist absichtsbasiert (beide Punkte werden genannt).
-  Jede Änderung erhöht `liveVersion` des Events (für den Polling-Endpunkt ab Phase 3).
+  Jede Änderung erhöht `liveVersion` des Events.
 
 Die Planungsregeln stehen als reine Funktionen unter `app/lib/planning/` (Formular, SECRET-Filter `redactItem`,
 Reihenfolge, Export/Import, Vorlage), Rechte in `app/lib/permissions.ts`.
@@ -118,8 +119,48 @@ Reihenfolge, Export/Import, Vorlage), Rechte in `app/lib/permissions.ts`.
 ## Reihen
 
 Unter `/admin/series` bündeln Creator und Admins mehrere Events (Polterabend, Hochzeit, Brunch) zu einer Reihe mit
-eigener Adresse; die gemeinsame Übersichtsseite für Gäste kommt mit Phase 3. Zuordnen lassen sich nur eigene Reihen
+eigener Adresse; unter `/<reihen-adresse>` sehen Gäste Titel, Datum und Link der veröffentlichten, laufenden und
+beendeten Events (Entwürfe und Archiv fehlen). Zuordnen lassen sich nur eigene Reihen
 (Admins: alle), in den Einstellungen des Events. Löschen einer Reihe lässt ihre Events stehen.
+
+## Ansichten
+
+| Ansicht | Adresse | Für |
+| --- | --- | --- |
+| Gästeansicht | `/<adresse>` | Gäste – jede\*r mit Link (Zugang `PUBLIC`) |
+| Anzeigetafel | `/<adresse>/tafel` | Beamer oder Fernseher vor Ort |
+| Reihen-Übersicht | `/<reihen-adresse>` | Gäste |
+| Team-Ansicht | `/admin/events/<id>/team` | alle Konten mit Zugriff aufs Event |
+| QR-Code | `/admin/events/<id>/qr` | zum Ausdrucken (Tischkarten, Menükarte) |
+
+* **Sichtbar** sind Gästeansicht und Tafel für veröffentlichte, laufende und beendete Events (Rückblick). Entwürfe und
+  archivierte Events ergeben 404 – Konten mit Zugriff sehen stattdessen eine Vorschau mit Hinweis. Events mit Zugang
+  per Code, Konto oder rsvp-app zeigen Gästen bis Phase 5 nur den Titel („nur mit Zugang sichtbar“).
+* **Gästeansicht:** „Jetzt“ hervorgehoben, „Als Nächstes“, danach der Rest, Vergangenes eingeklappt; Ort und
+  Beschreibung je Punkt, ausgefallene Punkte durchgestrichen mit Grund. Weicht die Prognose ab, steht dort die neue
+  Uhrzeit („neu: ca. 15:40“, auf 5 Minuten gerundet, mit Horizont und Hysterese); „+10“ nur, wenn in den Einstellungen
+  eingeschaltet. Gäste sehen nur öffentliche Punkte öffentlicher Spuren – nie Team- oder geheime Punkte, Team-Spuren,
+  zurückgestellte Punkte oder interne Notizen, auch nicht im ausgelieferten HTML oder JSON.
+* **Aktualisierung:** Gästeansicht und Tafel fragen alle 20–30 Sekunden (und sofort beim Zurückkehren in den Tab)
+  `GET /api/view/<adresse>` ab – derselbe Inhalt wie im ersten HTML, als JSON. Der `ETag` ist ein Hash des Inhalts;
+  unverändert antwortet der Endpunkt `304`. `Cache-Control: no-store`, `X-Robots-Tag: noindex`. Entwurf/Archiv: `404`,
+  geschützt: `403`, jeweils ohne Inhalt.
+* **Schlechter Empfang:** Die Gästeansicht merkt sich den letzten Stand im Browser (`localStorage`, höchstens
+  5 Events, nie bei einer Vorschau) und zeigt ihn mit „Stand: 15:32, keine Verbindung“. Auch wenn die Seite ohne
+  Verbindung neu geladen wird, zeigt die Offline-Seite des Service Workers diesen Stand.
+* **Tafel:** Vollbild in dunklem Design für 16:9 – Uhr, laufende Punkte groß, darunter die nächsten 3–4; lange Titel
+  werden gekürzt, nichts scrollt. Gedacht für einen Browser im Vollbild-/Kiosk-Modus. Bei geschütztem Zugang kommt der
+  eigene Tafel-Link mit Phase 5.
+* **Team-Ansicht** (nur lesen): chronologisch wie für Gäste, aber minutengenau mit geplanter und erwarteter Zeit,
+  Abweichung, Team- und geheimen Punkten (Inhalt nur für eingetragene Konten), internen Notizen, Konflikten mit Ankern,
+  „nicht bestätigt“, „überzogen“, „unklar“ und „läuft noch?“, zurückgestellten Punkten und der Zeit, die Gäste gerade
+  sehen. Lädt sich alle 30 Sekunden neu.
+* **QR-Code:** zur Gästeansicht, als SVG zum Drucken oder Herunterladen.
+
+Die Daten für Gäste entstehen ausschließlich in `toGuestView` (Prognose-Kern); `app/lib/guest/store.ts` lädt dafür den
+Ablauf (ohne interne Notizen), speichert den gezeigten Beginn je Punkt für die Hysterese und baut daraus den
+`GuestPayload` (`app/lib/guest/payload.ts`, jedes Feld einzeln freigegeben). Wer was sieht, regelt
+`app/lib/guest/access.ts`.
 
 ## Prognose-Kern
 
@@ -158,7 +199,8 @@ Admin-Bereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im Brow
   Offline-Seite (`public/offline.html`). **Es wird nichts Persönliches zwischengespeichert** – Navigationen gehen immer
   ans Netz, Server Actions, `/api/*` und fremde Herkunft fasst er nicht an; im Cache liegt nur die statische
   Offline-Seite. Ändert sich `offline.html`, `VERSION` in `sw.js` erhöhen. Den letzten Stand der Gästeansicht bei
-  schlechtem Empfang (Phase 3) merkt sich die Gästeansicht selbst, nicht der Worker.
+  schlechtem Empfang merkt sich die Gästeansicht selbst (`localStorage`, nur Gästedaten), nicht der Worker; die
+  Offline-Seite liest ihn, wenn eine Gästeansicht ohne Verbindung neu geladen wird.
 * `sw.js` wird nie zwischengespeichert (Header in `next.config.ts`). Registriert wird der Worker nur in der Produktion
   (`app/ui/pwa-register.tsx`).
 * Bewusst **keine Push-Benachrichtigungen**.
@@ -184,14 +226,17 @@ Admin-Bereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im Brow
   Actions prüfen zusätzlich den Origin (CSRF, Next.js-Standard).
 * **Header** (`next.config.ts`): `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS für alle Seiten. **Keine
   Seite ist einbettbar** (`frame-ancestors 'none'`, `X-Frame-Options: DENY`) – anders als in Seating auch nicht die
-  künftige Gästeansicht. Login, Konto und Verwaltung zusätzlich `X-Robots-Tag: noindex` und `Cache-Control: no-store`;
+  Gästeansicht. Gästeansicht und Tafel sind per `<meta name="robots">` nicht indexiert, der Polling-Endpunkt per
+  `X-Robots-Tag` und `no-store`. Login, Konto und Verwaltung zusätzlich `X-Robots-Tag: noindex` und `Cache-Control: no-store`;
   Reset-Links `Referrer-Policy: no-referrer`. Die Reihenfolge der Regeln ist wichtig (die spätere gewinnt, ein Header
   lässt sich nur überschreiben, nicht entfernen) und in der Datei kommentiert.
 * **Reservierte Adressen:** Events und Reihen liegen unter `/<slug>` und teilen sich den Namensraum. Alle Pfade des
   Tools stehen in `app/lib/slugs.ts`; ein Test schlägt fehl, sobald eine neue Route oder eine Datei unter `public/`
   dort fehlt.
 * **Geheime Punkte:** Alle Punkte für Konten laufen durch `redactItem` (`app/lib/planning/items.ts`, aufgerufen von
-  `loadPlan`) – eine Stelle für Planung, Export und Duplizieren.
+  `loadPlan`) – eine Stelle für Planung, Team-Ansicht, Export und Duplizieren.
+* **Gäste** bekommen nur, was `toGuestView` freigibt (siehe „Ansichten“); interne Notizen liest die Gästeanfrage gar
+  nicht erst aus der Datenbank.
 * **Grenze:** Geheime Programmpunkte (`SECRET`) sehen in der Oberfläche nur eingetragene Konten – auch nicht
   Besitzer\*in oder Admin. Gegenüber dem Betreiber mit Zugriff auf die Datenbank gibt es aber **keine echte
   Geheimhaltung**.
@@ -225,7 +270,8 @@ Es gibt keinen `migrations`-Ordner – wie in den anderen Tools der Suite aussch
 npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, Formular-Helfer, Slugs (inkl. Test auf
                     # fehlende Routen), Cron-Secret, Zeitzonen (Zeitumstellung, Eventtag, Verschieben), Rechte,
                     # Event-Formular und -Einstellungen, Reihen, Prognose-Kern (tests/unit/schedule), Planung
-                    # (tests/unit/planning: Punkt-Formular, SECRET-Filter, Reihenfolge, Export/Import, Vorlage)
+                    # (tests/unit/planning: Punkt-Formular, SECRET-Filter, Reihenfolge, Export/Import, Vorlage),
+                    # Gästeansicht (tests/unit/guest: Sichtbarkeit, Payload), Abschnitte Jetzt/Als Nächstes/Vorbei
 npm run test:e2e    # Playwright gegen eine frisch gebaute Instanz auf http://127.0.0.1:3801
 npm run build
 npm run lint
@@ -257,8 +303,14 @@ Tauschen, veraltete Stände, Schleifen; Moderator\*in ohne Schalter (nachgespiel
 wirksam, Spuren nie, live nur mit „Einschübe“); geheimer Punkt – Besitzer\*in ohne Eintrag findet ihn weder im HTML
 noch im Export und kann ihn nicht ändern, tauschen oder löschen, die eingetragene Moderator\*in schon; Einstellungen,
 Schalter und Status nur für Besitzer\*in; Import (Schleife, kaputtes JSON, ungültige Werte, fremdes Format, gültig);
-Duplizieren; neues Datum verschiebt die Punkte; Reihen und gemeinsamer Namensraum. Installierbare App: Manifest, Icons, `sw.js`-Header, Worker speichert nur die
-Offline-Seite.
+Duplizieren; neues Datum verschiebt die Punkte; Reihen und gemeinsamer Namensraum. Für die Ansichten
+(`tests/e2e/guest.spec.ts`): keine TEAM-/SECRET-Inhalte, Team-Spuren, zurückgestellten Punkte, internen Notizen oder
+ids davon im HTML, in den RSC-Daten oder im JSON von Gästeansicht, Tafel und Endpunkt (auch nicht, wenn ein Konto mit
+Zugriff sie aufruft) – mit Positivkontrolle in der Team-Ansicht; Entwurf/Archiv 404 und Vorschau; geschützter Zugang
+ohne Inhalt, auch per Endpunkt; Prognose mit „ca.“ und gespeichertem gezeigtem Beginn; ETag/304 und neuer Inhalt nach
+Änderung in der Datenbank; Aktualisierung der offenen Seite, Hinweis ohne Verbindung und Offline-Seite mit gemerktem
+Stand; Tafel ohne Scrollen bei 1920×1080 und 1280×720; Reihen-Übersicht; QR-Code; Team-Ansicht mit Konflikten.
+Installierbare App: Manifest, Icons, `sw.js`-Header, Worker speichert nur die Offline-Seite.
 
 Mails fängt ein Test-SMTP ab (`tests/e2e/mail-server.ts`, Port 2527, Pakete `smtp-server` und `mailparser`, nur für die
 Tests), der sie als `.eml` in `data/test-mails` ablegt; Empfänger unter `@nomail.test` lehnt er ab (gescheiterter
@@ -292,7 +344,7 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | Variable | Zweck |
 | --- | --- |
 | `DATABASE_URL` | SQLite-Datei (in Docker per Compose gesetzt) |
-| `BASE_URL` | öffentliche Adresse ohne Slash – für Links in Mails, später Gästelink, QR-Code und Kennung in der Suite |
+| `BASE_URL` | öffentliche Adresse ohne Slash – für Links in Mails, Gästelink, QR-Code und später die Kennung in der Suite |
 | `TRUST_PROXY_HOPS` | Anzahl eigener Reverse Proxys (für die IP der Drosselung) |
 | `CRON_SECRET` | Schutz des Aufräum-Endpunkts |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mailversand für Einladungen und Passwort-Reset (optional) |

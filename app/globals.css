@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+/* Anzeigetafel (/<slug>/tafel): Sie liegt als Vollbild über Kopf- und Fußzeile - die Seite dahinter darf nicht
+   scrollen (Beamer/TV ohne Maus, docs/KONZEPT.md Abschnitt 5). */
+body:has([data-board]) {
+  overflow: hidden;
+}

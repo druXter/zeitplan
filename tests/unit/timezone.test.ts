@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  daysBetween, formatClock, formatDate, formatDateTime, formatDeadline, formatRange, shiftDays, toZonedIso, utcToZonedDate, utcToZonedInput,
+  daysBetween, formatClock, formatDate, formatDuration, formatItemClock, formatDateTime, formatDeadline, formatRange, shiftDays, toZonedIso, utcToZonedDate, utcToZonedInput,
   zonedDateToUtc, zonedInputToUtc
 } from '../../app/lib/timezone'
 
@@ -98,5 +98,20 @@ describe('Export und Verschieben', () => {
 
   it('Uhrzeit kurz', () => {
     expect(formatClock(new Date('2026-06-20T12:05:00Z'))).toBe('14:05')
+  })
+})
+
+describe('Uhrzeit und Dauer eines Programmpunkts', () => {
+  it('am Eventtag nur die Uhrzeit, danach mit Wochentag - auch in der Nacht der Zeitumstellung', () => {
+    const day = zonedDateToUtc('2026-10-24')!
+    expect(formatItemClock(new Date('2026-10-24T12:00:00Z'), day)).toBe('14:00')
+    expect(formatItemClock(new Date('2026-10-24T22:45:00Z'), day)).toBe('So 00:45')
+    expect(formatItemClock(new Date('2026-10-25T02:00:00Z'), day)).toBe('So 03:00')
+  })
+
+  it('Dauer', () => {
+    expect(formatDuration(45)).toBe('45 Min')
+    expect(formatDuration(120)).toBe('2 Std')
+    expect(formatDuration(90)).toBe('1 Std 30 Min')
   })
 })

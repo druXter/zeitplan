@@ -5,6 +5,7 @@ import { baseUrl } from '../../../lib/base-url'
 import { loadEventOr404 } from '../../../lib/events/store'
 import { canAddRemoveItems, canCreateEvents, canEditPlan, canManageEvent } from '../../../lib/permissions'
 import { allowedStatusChanges, STATUS_LABELS } from '../../../lib/events/settings'
+import { isGuestVisibleStatus } from '../../../lib/guest/access'
 import { formatDate, utcToZonedDate } from '../../../lib/timezone'
 import { changeEventStatus, deleteEvent, shareEvent, unshareEvent } from '../actions'
 import { EventOptionsForm, EventSettingsForm } from '../event-forms'
@@ -25,8 +26,8 @@ const STATUS_ACTIONS: Record<string, string> = {
 
 /**
  * Übersicht eines Events. owner (Besitzer*in, Admin) sieht Status, Einstellungen, Rechte der Moderator*innen,
- * Freigaben und Löschen; freigegebene Konten den Weg zum Ablauf und ihre Rechte. Team-Ansicht und
- * Live-Steuerung kommen mit Phase 3 und 4 hierher.
+ * Freigaben und Löschen; freigegebene Konten den Weg zum Ablauf und ihre Rechte. Für alle: Links zu Team-Ansicht,
+ * Gästeansicht, Tafel und QR-Code. Die Live-Steuerung kommt mit Phase 4 hierher.
  */
 export default async function EventPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
   const { id } = await params
@@ -82,9 +83,21 @@ export default async function EventPage({ params, searchParams }: { params: Prom
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4 space-y-2">
+        <div className="bg-white rounded-lg shadow p-4 space-y-3">
+          <h2 className="font-bold">Ansichten</h2>
           <CopyableField label="Link für Gäste" value={`${baseUrl()}/${event.slug}`} />
-          <p className="text-xs text-gray-600">Die Gästeansicht mit dem Ablauf folgt in einer späteren Ausbaustufe.</p>
+          <CopyableField label="Link für die Anzeigetafel (Beamer, TV)" value={`${baseUrl()}/${event.slug}/tafel`} />
+          <p className="text-xs text-gray-600">
+            {isGuestVisibleStatus(event.status)
+              ? 'Gäste sehen den öffentlichen Ablauf mit der aktuellen Prognose; die Seite aktualisiert sich selbst.'
+              : 'Gäste sehen den Ablauf erst, wenn das Event veröffentlicht ist. Bis dahin siehst nur du (und wer Zugriff hat) eine Vorschau.'}
+          </p>
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Link href={`/admin/events/${event.id}/team`} className="bg-blue-600 text-white font-bold py-2 px-3 rounded hover:bg-blue-700">Team-Ansicht</Link>
+            <Link href={`/${event.slug}`} className="py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">Gästeansicht</Link>
+            <Link href={`/${event.slug}/tafel`} className="py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">Tafel</Link>
+            <Link href={`/admin/events/${event.id}/qr`} className="py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">QR-Code zum Ausdrucken</Link>
+          </div>
         </div>
 
         {isOwner ? (
@@ -92,8 +105,8 @@ export default async function EventPage({ params, searchParams }: { params: Prom
             <div className="bg-white rounded-lg shadow p-4 space-y-3">
               <h2 className="font-bold">Status: {STATUS_LABELS[event.status]}</h2>
               <p className="text-xs text-gray-600">
-                Entwürfe sehen nur Konten mit Zugriff. Veröffentlichte Events zeigen Gästen den Ablauf (ab der nächsten
-                Ausbaustufe). Live und Beendet setzt die Live-Steuerung.
+                Entwürfe und archivierte Events sehen nur Konten mit Zugriff. Veröffentlichte Events zeigen jeder*m mit Link
+                den Ablauf. Live und Beendet setzt die Live-Steuerung.
               </p>
               <div className="flex flex-wrap gap-2">
                 {allowedStatusChanges(event.status).map(target => (
@@ -172,8 +185,8 @@ export default async function EventPage({ params, searchParams }: { params: Prom
           <div className="bg-white rounded-lg shadow p-4 space-y-2">
             <h2 className="font-bold">Freigegeben für dich</h2>
             <p className="text-sm text-gray-700">
-              Dieses Event wurde für dich freigegeben. Du siehst den Ablauf mit den internen Notizen; die Live-Steuerung
-              folgt in einer späteren Ausbaustufe.
+              Dieses Event wurde für dich freigegeben. In der Team-Ansicht siehst du den Ablauf mit Prognose und internen
+              Notizen; die Live-Steuerung folgt in einer späteren Ausbaustufe.
             </p>
             <ul className="text-sm list-disc list-inside text-gray-700">
               <li>Plan bearbeiten: {event.modsMayEditPlan ? 'erlaubt' : 'nicht erlaubt'}</li>

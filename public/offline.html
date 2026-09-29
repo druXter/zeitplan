@@ -15,14 +15,75 @@
     p { color: #4b5563; line-height: 1.5; margin: 0 0 1.25rem; }
     button { background: #2563eb; color: #fff; border: 0; border-radius: .5rem; padding: .7rem 1.4rem; font-size: 1rem; font-weight: 700; cursor: pointer; }
     button:hover { background: #1d4ed8; }
+    #stand { max-width: 36rem; width: 100%; text-align: left; }
+    #stand h1 { text-align: left; }
+    .note { background: #fffbeb; border: 1px solid #fde68a; color: #78350f; border-radius: .375rem; padding: .5rem .75rem; font-size: .875rem; }
+    #stand ol { list-style: none; padding: 0; margin: 0 0 1.25rem; background: #fff; border-radius: .5rem; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+    #stand li { display: flex; gap: .75rem; padding: .75rem; border-top: 1px solid #e5e7eb; }
+    #stand li:first-child { border-top: 0; }
+    #stand li.now { background: #eff6ff; }
+    #stand .time { width: 5.5rem; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+    #stand .cancelled .time, #stand .cancelled .title { text-decoration: line-through; color: #6b7280; }
+    #stand .where { display: block; font-size: .875rem; color: #4b5563; }
   </style>
 </head>
 <body>
-  <main>
+  <main id="offline">
     <img class="icon" src="/icons/icon-192.png" alt="">
     <h1>Du bist offline</h1>
     <p>Zum Planen und Moderieren brauchst du eine Internetverbindung. Sobald du wieder online bist, geht es hier weiter – gespeicherte Abläufe bleiben erhalten.</p>
     <button type="button" onclick="location.reload()">Erneut versuchen</button>
   </main>
+  <main id="stand" hidden>
+    <h1 id="stand-title"></h1>
+    <p class="note" id="stand-note"></p>
+    <ol id="stand-items"></ol>
+    <button type="button" onclick="location.reload()">Erneut versuchen</button>
+  </main>
+  <script>
+    // Gästeansicht /<slug> (oder Tafel /<slug>/tafel) ohne Verbindung neu geladen: den letzten Stand zeigen, den
+    // die Seite selbst im Browser gemerkt hat (app/lib/guest/offline.ts, gleicher Schlüssel). Nur Daten, die Gäste
+    // ohnehin sehen - Team-Daten landen nie dort. Alles per textContent, nie als HTML.
+    (function () {
+      try {
+        var match = /^\/([a-z0-9-]+)(?:\/tafel)?\/?$/.exec(location.pathname)
+        var raw = match && localStorage.getItem('zeitplan-ablauf:' + match[1])
+        if (!raw) return
+        var stored = JSON.parse(raw)
+        var payload = stored.payload
+        var fmt = new Intl.DateTimeFormat('de-DE', { timeZone: payload.event.timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+        document.getElementById('stand-title').textContent = payload.event.title
+        document.getElementById('stand-note').textContent = 'Stand: ' + fmt.format(new Date(stored.savedAt)) + ', keine Verbindung'
+        var ahead = payload.items.filter(function (item) { return item.status !== 'past' })
+        var list = document.getElementById('stand-items')
+        ;(ahead.length ? ahead : payload.items).forEach(function (item) {
+          var li = document.createElement('li')
+          li.className = item.status
+          var time = document.createElement('span')
+          time.className = 'time'
+          time.textContent = (item.approximate && item.status !== 'cancelled' ? 'ca. ' : '') + fmt.format(new Date(item.status === 'cancelled' ? item.plannedStart : item.shownStart))
+          var text = document.createElement('span')
+          var title = document.createElement('span')
+          title.className = 'title'
+          title.textContent = item.title + (item.status === 'now' ? ' (jetzt)' : item.status === 'cancelled' ? ' (fällt aus)' : '')
+          text.appendChild(title)
+          if (item.location) {
+            var where = document.createElement('span')
+            where.className = 'where'
+            where.textContent = item.location
+            text.appendChild(where)
+          }
+          li.appendChild(time)
+          li.appendChild(text)
+          list.appendChild(li)
+        })
+        document.title = payload.event.title + ' (offline)'
+        document.getElementById('offline').hidden = true
+        document.getElementById('stand').hidden = false
+      } catch (e) {
+        // Kein oder kaputter Stand: die normale Offline-Seite bleibt.
+      }
+    })()
+  </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { PrismaClient, type EventStatus, type Role } from '@prisma/client'
+import { PrismaClient, type EventStatus, type GuestAccess, type ItemStatus, type Role } from '@prisma/client'
 import { expect, type APIResponse, type Page } from '@playwright/test'
 import { hashPassword } from '../../app/lib/password'
 import { BASE_URL } from '../../playwright.config'
@@ -130,14 +130,17 @@ export async function cookieOf(page: Page): Promise<string> {
 
 /** Event direkt in der Datenbank. date: Beginn des Eventtags (Standard: in 30 Tagen). */
 export async function createEventRecord(ownerId: string | null, options: {
-  slug?: string; title?: string; status?: EventStatus; date?: Date
+  slug?: string; title?: string; status?: EventStatus; date?: Date; access?: GuestAccess; seriesId?: string; description?: string
 } = {}) {
   return prisma.event.create({
     data: {
       slug: options.slug ?? uniqueSlug(),
       title: options.title ?? 'Testevent',
+      description: options.description,
       status: options.status ?? 'DRAFT',
       date: options.date ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      access: options.access,
+      seriesId: options.seriesId,
       ownerId
     }
   })
@@ -152,20 +155,31 @@ export async function createTrackRecord(eventId: string, options: { name?: strin
 
 /**
  * Programmpunkt direkt in der Datenbank. start: Ortszeit "14:00" am Tag des Events (Berlin, Tag als
- * Mitternacht UTC+2 im Sommer angenommen - die Tests legen Events im Juni an).
+ * Mitternacht UTC+2 im Sommer angenommen - die Tests legen Events im Juni an) oder ein absoluter Zeitpunkt.
  */
 export async function createItemRecord(event: { id: string; date: Date }, trackId: string, options: {
-  title: string; start: string; durationMin?: number; sortOrder: number; visibility?: 'PUBLIC' | 'TEAM' | 'SECRET'
+  title: string; start: string | Date; durationMin?: number; sortOrder: number; visibility?: 'PUBLIC' | 'TEAM' | 'SECRET'
   location?: string; description?: string; internalNote?: string; isAnchor?: boolean; secretViewers?: string[]
+  status?: ItemStatus; actualStart?: Date; actualEnd?: Date; cancelReason?: string
 }) {
-  const [hours, minutes] = options.start.split(':').map(Number)
+  let plannedStart: Date
+  if (options.start instanceof Date) {
+    plannedStart = options.start
+  } else {
+    const [hours, minutes] = options.start.split(':').map(Number)
+    plannedStart = new Date(event.date.getTime() + (hours * 60 + minutes) * 60_000)
+  }
   return prisma.item.create({
     data: {
       eventId: event.id,
       trackId,
       title: options.title,
       sortOrder: options.sortOrder,
-      plannedStart: new Date(event.date.getTime() + (hours * 60 + minutes) * 60_000),
+      plannedStart,
+      status: options.status,
+      actualStart: options.actualStart,
+      actualEnd: options.actualEnd,
+      cancelReason: options.cancelReason,
       plannedDurationMin: options.durationMin ?? 30,
       visibility: options.visibility ?? 'PUBLIC',
       location: options.location,

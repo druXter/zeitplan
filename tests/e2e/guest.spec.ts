@@ -1,3 +1,5 @@
+import { createServer } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import {
   BASE_URL, cookieOf, createAccount, createEventRecord, createItemRecord, createTrackRecord, login, prisma, SUMMER_DAY, uniqueSlug
@@ -420,4 +422,41 @@ test('Team-Ansicht: minutengenau, Konflikte mit Ankern, für freigegebene Modera
   await expect(kaffee).toContainText('16:30')
   await expect(kaffee).toContainText('bis 18:10')
   await expect(page.locator('li[data-item]', { hasText: 'Abendessen' })).toContainText('Anker')
+})
+
+test('Einbetten: Gästeansicht im iFrame einer fremden Website, Tafel und Anmeldung nicht', async ({ page }) => {
+  const { event } = await publishedWithOneItem('Eingebetteter Punkt')
+  // Eine fremde Website (z. B. die Hochzeits-Seite des Paares), die die Ansichten per iFrame einbindet: eigener
+  // Server auf einem anderen Port, also eine andere Herkunft. Echt lokal statt per page.route - Chrome lässt eine
+  // öffentliche Seite keine iFrames von 127.0.0.1 laden (Local Network Access), das würde den Test verfälschen.
+  const html = `<!doctype html><title>Unsere Hochzeit</title>
+    <iframe name="gast" src="${BASE_URL}/${event.slug}" width="400" height="600"></iframe>
+    <iframe name="tafel" src="${BASE_URL}/${event.slug}/tafel" width="400" height="300"></iframe>
+    <iframe name="admin" src="${BASE_URL}/login" width="400" height="300"></iframe>`
+  const server = createServer((_request, response) => response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end(html))
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  try {
+    await page.goto(`http://127.0.0.1:${(server.address() as AddressInfo).port}/`)
+
+    const guest = page.frameLocator('iframe[name="gast"]')
+    await expect(guest.getByText('Eingebetteter Punkt')).toBeVisible()
+    await expect(guest.getByRole('heading', { name: 'Hochzeit Sommer' })).toBeVisible()
+    // Impressum und Datenschutz sind selbst nicht einbettbar - im iFrame öffnen sie in einem neuen Tab.
+    await expect(guest.getByRole('link', { name: 'Impressum' })).toHaveAttribute('target', '_blank')
+
+    // Tafel und Anmeldung blockiert der Browser: Im Rahmen steht nichts von der App.
+    for (const name of ['tafel', 'admin']) {
+      const frame = page.frame({ name })!
+      await expect.poll(() => frame.url(), name).not.toBe('about:blank')
+      const text = await frame.evaluate(() => document.body?.innerText ?? '').catch(() => '')
+      expect(text, name).not.toContain('Eingebetteter Punkt')
+      expect(text, name).not.toContain('Passwort')
+    }
+  } finally {
+    server.close()
+  }
+
+  // Ohne iFrame bleiben die Fußzeilen-Links normale Links.
+  await page.goto(`/${event.slug}`)
+  await expect(page.getByRole('link', { name: 'Impressum' })).not.toHaveAttribute('target', '_blank')
 })

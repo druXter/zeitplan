@@ -1,9 +1,9 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import AccountNav from "./ui/account-nav";
 import PwaRegister from "./ui/pwa-register";
+import FooterLink from "./ui/footer-link";
 import { APP_NAME } from "./lib/app";
 import "./globals.css";
 
@@ -35,9 +35,9 @@ export default function RootLayout({
         </Suspense>
         <div className="grow">{children}</div>
         <footer className="print:hidden text-center text-xs text-gray-500 py-4">
-          <Link href="/impressum" className="hover:underline">Impressum</Link>
+          <FooterLink href="/impressum">Impressum</FooterLink>
           {" · "}
-          <Link href="/datenschutz" className="hover:underline">Datenschutz</Link>
+          <FooterLink href="/datenschutz">Datenschutz</FooterLink>
         </footer>
         <PwaRegister />
       </body>

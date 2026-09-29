@@ -203,7 +203,8 @@ Pro Event einstellbar:
   Hash, gültig bis Eventende + 1 Tag). So braucht niemand jedes Mal einen neuen Link.
 * Die **Anzeigetafel** hat bei geschütztem Zugang einen eigenen, per HMAC abgeleiteten Link (wie der Verwaltungslink in
   Seating), der sich neu erzeugen lässt – für den Fernseher im Saal, an dem sich niemand anmeldet.
-* Gästeansicht und Tafel: `noindex`, bei geschütztem Zugang `no-store`.
+* Gästeansicht und Tafel: `noindex`, bei geschütztem Zugang `no-store`. Die Gästeansicht ist per iFrame einbettbar
+  (siehe "Entschieden"), die Tafel nicht.
 
 ---
 
@@ -346,9 +347,13 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
 * Freigaben: Ein freigegebenes Konto (Moderator*in, auch ein Creator mit Freigabe) sieht das Event und steuert es
   später live; Event-Einstellungen, Löschen und Weiter-Freigeben bleiben bei Besitzer*in und Admin. Abweichung von
   Seating, wo eine Freigabe fast alles erlaubt – hier bestimmen die Schalter aus Abschnitt 7 den Rest. (Annahme)
-* Keine Seite ist einbettbar, auch Gästeansicht und Tafel nicht (`frame-ancestors 'none'`). Abweichung von Seating und
-  rsvp-app; bei Bedarf bekommt `/<slug>` eine eigene Header-Regel (siehe `next.config.ts`). Mit Zugang `CODE`/`RSVP`
-  käme das Gast-Cookie in einem fremden iFrame ohnehin nicht an. (Annahme)
+* **Einbetten** wie in Seating und rsvp-app: Gästeansicht und Reihen-Übersicht (`/<slug>`) sind per iFrame einbettbar
+  (`frame-ancestors *`, kein `X-Frame-Options`), z. B. in die Hochzeits-Website. Alles andere nicht – auch nicht Tafel,
+  Polling-Endpunkt, Verwaltung, Anmeldung, Impressum und Datenschutz. Die Gästeansicht löst keine Aktionen aus, Clickjacking
+  hat dort kein Ziel. Im iFrame öffnen Impressum und Datenschutz in einem neuen Tab, der Service Worker wird dort nicht
+  angemeldet. Nur bestimmte Websites zulassen: `*` in `next.config.ts` durch deren Origins ersetzen und neu bauen.
+  Offen für Phase 5: Mit Zugang `CODE`/`RSVP` braucht die Gast-Sitzung ein Cookie, das in einem fremden iFrame als
+  Drittanbieter-Cookie meist nicht ankommt – dort dann auf den Link verweisen.
 * Föderation (`ExternalIdentity`, `/api/suite/*`, Verknüpfen unter „Mein Konto“) kommt vollständig mit Phase 6;
   `suite-kit` ist schon Abhängigkeit (`sanitizeNextPath`). (Annahme)
 * Löschfrist, solange es keine Programmpunkte gibt: 18 Monate nach dem Eventtag plus 2 Tage (Feiern über Mitternacht).

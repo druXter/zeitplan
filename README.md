@@ -156,6 +156,10 @@ beendeten Events (Entwürfe und Archiv fehlen). Zuordnen lassen sich nur eigene 
   „nicht bestätigt“, „überzogen“, „unklar“ und „läuft noch?“, zurückgestellten Punkten und der Zeit, die Gäste gerade
   sehen. Lädt sich alle 30 Sekunden neu.
 * **QR-Code:** zur Gästeansicht, als SVG zum Drucken oder Herunterladen.
+* **Einbetten:** Die Gästeansicht (und die Reihen-Übersicht) lässt sich per iFrame in eine andere Website einbinden,
+  z. B. `<iframe src="https://zeitplan.deine-domain.de/<adresse>" width="100%" height="800"></iframe>`. Impressum und
+  Datenschutz öffnen dann in einem neuen Tab. Tafel und Verwaltung sind nicht einbettbar. Nur bestimmte Websites
+  zulassen: in `next.config.ts` `frame-ancestors *` durch deren Origins ersetzen und neu bauen.
 
 Die Daten für Gäste entstehen ausschließlich in `toGuestView` (Prognose-Kern); `app/lib/guest/store.ts` lädt dafür den
 Ablauf (ohne interne Notizen), speichert den gezeigten Beginn je Punkt für die Hysterese und baut daraus den
@@ -224,9 +228,10 @@ Admin-Bereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im Brow
 * **Berechtigungen** prüft jede Server Action selbst (`loadEventForUser` → `eventLevel`, dazu `canEditPlan`,
   `canAddRemoveItems`, `canManageEvent` und `canEditItem` in `app/lib/permissions.ts`), nie nur die Oberfläche. Server
   Actions prüfen zusätzlich den Origin (CSRF, Next.js-Standard).
-* **Header** (`next.config.ts`): `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS für alle Seiten. **Keine
-  Seite ist einbettbar** (`frame-ancestors 'none'`, `X-Frame-Options: DENY`) – anders als in Seating auch nicht die
-  Gästeansicht. Gästeansicht und Tafel sind per `<meta name="robots">` nicht indexiert, der Polling-Endpunkt per
+* **Header** (`next.config.ts`): `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS für alle Seiten. **Nur die
+  Gästeansicht bzw. Reihen-Übersicht `/<adresse>` ist einbettbar** (`frame-ancestors *`, wie in Seating); alle anderen
+  Seiten – auch Tafel, Polling-Endpunkt, Impressum und Datenschutz – nicht (`frame-ancestors 'none'`,
+  `X-Frame-Options: DENY`). Gästeansicht und Tafel sind per `<meta name="robots">` nicht indexiert, der Polling-Endpunkt per
   `X-Robots-Tag` und `no-store`. Login, Konto und Verwaltung zusätzlich `X-Robots-Tag: noindex` und `Cache-Control: no-store`;
   Reset-Links `Referrer-Policy: no-referrer`. Die Reihenfolge der Regeln ist wichtig (die spätere gewinnt, ein Header
   lässt sich nur überschreiben, nicht entfernen) und in der Datei kommentiert.
@@ -290,8 +295,8 @@ und dass die Vorlage „Hochzeit“ in der Nacht der Zeitumstellung ihre Uhrzeit
 
 Die E2E-Tests löschen und erzeugen bei jedem Lauf ihre eigene Datenbank `prisma/test.db` (nie die Entwicklungs- oder
 Produktivdaten), bauen mit `next build` und starten `next start` – sie prüfen also das, was auch in Produktion läuft.
-Übernommen aus Seating und geprüft werden u. a.: Sicherheits-Header je Pfadgruppe (auch für die künftigen Pfade der
-Gästeansicht und Tafel), Session-Cookie und Hash in der Datenbank, Session-Fixation, Open Redirect, gleiche Meldung und
+Übernommen aus Seating und geprüft werden u. a.: Sicherheits-Header je Pfadgruppe (Gästeansicht einbettbar, Tafel,
+Polling-Endpunkt und Dateien der App nicht), Session-Cookie und Hash in der Datenbank, Session-Fixation, Open Redirect, gleiche Meldung und
 Antwortzeit bei unbekannten Adressen, Sperre beim 11. Versuch pro E-Mail und 21. pro IP, erfundene
 `X-Forwarded-For`-Einträge, 30 gleichzeitige Versuche, Passwortwechsel, Einladung per Link und per Mail (einmalig, GET
 verbraucht nichts), gefälschte Formular-POSTs ohne Berechtigung und mit fremdem Origin – jeweils **mit
@@ -309,7 +314,9 @@ ids davon im HTML, in den RSC-Daten oder im JSON von Gästeansicht, Tafel und En
 Zugriff sie aufruft) – mit Positivkontrolle in der Team-Ansicht; Entwurf/Archiv 404 und Vorschau; geschützter Zugang
 ohne Inhalt, auch per Endpunkt; Prognose mit „ca.“ und gespeichertem gezeigtem Beginn; ETag/304 und neuer Inhalt nach
 Änderung in der Datenbank; Aktualisierung der offenen Seite, Hinweis ohne Verbindung und Offline-Seite mit gemerktem
-Stand; Tafel ohne Scrollen bei 1920×1080 und 1280×720; Reihen-Übersicht; QR-Code; Team-Ansicht mit Konflikten.
+Stand; Tafel ohne Scrollen bei 1920×1080 und 1280×720; Reihen-Übersicht; QR-Code; Team-Ansicht mit Konflikten;
+Einbetten (eine fremde Website auf eigenem Port bindet die Gästeansicht per iFrame ein, Tafel und Anmeldung blockiert
+der Browser).
 Installierbare App: Manifest, Icons, `sw.js`-Header, Worker speichert nur die Offline-Seite.
 
 Mails fängt ein Test-SMTP ab (`tests/e2e/mail-server.ts`, Port 2527, Pakete `smtp-server` und `mailparser`, nur für die

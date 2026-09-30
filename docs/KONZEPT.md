@@ -543,4 +543,5 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
 * Lange Wörter (Links in Beschreibungen und Notizen) brechen um (`overflow-wrap: break-word` auf `body`), damit keine
   Seite am Handy seitlich scrollt; automatisch geprüft bei 360 px. Der Test auf echtem Handy und Fernseher bleibt beim
   Betreiber (Checkliste im README unter „Vor dem Einsatz“). (Annahme)
-* Eintrag im suite-kit-README: Das Repo wird hier nicht geändert (nur lesen); der Text ist als Vorschlag übergeben.
+* Eintrag im suite-kit-README: Das Repo wird hier nicht geändert (nur lesen); der Text war als Vorschlag übergeben und
+  steht inzwischen dort (Tool-Liste und Abschnitt zum Vertrag rsvp-app ↔ Zeitplan).

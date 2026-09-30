@@ -19,7 +19,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 4 | Live-Steuerung | ✅ umgesetzt |
 | 5 | Zugang per Code und Konto, Gast-Sitzungen, Tafel-Link | ✅ umgesetzt |
 | 6 | Konto-Föderation über `suite-kit`: mit Konten anderer Tools anmelden, für andere Tools bestätigen | ✅ umgesetzt |
-| 7 | Anbindung an rsvp-app (Zugang `RSVP`): 7a Anbindungen in rsvp-app verallgemeinern, 7b Link, Gast-Sitzung, Webhook | 7a ✅, 7b ✅ auf Zeitplan-Seite (rsvp-app: Button, Weiterleitung, Webhook offen) |
+| 7 | Anbindung an rsvp-app (Zugang `RSVP`): 7a Anbindungen in rsvp-app verallgemeinern, 7b Link, Gast-Sitzung, Webhook | ✅ umgesetzt (beide Seiten; rsvp-app ab Commit `c6fa5d3`) |
 | 8 | Abschluss: README, Lasttest (200 Gäste), Handy-Layout-Test, Vorschlag für das suite-kit-README | ✅ umgesetzt – Test auf echtem Handy und Fernseher steht noch aus (Checkliste unter „Vor dem Einsatz“) |
 
 **Im Überblick:** Planende legen Events an (leer oder mit der Vorlage „Hochzeit“), planen Programmpunkte in Spuren mit
@@ -28,8 +28,7 @@ Moderator\*innen am Handy Beginn, Ende, Verspätungen, Tausch, Ausfall und Einsc
 zu erwartenden Ablauf. Gäste sehen ihn in der Gästeansicht (auch eingebettet in die Hochzeits-Website und offline mit
 dem letzten Stand), vor Ort auf der Anzeigetafel; das Team sieht alles minutengenau in der Team-Ansicht. Events sind
 öffentlich oder geschützt (Zugangscode, Konto, Zusage in rsvp-app). Optional: Anmeldung mit Konten anderer Tools der
-Suite (Föderation) und die Anbindung an rsvp-app – deren Teil in rsvp-app (Button „Zeitplan“, Weiterleitung, Webhook)
-ist dort noch umzusetzen.
+Suite (Föderation) und die Anbindung an rsvp-app (dort Button „Zeitplan“, Weiterleitung und Webhook).
 
 ## Konten
 
@@ -255,9 +254,11 @@ Eigener Vertrag nach dem Muster von Seating (`app/lib/rsvp/token.ts`), mit **eig
   keinen neuen Zugang beendet. Eine Zusage legt nichts an. Ungültige Nachrichten: `401`, nicht verknüpft: `200` ohne
   Wirkung.
 * Ändern sich Zugang oder verknüpfter Termin, enden alle Gast-Sitzungen des Events.
-* In rsvp-app nötig (Phase 7b dort): Tool-Typ `timeline` (Adresse `TIMELINE_BASE_URL`, Secret `TIMELINE_SECRET`,
-  Link-Form `<Zeitplan>/rsvp/<id>`, Webhook `/api/rsvp-webhook`), Feld „Zeitplan-Link“ im Termin, Button
-  „Zeitplan“ in der Gästeansicht mit Weiterleitung und der Webhook `rsvp-change`.
+* In rsvp-app (dort Phase 7b, `app/lib/timeline.ts`): Tool-Typ `timeline` (Adresse `TIMELINE_BASE_URL`, Secret
+  `TIMELINE_SECRET`, Link-Form `<Zeitplan>/rsvp/<id>`, Webhook `/api/rsvp-webhook`), Feld „Zeitplan-Link“ im Termin,
+  Button „Zeitplan“ auf Gästeseite, Erfolgsseite und in der Bestätigungsmail (Weiterleitung
+  `/api/timeline-link/<Termin-id>`, Link 10 Minuten gültig) und der Webhook `rsvp-change` bei jeder Änderung einer
+  Zusage.
 
 Regeln und Tokens stehen in `app/lib/guest/access.ts` (Sichtbarkeit, rein) und `app/lib/guest/tokens.ts` (Code und
 Tafel-Link), Sitzungen in `app/lib/guest/session.ts`, die Code-Eingabe in `app/[slug]/actions.ts`.

@@ -76,7 +76,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
         {search.status === '1' && <Notice tone="success">Status geändert.</Notice>}
         {search.shared === '1' && <Notice tone="success">Freigabe hinzugefügt.</Notice>}
         {search.unshared === '1' && <Notice tone="success">Freigabe entfernt.</Notice>}
-        {search.shareError === 'notfound' && <Notice tone="error">Zu dieser Adresse gibt es kein Konto. Lade die Person zuerst unter „Nutzer*innen“ ein.</Notice>}
+        {search.shareError === 'notfound' && <Notice tone="error">Zu dieser Adresse gibt es kein Konto. Lade die Person zuerst unter „Konten“ ein.</Notice>}
         {search.shareError === 'owner' && <Notice tone="error">Diesem Konto gehört das Event bereits.</Notice>}
         {search.display === '1' && <Notice tone="success">Neuer Tafel-Link erzeugt. Der bisherige funktioniert nicht mehr.</Notice>}
 

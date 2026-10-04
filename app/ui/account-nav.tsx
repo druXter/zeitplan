@@ -23,7 +23,7 @@ export default async function AccountNav() {
           <Link href="/admin" className="hover:text-gray-900">Verwaltung</Link>
           <Link href="/admin/events" className="hover:text-gray-900">Events</Link>
           {canCreateEvents(user) && <Link href="/admin/series" className="hover:text-gray-900">Reihen</Link>}
-          {canInviteUsers(user) && <Link href="/admin/users" className="hover:text-gray-900">Nutzer*innen</Link>}
+          {canInviteUsers(user) && <Link href="/admin/users" className="hover:text-gray-900">Konten</Link>}
           <Link href="/account" className="hover:text-gray-900 truncate max-w-48">{user.name || user.email}</Link>
           <form action={logoutUser}>
             <button type="submit" className="text-gray-600 hover:text-gray-900">Abmelden</button>

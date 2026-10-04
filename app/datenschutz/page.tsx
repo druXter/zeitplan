@@ -236,7 +236,7 @@ export default function DatenschutzPage() {
           <p className="mt-2">
             Ein Konto wird automatisch gelöscht, wenn du dich <strong>2 Jahre</strong> lang nicht mehr angemeldet
             hast und dir keine Veranstaltungen mehr gehören - inklusive Sitzungen, Verknüpfungen zu anderen Tools und
-            Freigaben. Administrator-Konten sind
+            Freigaben. Konten mit Admin-Rolle sind
             von dieser automatischen Löschung ausgenommen. Unabhängig davon kannst du jederzeit unter der oben genannten
             Adresse um frühere Löschung deines Kontos bitten.
           </p>

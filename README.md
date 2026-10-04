@@ -55,11 +55,16 @@ node create-user.js deine-email@domain.de ADMIN --invite                     # s
 docker compose run --rm zeitplan node create-user.js deine-email@domain.de ADMIN --invite
 ```
 
-Weitere Konten lädt man unter `/admin/users` ein: Die Person bekommt einen Einmal-Link (7 Tage gültig) und legt ihr
+Weitere Konten lädt man unter „Konten“ (`/admin/users`) ein: Die Person bekommt einen Einmal-Link (7 Tage gültig) und legt ihr
 Passwort **selbst** fest. Ohne `SMTP_HOST` zeigt die Seite den Link dem einladenden Konto einmalig zum Weitergeben an. Nur
-Admins vergeben die Rollen CREATOR/ADMIN; Creator laden ausschließlich Moderator\*innen ein. Admin-Konten lassen sich in
+Admins vergeben die Rollen CREATOR/ADMIN; Creator laden ausschließlich Moderator\*innen ein. Konten mit Admin-Rolle lassen sich in
 der Oberfläche bewusst weder ändern noch löschen (Schutz vor Aussperren) und haben keinen Passwort-Reset per Mail – das
 geht nur per `create-user.js`. Wird ein Konto gelöscht, gehen seine Events an den löschenden Admin über.
+
+**Begriffe (suite-weit gleich):** Alle Konten in diesem Tool sind **Verwaltungskonten** (Rolle Admin, Creator oder
+Moderator, Code: `User`); Gäste brauchen kein Konto. **Teilnehmendenkonten** (für Gäste, ohne Verwaltungsrechte) gibt es
+heute nur in rsvp-app. **Admin** ist nur der Name einer Rolle, nie eine Kontoart („Konto mit Admin-Rolle“). Die
+Kontenliste heißt in der Oberfläche „Konten“ (Pfad weiterhin `/admin/users`).
 
 ### Anmelden mit einem Konto aus einem anderen Tool (Föderation)
 
@@ -334,7 +339,7 @@ Mitternacht und die Zeitumstellung.
 Wie Seating ist Zeitplan eine Progressive Web App: Im Browser (Chrome/Edge/Android: „Installieren“ bzw. „Als App
 installieren“ auf der Start- und der Verwaltungsseite; iPhone/iPad: Safari → Teilen → „Zum Home-Bildschirm“) lässt es
 sich mit eigenem Symbol und ohne Browserleiste starten. Gedacht für Planung und Moderation – die App startet im
-Admin-Bereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im Browser.
+Verwaltungsbereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im Browser.
 
 * **Manifest** (`app/manifest.ts`): Name, Farben, Icons (auch maskierbar für Android), Shortcuts zu „Events“ und
   „Neues Event“.
@@ -429,7 +434,7 @@ Ein externer Scheduler (z. B. Uptime Kuma) ruft **einmal täglich** auf:
 
 Ein leeres oder fehlendes `CRON_SECRET` lässt niemanden durch. Gelöscht werden (suite-weit gleiche Fristen): Events
 18 Monate nach ihrem Ende (samt Ablauf, Verlauf, Freigaben und Gast-Sitzungen; als Ende gilt der Eventtag plus zwei
-Tage Spielraum für Feiern über Mitternacht), Konten nach 2 Jahren ohne Anmeldung (Admin-Konten und Konten, denen noch Events gehören, ausgenommen),
+Tage Spielraum für Feiern über Mitternacht), Konten nach 2 Jahren ohne Anmeldung (Konten mit Admin-Rolle und Konten, denen noch Events gehören, ausgenommen),
 abgelaufene Sitzungen und Gast-Sitzungen, Einladungs-/Reset-Links und Drossel-Zähler.
 
 ## Setup

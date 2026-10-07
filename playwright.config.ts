@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import { SMTP_PORT } from './tests/e2e/mail-server'
-import { TEST_SUITE_IDPS, TEST_SUITE_TRUSTED_APPS, TEST_ZEITPLAN_SIGNING_KEY } from './tests/e2e/suite-server'
+import { SUITE_TOOLS, TEST_SUITE_IDPS, TEST_SUITE_TRUSTED_APPS, TEST_ZEITPLAN_SIGNING_KEY } from './tests/e2e/suite-server'
 import { TEST_RSVP_TIMELINE_SECRET } from './tests/e2e/rsvp-server'
 
 // E2E-Tests gegen eine echte, frisch gebaute Instanz (next build + next start) mit eigener
@@ -11,6 +11,10 @@ import { TEST_RSVP_TIMELINE_SECRET } from './tests/e2e/rsvp-server'
 // sonst dieselben Cookies sehen (siehe suite-kit README, Stolpersteine).
 const PORT = 3801
 export const BASE_URL = `http://127.0.0.1:${PORT}`
+// Zweite Instanz mit demselben Build, derselben Datenbank und derselben BASE_URL, aber mit
+// SUITE_LOGIN_REDIRECT (bevorzugter Anbieter Tool A): Ihre Login-Seite leitet direkt weiter, der
+// Rücksprung landet über BASE_URL bei der ersten Instanz (tests/e2e/login-redirect.spec.ts).
+export const REDIRECT_PORT = 3802
 export const TEST_CRON_SECRET = 'e2e-cron-secret'
 // Secrets für Zugangscode und Tafel-Link (app/lib/guest/tokens.ts) - auch im Testprozess gesetzt, damit
 // die Tests Codes direkt in der Datenbank festlegen und Tafel-Links ableiten können.
@@ -23,6 +27,33 @@ process.env.DATABASE_URL = 'file:./test.db'
 process.env.BASE_URL = BASE_URL
 process.env.ACCESS_CODE_SECRET = TEST_ACCESS_CODE_SECRET
 process.env.DISPLAY_LINK_SECRET = TEST_DISPLAY_LINK_SECRET
+
+const SERVER_ENV: Record<string, string> = {
+  DATABASE_URL: 'file:./test.db',
+  BASE_URL,
+  // Ein Proxy: Die Tests spielen ihn selbst und setzen X-Forwarded-For, um verschiedene
+  // Besucher-IPs zu simulieren.
+  TRUST_PROXY_HOPS: '1',
+  CRON_SECRET: TEST_CRON_SECRET,
+  ACCESS_CODE_SECRET: TEST_ACCESS_CODE_SECRET,
+  DISPLAY_LINK_SECRET: TEST_DISPLAY_LINK_SECRET,
+  // Konto-Föderation (Phase 6): zwei andere Tools aus tests/e2e/suite-server.ts - Zeitplan nimmt
+  // Anmeldungen von beiden an und stellt selbst welche für Tool A aus.
+  SUITE_IDPS: TEST_SUITE_IDPS,
+  SUITE_TRUSTED_APPS: TEST_SUITE_TRUSTED_APPS,
+  SUITE_SIGNING_KEY: TEST_ZEITPLAN_SIGNING_KEY,
+  SUITE_APP_NAME: 'Zeitplan Test',
+  // Anbindung an rsvp-app (Phase 7b): Test-Doppel aus tests/e2e/rsvp-server.ts.
+  RSVP_TIMELINE_SECRET: TEST_RSVP_TIMELINE_SECRET,
+  // Test-SMTP aus tests/e2e/mail-server.ts (in global-setup gestartet). Empfänger @nomail.test
+  // lehnt er ab - dann greift der angezeigte Einladungslink.
+  SMTP_HOST: '127.0.0.1',
+  SMTP_PORT: String(SMTP_PORT),
+  SMTP_USER: '',
+  SMTP_PASS: '',
+  SMTP_FROM: 'Zeitplan Test <zeitplan@example.test>',
+  TZ: 'Europe/Berlin'
+}
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -37,7 +68,7 @@ export default defineConfig({
     ...devices['Desktop Chrome'],
     locale: 'de-DE'
   },
-  webServer: {
+  webServer: [{
     // Datenbank bei jedem Lauf frisch anlegen (nur die eigene Testdatei löschen - bewusst kein
     // `prisma db push --force-reset`, das bei falsch gesetzter DATABASE_URL eine fremde
     // Datenbank leeren würde), dann wie in Produktion bauen und starten.
@@ -47,31 +78,15 @@ export default defineConfig({
     timeout: 240_000,
     stdout: 'ignore',
     stderr: 'pipe',
-    env: {
-      DATABASE_URL: 'file:./test.db',
-      BASE_URL,
-      // Ein Proxy: Die Tests spielen ihn selbst und setzen X-Forwarded-For, um verschiedene
-      // Besucher-IPs zu simulieren.
-      TRUST_PROXY_HOPS: '1',
-      CRON_SECRET: TEST_CRON_SECRET,
-      ACCESS_CODE_SECRET: TEST_ACCESS_CODE_SECRET,
-      DISPLAY_LINK_SECRET: TEST_DISPLAY_LINK_SECRET,
-      // Konto-Föderation (Phase 6): zwei andere Tools aus tests/e2e/suite-server.ts - Zeitplan nimmt
-      // Anmeldungen von beiden an und stellt selbst welche für Tool A aus.
-      SUITE_IDPS: TEST_SUITE_IDPS,
-      SUITE_TRUSTED_APPS: TEST_SUITE_TRUSTED_APPS,
-      SUITE_SIGNING_KEY: TEST_ZEITPLAN_SIGNING_KEY,
-      SUITE_APP_NAME: 'Zeitplan Test',
-      // Anbindung an rsvp-app (Phase 7b): Test-Doppel aus tests/e2e/rsvp-server.ts.
-      RSVP_TIMELINE_SECRET: TEST_RSVP_TIMELINE_SECRET,
-      // Test-SMTP aus tests/e2e/mail-server.ts (in global-setup gestartet). Empfänger @nomail.test
-      // lehnt er ab - dann greift der angezeigte Einladungslink.
-      SMTP_HOST: '127.0.0.1',
-      SMTP_PORT: String(SMTP_PORT),
-      SMTP_USER: '',
-      SMTP_PASS: '',
-      SMTP_FROM: 'Zeitplan Test <zeitplan@example.test>',
-      TZ: 'Europe/Berlin'
-    }
-  }
+    env: SERVER_ENV
+  }, {
+    // Startet nach der ersten Instanz (Playwright richtet die Server nacheinander ein) und nutzt deren Build.
+    command: `npx next start -H 127.0.0.1 -p ${REDIRECT_PORT}`,
+    url: `http://127.0.0.1:${REDIRECT_PORT}/impressum`,
+    reuseExistingServer: false,
+    timeout: 60_000,
+    stdout: 'ignore',
+    stderr: 'pipe',
+    env: { ...SERVER_ENV, SUITE_LOGIN_REDIRECT: SUITE_TOOLS.a.origin }
+  }]
 })

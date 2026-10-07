@@ -78,6 +78,10 @@ Login-Bestätigungen, kein gemeinsames Geheimnis). Zeitplan kann beides sein:
   Konto des anderen Tools herein (z. B. für Events mit Zugang „nur mit Konto“) – als Creator, der eigene Events anlegen
   darf; Freigaben für bestehende Events braucht es trotzdem. Die Rolle beim ersten Login: Admin nur mit
   `mapAdminRole`, sonst Creator; Moderator\*in bleibt Moderator\*in. Danach vergeben nur lokale Admins Rollen.
+* **Bevorzugter Anbieter** (`SUITE_LOGIN_REDIRECT`, optional): ein Origin aus `SUITE_IDPS`. Die Login-Seite leitet
+  ohne Sitzung direkt dorthin weiter, statt erst das Formular zu zeigen. Nach einem Fehlschlag, beim Zurücksetzen des
+  Passworts und wenn dieses Tool selbst als Anbieter gefragt ist, erscheint wie gewohnt das Formular; der lokale Login
+  bleibt über `/login?local=1` erreichbar.
 * **Anbieter** (`SUITE_SIGNING_KEY`, `SUITE_TRUSTED_APPS`): Andere Tools können Zeitplan-Konten für ihren Login nutzen.
   Bestätigt werden nur Konten mit eigenem Passwort (keine Ketten), nur für die eingetragenen Tools.
 
@@ -625,7 +629,7 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | `ACCESS_CODE_SECRET` | Schlüssel für Zugangscodes (HMAC), mindestens 32 Zeichen; leer = kein Zugang per Code |
 | `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events; der vorherige hält alte Links beim Wechsel gültig |
 | `RSVP_TIMELINE_SECRET` | optional: eigenes Secret der Anbindung an rsvp-app (dort `TIMELINE_SECRET`), mindestens 32 Zeichen; leer = kein Zugang „nur mit Zusage“ |
-| `SUITE_IDPS`, `SUITE_SIGNING_KEY`, `SUITE_SIGNING_KEY_PREVIOUS`, `SUITE_TRUSTED_APPS`, `SUITE_APP_NAME` | optional: Konto-Föderation (siehe „Anmelden mit einem Konto aus einem anderen Tool“) |
+| `SUITE_IDPS`, `SUITE_SIGNING_KEY`, `SUITE_SIGNING_KEY_PREVIOUS`, `SUITE_TRUSTED_APPS`, `SUITE_APP_NAME`, `SUITE_LOGIN_REDIRECT` | optional: Konto-Föderation (siehe „Anmelden mit einem Konto aus einem anderen Tool“) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mailversand für Einladungen und Passwort-Reset (optional) |
 | `IMPRESSUM_*` | Angaben für Impressum und Datenschutzerklärung |
 

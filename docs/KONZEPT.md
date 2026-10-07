@@ -322,7 +322,8 @@ Anbindungen zuletzt. Jede Phase ist erst fertig, wenn ihre **Definition of Done*
 | 7b | Zugang `RSVP`: Link-Token, Gast-Sitzung, Webhook bei Absage; in rsvp-app Button, Weiterleitung, Webhook | E2E gegen Test-Doppel wie in Seating (Signatur, `aud`, `exp`, Absage beendet Sitzung) |
 | 8 | Abschluss: README, Eintrag im suite-kit-README, Test auf echtem Handy und Fernseher, Lasttest (200 Gäste pollen) | README beschreibt alle Funktionen und Grenzen (SECRET vs. Betreiber) |
 
-Später, nicht für die Hochzeit nötig: kürzbare Punkte (Mindestdauer), SSE, Push-Benachrichtigungen.
+Später, nicht für die Hochzeit nötig: kürzbare Punkte (Mindestdauer), SSE, Push-Benachrichtigungen. Weiter verfolgt als
+Ideen L11–L13 in `suite-kit/docs/IDEEN.md`.
 
 ## 12. Offene Entscheidungen
 

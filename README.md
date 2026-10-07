@@ -423,8 +423,8 @@ Was das Tool bewusst nicht kann oder wo es an Grenzen stößt – vor dem Einsat
   Sekunden.
 * **Zeitzone:** vorerst immer Europe/Berlin. Punkte liegen höchstens einen Tag vor und drei Tage nach dem Eventtag,
   Dauer höchstens 24 Stunden – längere Abläufe sind mehrere Events in einer Reihe.
-* **Nicht umgesetzt** (siehe Konzept „Später“): kürzbare Punkte mit Mindestdauer, Echtzeit per SSE,
-  Push-Benachrichtigungen, Mails an Gäste.
+* **Nicht umgesetzt** (siehe Konzept „Später“, als Ideen L11–L13 in `suite-kit/docs/IDEEN.md`): kürzbare Punkte mit
+  Mindestdauer, Echtzeit per SSE, Push-Benachrichtigungen, Mails an Gäste.
 
 ## Automatische Löschung
 

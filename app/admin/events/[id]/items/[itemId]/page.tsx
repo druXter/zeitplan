@@ -26,10 +26,10 @@ export default async function EditItemPage({ params }: { params: Promise<{ id: s
   const { options, minStart, maxStart } = await itemFormOptions(event, user, tracks, items, item.id)
 
   return (
-    <main className="bg-gray-50 py-6 px-4">
-      <div className="max-w-2xl mx-auto space-y-4 text-gray-900">
-        <div className="bg-white p-6 rounded-lg shadow space-y-4">
-          <p className="text-sm"><Link href={`/admin/events/${event.id}/plan?track=${item.trackId}#item-${item.id}`} className="text-blue-700 hover:underline">Zurück zum Ablauf</Link></p>
+    <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
+      <div className="max-w-2xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-4">
+          <p className="text-sm"><Link href={`/admin/events/${event.id}/plan?track=${item.trackId}#item-${item.id}`} className="text-blue-700 dark:text-blue-300 hover:underline">Zurück zum Ablauf</Link></p>
           <h1 className="text-2xl font-bold">Punkt bearbeiten</h1>
           <ItemForm
             eventId={event.id}
@@ -47,13 +47,13 @@ export default async function EditItemPage({ params }: { params: Promise<{ id: s
           />
         </div>
         {canAddRemoveItems(event.level, event) && (
-          <div className="bg-white p-4 rounded-lg shadow space-y-2">
+          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow space-y-2">
             <h2 className="font-bold">Punkt löschen</h2>
-            <p className="text-xs text-gray-600">Punkte, die auf diesen warten, beginnen danach ohne ihn.</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Punkte, die auf diesen warten, beginnen danach ohne ihn.</p>
             <ConfirmForm action={deleteItem} message={`Punkt „${item.title}“ löschen?`}>
               <input type="hidden" name="eventId" value={event.id} />
               <input type="hidden" name="itemId" value={item.id} />
-              <button type="submit" className="text-sm text-red-700 hover:underline">Punkt löschen</button>
+              <button type="submit" className="text-sm text-red-700 dark:text-red-300 hover:underline">Punkt löschen</button>
             </ConfirmForm>
           </div>
         )}

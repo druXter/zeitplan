@@ -17,16 +17,16 @@ export default async function AccountNav() {
   const user = await getCurrentUser()
 
   return (
-    <nav aria-label="Konto" className="print:hidden max-w-4xl mx-auto w-full flex flex-wrap items-center justify-end gap-x-4 gap-y-1 px-4 py-3 text-sm text-gray-600">
+    <nav aria-label="Konto" className="print:hidden max-w-4xl mx-auto w-full flex flex-wrap items-center justify-end gap-x-4 gap-y-1 px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
       {user ? (
         <>
-          <Link href="/admin" className="hover:text-gray-900">Verwaltung</Link>
-          <Link href="/admin/events" className="hover:text-gray-900">Events</Link>
-          {canCreateEvents(user) && <Link href="/admin/series" className="hover:text-gray-900">Reihen</Link>}
-          {canInviteUsers(user) && <Link href="/admin/users" className="hover:text-gray-900">Konten</Link>}
-          <Link href="/account" className="hover:text-gray-900 truncate max-w-48">{user.name || user.email}</Link>
+          <Link href="/admin" className="hover:text-gray-900 dark:hover:text-gray-100">Verwaltung</Link>
+          <Link href="/admin/events" className="hover:text-gray-900 dark:hover:text-gray-100">Events</Link>
+          {canCreateEvents(user) && <Link href="/admin/series" className="hover:text-gray-900 dark:hover:text-gray-100">Reihen</Link>}
+          {canInviteUsers(user) && <Link href="/admin/users" className="hover:text-gray-900 dark:hover:text-gray-100">Konten</Link>}
+          <Link href="/account" className="hover:text-gray-900 dark:hover:text-gray-100 truncate max-w-48">{user.name || user.email}</Link>
           <form action={logoutUser}>
-            <button type="submit" className="text-gray-600 hover:text-gray-900">Abmelden</button>
+            <button type="submit" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">Abmelden</button>
           </form>
         </>
       ) : (

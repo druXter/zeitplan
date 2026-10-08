@@ -23,7 +23,7 @@ export function Feedback({ state }: { state: FormState }) {
   return state.message ? <Notice tone="success">{state.message}</Notice> : null
 }
 
-export const input = 'w-full border border-gray-300 p-2 rounded'
+export const input = 'w-full border border-gray-300 dark:border-gray-600 p-2 rounded'
 export const labelClass = 'block text-sm font-medium mb-1'
 
 export type EventFormValues = { title: string; slug: string; date: string; description: string }
@@ -49,7 +49,7 @@ function TitleAndSlug({ initialTitle, initialSlug, baseUrl, required = true }: {
       <div>
         <label htmlFor="event-slug" className={labelClass}>Adresse</label>
         <div className="flex items-center gap-1">
-          <span className="text-sm text-gray-600 whitespace-nowrap">{baseUrl}/</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{baseUrl}/</span>
           <input
             id="event-slug" name="slug" required maxLength={SLUG_MAX_LENGTH} value={slug} className={input}
             pattern="[a-z0-9]+(-[a-z0-9]+)*" aria-describedby="event-slug-hint"
@@ -59,7 +59,7 @@ function TitleAndSlug({ initialTitle, initialSlug, baseUrl, required = true }: {
             }}
           />
         </div>
-        <p id="event-slug-hint" className="text-xs text-gray-600 mt-1">
+        <p id="event-slug-hint" className="text-xs text-gray-600 dark:text-gray-400 mt-1">
           Kleinbuchstaben, Ziffern und Bindestriche. Ändert sich die Adresse später, funktionieren bereits verteilte Links
           und QR-Codes nicht mehr.
         </p>
@@ -73,7 +73,7 @@ function EventDate({ value, required = true, hint = 'Der Tag, an dem der Ablauf 
     <div>
       <label htmlFor="event-date" className={labelClass}>Datum</label>
       <input id="event-date" name="date" type="date" required={required} defaultValue={value} className={input} />
-      <p className="text-xs text-gray-600 mt-1">{hint}</p>
+      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{hint}</p>
     </div>
   )
 }
@@ -101,7 +101,7 @@ export function CreateEventForm({ baseUrl }: { baseUrl: string }) {
         <input type="checkbox" name="template" value="wedding" className="mt-1" />
         <span>
           Mit der Vorlage „Hochzeit“ beginnen
-          <span className="block text-xs text-gray-600">
+          <span className="block text-xs text-gray-600 dark:text-gray-400">
             Ein typischer Ablauf mit Trauung, Empfang, Abendessen (Anker), Party, einer Spur fürs Brautpaar und einer fürs
             Team – alles lässt sich danach ändern oder löschen.
           </span>
@@ -151,7 +151,7 @@ export function EventSettingsForm({ eventId, values, baseUrl, series, seriesId }
           <option value="">keine</option>
           {series.map(entry => <option key={entry.id} value={entry.id}>{entry.title}</option>)}
         </select>
-        <p className="text-xs text-gray-600 mt-1">Mehrere Events (z. B. Polterabend, Hochzeit, Brunch) mit gemeinsamer Übersichtsseite. Reihen legst du unter „Reihen“ an.</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Mehrere Events (z. B. Polterabend, Hochzeit, Brunch) mit gemeinsamer Übersichtsseite. Reihen legst du unter „Reihen“ an.</p>
       </div>
       <SubmitButton disabled={pending}>Einstellungen speichern</SubmitButton>
     </form>
@@ -165,9 +165,9 @@ function MinutesField({ name, label, value, hint }: { name: keyof typeof OPTION_
       <label htmlFor={`option-${name}`} className={labelClass}>{label}</label>
       <div className="flex items-center gap-2">
         <input id={`option-${name}`} name={name} type="number" inputMode="numeric" min={bound.min} max={bound.max} step={1} required defaultValue={value} className={`${input} max-w-28`} />
-        <span className="text-sm text-gray-600">Min.</span>
+        <span className="text-sm text-gray-600 dark:text-gray-400">Min.</span>
       </div>
-      <p className="text-xs text-gray-600 mt-1">{hint}</p>
+      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{hint}</p>
     </div>
   )
 }
@@ -176,7 +176,7 @@ function Toggle({ name, label, checked, hint }: { name: string; label: string; c
   return (
     <label className="flex items-start gap-2 text-sm">
       <input type="checkbox" name={name} defaultChecked={checked} className="mt-1" />
-      <span>{label}<span className="block text-xs text-gray-600">{hint}</span></span>
+      <span>{label}<span className="block text-xs text-gray-600 dark:text-gray-400">{hint}</span></span>
     </label>
   )
 }
@@ -244,14 +244,14 @@ export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConf
         {ACCESS_OPTIONS.map(option => {
           const unavailable = option.value === 'RSVP' && !rsvp.configured && access !== 'RSVP'
           return (
-            <label key={option.value} className={`flex items-start gap-2 text-sm ${unavailable ? 'text-gray-500' : ''}`}>
+            <label key={option.value} className={`flex items-start gap-2 text-sm ${unavailable ? 'text-gray-500 dark:text-gray-400' : ''}`}>
               <input
                 type="radio" name="access" value={option.value} checked={selected === option.value} disabled={unavailable}
                 onChange={() => setSelected(option.value)} className="mt-1"
               />
               <span>
                 {option.label}
-                <span className="block text-xs text-gray-600">
+                <span className="block text-xs text-gray-600 dark:text-gray-400">
                   {unavailable ? 'Erst verfügbar, wenn auf dem Server RSVP_TIMELINE_SECRET eingerichtet ist (siehe README).' : option.hint}
                 </span>
               </span>
@@ -269,7 +269,7 @@ export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConf
             />
           </div>
           <CopyableField label="Zeitplan-Link – in rsvp-app beim Termin eintragen" value={rsvp.timelineLink} />
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-gray-600 dark:text-gray-400">
             Die Verknüpfung gilt erst, wenn beide Seiten die jeweils andere eingetragen haben. rsvp-app erfährt dabei nichts
             über den Ablauf, und Zeitplan bekommt keine Namen oder Adressen – nur „diese Zusage gilt“.
           </p>
@@ -284,11 +284,11 @@ export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConf
                 id="access-code" name="code" value={code} onChange={event => setCode(event.currentTarget.value)} maxLength={60}
                 autoComplete="off" spellCheck={false} className={input} aria-describedby="access-code-hint" required={!hasCode}
               />
-              <button type="button" onClick={() => setCode(suggestion)} className="shrink-0 text-sm py-2 px-3 rounded border border-gray-300 hover:bg-gray-50">
+              <button type="button" onClick={() => setCode(suggestion)} className="shrink-0 text-sm py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">
                 Vorschlag
               </button>
             </div>
-            <p id="access-code-hint" className="text-xs text-gray-600 mt-1">
+            <p id="access-code-hint" className="text-xs text-gray-600 dark:text-gray-400 mt-1">
               {hasCode ? 'Ein Code ist festgelegt. Leer lassen, um ihn zu behalten. ' : ''}
               Mindestens 8 Zeichen, nicht leicht zu raten (kein Name, kein Datum). Groß- und Kleinschreibung, Leerzeichen und
               Bindestriche sind für Gäste egal. Der Code wird nicht im Klartext gespeichert und nach dem Speichern nicht mehr
@@ -299,7 +299,7 @@ export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConf
           <Notice tone="warning">Auf dem Server fehlt <code>ACCESS_CODE_SECRET</code> – ohne ihn gibt es keinen Zugangscode (siehe README).</Notice>
         )
       )}
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-gray-600 dark:text-gray-400">
         {activeSessions === 1 ? '1 Gast-Zugang ist' : `${activeSessions} Gast-Zugänge sind`} gerade aktiv. Ändert sich der Zugang oder
         der Code, enden sie alle.
       </p>

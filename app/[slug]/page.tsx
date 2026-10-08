@@ -41,18 +41,18 @@ export default async function GuestPage({ params }: { params: Promise<{ slug: st
   if (resolved.kind === 'series') {
     const { series } = resolved
     return (
-      <main className="bg-gray-50 py-6 px-4">
-        <div className="max-w-2xl mx-auto space-y-4 text-gray-900">
+      <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
+        <div className="max-w-2xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
           <h1 className="text-2xl font-bold">{series.title}</h1>
           {series.events.length === 0 ? (
-            <p className="bg-white rounded-lg shadow p-4 text-gray-700">Hier erscheinen die Abläufe, sobald sie veröffentlicht sind.</p>
+            <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-gray-700 dark:text-gray-300">Hier erscheinen die Abläufe, sobald sie veröffentlicht sind.</p>
           ) : (
-            <ul className="bg-white rounded-lg shadow divide-y divide-gray-200">
+            <ul className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">
               {series.events.map(event => (
                 <li key={event.slug}>
-                  <Link href={`/${event.slug}`} className="block p-4 hover:bg-gray-50">
-                    <span className="block font-medium text-blue-700">{event.title}</span>
-                    <span className="block text-sm text-gray-600">{formatDate(event.date, event.timezone)}</span>
+                  <Link href={`/${event.slug}`} className="block p-4 hover:bg-gray-50 dark:hover:bg-gray-900">
+                    <span className="block font-medium text-blue-700 dark:text-blue-300">{event.title}</span>
+                    <span className="block text-sm text-gray-600 dark:text-gray-400">{formatDate(event.date, event.timezone)}</span>
                   </Link>
                 </li>
               ))}
@@ -66,8 +66,8 @@ export default async function GuestPage({ params }: { params: Promise<{ slug: st
   const { event, visibility } = resolved
   if (visibility === 'protected') {
     return (
-      <main className="bg-gray-50 py-6 px-4">
-        <div className="max-w-2xl mx-auto space-y-4 text-gray-900">
+      <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
+        <div className="max-w-2xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
           <h1 className="text-2xl font-bold">{event.title}</h1>
           <Notice tone="info">Dieser Ablauf ist nur mit Zugang sichtbar.</Notice>
           <AccessGate slug={event.slug} access={event.access} codeAvailable={event.access === 'CODE' && event.hasAccessCode && accessCodeConfigured()} />
@@ -79,8 +79,8 @@ export default async function GuestPage({ params }: { params: Promise<{ slug: st
   const payload = await loadGuestPayload(event, new Date())
   const preview = visibility === 'preview'
   return (
-    <main className="bg-gray-50 py-6 px-4">
-      <div className="max-w-2xl mx-auto space-y-4 text-gray-900">
+    <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
+      <div className="max-w-2xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
         {preview && (
           <Notice tone="warning">
             Vorschau: {event.access !== 'PUBLIC' && event.status !== 'DRAFT' && event.status !== 'ARCHIVED'
@@ -91,11 +91,11 @@ export default async function GuestPage({ params }: { params: Promise<{ slug: st
         )}
         <header className="space-y-1">
           {event.series && (
-            <p className="text-sm"><Link href={`/${event.series.slug}`} className="text-blue-700 hover:underline">{event.series.title}</Link></p>
+            <p className="text-sm"><Link href={`/${event.series.slug}`} className="text-blue-700 dark:text-blue-300 hover:underline">{event.series.title}</Link></p>
           )}
           <h1 className="text-2xl font-bold">{event.title}</h1>
-          <p className="text-gray-700">{formatDate(event.date, event.timezone)}</p>
-          {event.description && <p className="text-sm text-gray-700 whitespace-pre-line pt-1">{event.description}</p>}
+          <p className="text-gray-700 dark:text-gray-300">{formatDate(event.date, event.timezone)}</p>
+          {event.description && <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line pt-1">{event.description}</p>}
         </header>
         <GuestTimeline slug={event.slug} initial={payload} etag={payloadEtag(payload)} remember={!preview} />
       </div>

@@ -50,8 +50,8 @@ const ERRORS: Record<string, string> = {
 }
 
 const PRIMARY = 'w-full min-h-14 rounded-lg bg-blue-600 text-white text-lg font-bold px-4 hover:bg-blue-700'
-const SECONDARY = 'w-full min-h-12 rounded-lg border border-gray-300 bg-white font-medium px-3 hover:bg-gray-50'
-const DANGER = 'w-full min-h-12 rounded-lg border border-red-300 bg-white text-red-800 font-medium px-3 hover:bg-red-50'
+const SECONDARY = 'w-full min-h-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 font-medium px-3 hover:bg-gray-50 dark:hover:bg-gray-900'
+const DANGER = 'w-full min-h-12 rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-gray-800 text-red-800 dark:text-red-200 font-medium px-3 hover:bg-red-50 dark:hover:bg-red-950/50'
 
 type Ctx = { eventId: string; track: string }
 
@@ -149,15 +149,15 @@ export default async function LivePage({ params, searchParams }: { params: Promi
   const nudges = projected.filter(item => item.needsCheck && item.canSee)
 
   return (
-    <main className={`bg-gray-50 py-4 px-3 ${undo ? 'pb-28' : ''}`}>
+    <main className={`bg-gray-50 dark:bg-gray-900 py-4 px-3 ${undo ? 'pb-28' : ''}`}>
       <AutoRefresh intervalMs={15_000} />
-      <div className="max-w-xl mx-auto space-y-4 text-gray-900">
+      <div className="max-w-xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
         <div className="space-y-1">
-          <p className="text-sm"><Link href={`/admin/events/${event.id}`} className="text-blue-700 hover:underline">{event.title}</Link></p>
+          <p className="text-sm"><Link href={`/admin/events/${event.id}`} className="text-blue-700 dark:text-blue-300 hover:underline">{event.title}</Link></p>
           <h1 className="text-2xl font-bold">Live-Steuerung <StatusBadge status={status} /></h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             {clock(now)} Uhr{lastAction ? ` · letzte Meldung vor ${formatDuration(Math.max(0, Math.round((now.getTime() - lastAction.at.getTime()) / 60_000)))}` : ''}
-            {' · '}<Link href={`/admin/events/${event.id}/team`} className="text-blue-700 hover:underline">Team-Ansicht</Link>
+            {' · '}<Link href={`/admin/events/${event.id}/team`} className="text-blue-700 dark:text-blue-300 hover:underline">Team-Ansicht</Link>
           </p>
         </div>
 
@@ -167,8 +167,8 @@ export default async function LivePage({ params, searchParams }: { params: Promi
         {search.ended === '1' && <Notice tone="success">Event beendet. Gäste sehen den Ablauf als Rückblick.</Notice>}
 
         {status === 'PUBLISHED' && (
-          <div className="bg-white rounded-lg shadow p-4 space-y-3">
-            <p className="text-sm text-gray-700">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
+            <p className="text-sm text-gray-700 dark:text-gray-300">
               Noch nicht live. Beim Live-Schalten wird der jetzige Plan als Ursprungsplan eingefroren; danach meldest du hier
               Beginn, Ende, Verspätungen und Änderungen.
             </p>
@@ -191,7 +191,7 @@ export default async function LivePage({ params, searchParams }: { params: Promi
         )}
 
         {isLive && nudges.map(item => (
-          <div key={item.id} role="alert" className="rounded-lg border-2 border-amber-400 bg-amber-50 p-3 space-y-2">
+          <div key={item.id} role="alert" className="rounded-lg border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/50 p-3 space-y-2">
             <p className="font-bold">„{item.title}“ läuft noch?</p>
             <div className="grid grid-cols-2 gap-2">
               <Cmd ctx={{ ...ctx, track: item.trackId }} command="delay" fields={{ itemId: item.id, baseDelay: String(currentDelayMin(item)), addMin: '5' }}>
@@ -211,7 +211,7 @@ export default async function LivePage({ params, searchParams }: { params: Promi
                 key={track.id}
                 href={`/admin/events/${event.id}/live?track=${track.id}`}
                 aria-current={current?.id === track.id ? 'page' : undefined}
-                className={`min-h-11 inline-flex items-center px-3 rounded-full text-sm ${current?.id === track.id ? 'bg-blue-600 text-white font-bold' : 'bg-white border border-gray-300'}`}
+                className={`min-h-11 inline-flex items-center px-3 rounded-full text-sm ${current?.id === track.id ? 'bg-blue-600 text-white font-bold' : 'bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600'}`}
               >
                 {track.name}{track.visibility === 'TEAM' && ' (Team)'}
               </Link>
@@ -221,9 +221,9 @@ export default async function LivePage({ params, searchParams }: { params: Promi
 
         {isLive && current && (
           <>
-            <section aria-labelledby="live-now" className="bg-white rounded-lg shadow p-4 space-y-3">
-              <h2 id="live-now" className="text-sm font-bold uppercase text-gray-600">Jetzt</h2>
-              {running.length === 0 && <p className="text-gray-700">Gerade läuft in „{current.name}“ nichts.</p>}
+            <section aria-labelledby="live-now" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
+              <h2 id="live-now" className="text-sm font-bold uppercase text-gray-600 dark:text-gray-400">Jetzt</h2>
+              {running.length === 0 && <p className="text-gray-700 dark:text-gray-300">Gerade läuft in „{current.name}“ nichts.</p>}
               {running.map(item => (
                 <div key={item.id} data-live-item={item.id} className="space-y-3">
                   <ItemHeading item={item} clock={clock} />
@@ -234,7 +234,7 @@ export default async function LivePage({ params, searchParams }: { params: Promi
                           <Cmd ctx={ctx} command="advance" fields={{ fromId: item.id, toId: next.id }}>
                             <PendingButton className={PRIMARY}>Weiter: {next.title}</PendingButton>
                           </Cmd>
-                        ) : <p className="text-sm text-gray-600">Als Nächstes kommt ein geheimer Punkt – starten kann ihn nur, wer eingetragen ist.</p>
+                        ) : <p className="text-sm text-gray-600 dark:text-gray-400">Als Nächstes kommt ein geheimer Punkt – starten kann ihn nur, wer eingetragen ist.</p>
                       )}
                       <EndButtons ctx={ctx} item={item} />
                       <DelayControls ctx={ctx} item={item} label="Dauert länger" />
@@ -244,15 +244,15 @@ export default async function LivePage({ params, searchParams }: { params: Promi
               ))}
             </section>
 
-            <section aria-labelledby="live-next" className="bg-white rounded-lg shadow p-4 space-y-3">
-              <h2 id="live-next" className="text-sm font-bold uppercase text-gray-600">Als Nächstes</h2>
-              {!next && <p className="text-gray-700">In dieser Spur kommt nichts mehr.</p>}
+            <section aria-labelledby="live-next" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
+              <h2 id="live-next" className="text-sm font-bold uppercase text-gray-600 dark:text-gray-400">Als Nächstes</h2>
+              {!next && <p className="text-gray-700 dark:text-gray-300">In dieser Spur kommt nichts mehr.</p>}
               {next && (
                 <div data-live-item={next.id} className="space-y-3">
                   <ItemHeading item={next} clock={clock} />
                   {next.canSee ? (
                     <>
-                      {next.unconfirmed && <p className="text-sm text-amber-900">Sollte schon laufen – noch nicht bestätigt.</p>}
+                      {next.unconfirmed && <p className="text-sm text-amber-900 dark:text-amber-200">Sollte schon laufen – noch nicht bestätigt.</p>}
                       {running.length === 0 && (
                         <Cmd ctx={ctx} command="advance" fields={{ fromId: '', toId: next.id }}>
                           <PendingButton className={PRIMARY}>Start: {next.title}</PendingButton>
@@ -269,14 +269,14 @@ export default async function LivePage({ params, searchParams }: { params: Promi
 
             {upcoming.length > 0 && (
               <section aria-labelledby="live-later" className="space-y-2">
-                <h2 id="live-later" className="text-sm font-bold uppercase text-gray-600">Danach</h2>
-                <ul className="bg-white rounded-lg shadow divide-y divide-gray-200">
+                <h2 id="live-later" className="text-sm font-bold uppercase text-gray-600 dark:text-gray-400">Danach</h2>
+                <ul className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">
                   {upcoming.map(item => (
                     <li key={item.id} data-live-item={item.id} className="p-3 space-y-2">
                       <ItemHeading item={item} clock={clock} compact />
                       {item.canSee && (
                         <details>
-                          <summary className="cursor-pointer text-sm text-blue-700 min-h-11 flex items-center">Aktionen</summary>
+                          <summary className="cursor-pointer text-sm text-blue-700 dark:text-blue-300 min-h-11 flex items-center">Aktionen</summary>
                           <div className="space-y-3 pt-2">
                             <DelayControls ctx={ctx} item={item} label="Verspätung" />
                             <PlanChanges ctx={ctx} item={item} before={neighbour(item, -1)} after={neighbour(item, 1)} mayRemove={mayAddRemove} />
@@ -320,23 +320,23 @@ export default async function LivePage({ params, searchParams }: { params: Promi
             )}
 
             {mayAddRemove && (
-              <details className="bg-white rounded-lg shadow p-4">
+              <details className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
                 <summary className="cursor-pointer font-bold min-h-11 flex items-center">Einschub</summary>
                 {reference ? (
                   <Cmd ctx={ctx} command="insert" fields={{ trackId: current.id }} className="space-y-3 pt-2">
-                    <p className="text-sm text-gray-600">Kommt direkt nach „{reference.title}“; die folgenden Punkte rutschen nach.</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">Kommt direkt nach „{reference.title}“; die folgenden Punkte rutschen nach.</p>
                     <div>
                       <label htmlFor="insert-title" className="block text-sm font-medium mb-1">Titel</label>
-                      <input id="insert-title" name="title" required maxLength={PLAN_LIMITS.titleMax} className="w-full border border-gray-300 p-3 rounded text-base" />
+                      <input id="insert-title" name="title" required maxLength={PLAN_LIMITS.titleMax} className="w-full border border-gray-300 dark:border-gray-600 p-3 rounded text-base" />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label htmlFor="insert-duration" className="block text-sm font-medium mb-1">Dauer (Min)</label>
-                        <input id="insert-duration" name="durationMin" type="number" inputMode="numeric" min={1} max={LIVE_LIMITS.maxInsertMin} required defaultValue={10} className="w-full border border-gray-300 p-3 rounded text-base" />
+                        <input id="insert-duration" name="durationMin" type="number" inputMode="numeric" min={1} max={LIVE_LIMITS.maxInsertMin} required defaultValue={10} className="w-full border border-gray-300 dark:border-gray-600 p-3 rounded text-base" />
                       </div>
                       <div>
                         <label htmlFor="insert-visibility" className="block text-sm font-medium mb-1">Sichtbarkeit</label>
-                        <select id="insert-visibility" name="visibility" defaultValue="PUBLIC" className="w-full border border-gray-300 p-3 rounded text-base bg-white">
+                        <select id="insert-visibility" name="visibility" defaultValue="PUBLIC" className="w-full border border-gray-300 dark:border-gray-600 p-3 rounded text-base bg-white dark:bg-gray-800">
                           <option value="PUBLIC">Öffentlich</option>
                           <option value="TEAM">Nur Team</option>
                         </select>
@@ -344,16 +344,16 @@ export default async function LivePage({ params, searchParams }: { params: Promi
                     </div>
                     <PendingButton className={PRIMARY}>Einschieben</PendingButton>
                   </Cmd>
-                ) : <p className="text-sm text-gray-600 pt-2">Einschieben geht, sobald in dieser Spur etwas begonnen hat.</p>}
+                ) : <p className="text-sm text-gray-600 dark:text-gray-400 pt-2">Einschieben geht, sobald in dieser Spur etwas begonnen hat.</p>}
               </details>
             )}
           </>
         )}
 
         {done.length > 0 && (
-          <details className="bg-white rounded-lg shadow p-4">
+          <details className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <summary className="cursor-pointer font-bold min-h-11 flex items-center">Vorbei ({done.length})</summary>
-            <ul className="divide-y divide-gray-200 text-sm">
+            <ul className="divide-y divide-gray-200 dark:divide-gray-700 text-sm">
               {done.map(item => (
                 <li key={item.id} className="py-2">
                   <span className="tabular-nums">{clock(item.actualStart ?? item.expectedStart)}–{clock(item.actualEnd!)}</span> {item.title}
@@ -363,21 +363,21 @@ export default async function LivePage({ params, searchParams }: { params: Promi
           </details>
         )}
 
-        <details className="bg-white rounded-lg shadow p-4" open={history.length > 0 && !isLive ? true : undefined}>
+        <details className="bg-white dark:bg-gray-800 rounded-lg shadow p-4" open={history.length > 0 && !isLive ? true : undefined}>
           <summary className="cursor-pointer font-bold min-h-11 flex items-center">Verlauf</summary>
-          {history.length === 0 ? <p className="text-sm text-gray-600">Noch keine Aktionen.</p> : (
-            <ol className="divide-y divide-gray-200 text-sm">
+          {history.length === 0 ? <p className="text-sm text-gray-600 dark:text-gray-400">Noch keine Aktionen.</p> : (
+            <ol className="divide-y divide-gray-200 dark:divide-gray-700 text-sm">
               {history.map(entry => (
                 <li key={entry.id} data-history={entry.id} className="py-2 flex items-center gap-2">
                   <div className="grow min-w-0">
-                    <p className={entry.undoneBy ? 'line-through text-gray-500' : ''}>{entry.text}</p>
-                    <p className="text-xs text-gray-600">
+                    <p className={entry.undoneBy ? 'line-through text-gray-500 dark:text-gray-400' : ''}>{entry.text}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
                       {clock(entry.at)} · {entry.who ?? 'automatisch'}{entry.undoneBy ? ` · rückgängig gemacht von ${entry.undoneBy}` : ''}
                     </p>
                   </div>
                   {entry.undoable && (
                     <Cmd ctx={ctx} command="undo" fields={{ actionId: entry.id }}>
-                      <PendingButton className="min-h-11 px-3 rounded border border-gray-300 text-sm">Rückgängig</PendingButton>
+                      <PendingButton className="min-h-11 px-3 rounded border border-gray-300 dark:border-gray-600 text-sm">Rückgängig</PendingButton>
                     </Cmd>
                   )}
                 </li>
@@ -387,9 +387,9 @@ export default async function LivePage({ params, searchParams }: { params: Promi
         </details>
 
         {isLive && (
-          <details className="bg-white rounded-lg shadow p-4">
+          <details className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <summary className="cursor-pointer font-bold min-h-11 flex items-center">Event beenden</summary>
-            <p className="text-sm text-gray-600 py-2">Sperrt die Live-Steuerung; Gäste sehen den Ablauf danach als Rückblick. Geschieht sonst automatisch einige Stunden nach dem letzten Punkt.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 py-2">Sperrt die Live-Steuerung; Gäste sehen den Ablauf danach als Rückblick. Geschieht sonst automatisch einige Stunden nach dem letzten Punkt.</p>
             <Cmd ctx={ctx} command="endevent"><PendingButton className={DANGER}>Event jetzt beenden</PendingButton></Cmd>
           </details>
         )}
@@ -400,7 +400,7 @@ export default async function LivePage({ params, searchParams }: { params: Promi
 }
 
 function SecretHint() {
-  return <p className="text-sm text-gray-600">Geheimer Punkt – steuern kann ihn nur, wer eingetragen ist.</p>
+  return <p className="text-sm text-gray-600 dark:text-gray-400">Geheimer Punkt – steuern kann ihn nur, wer eingetragen ist.</p>
 }
 
 function ItemHeading({ item, clock, compact = false }: { item: LiveItem; clock: (date: Date) => string; compact?: boolean }) {
@@ -410,7 +410,7 @@ function ItemHeading({ item, clock, compact = false }: { item: LiveItem; clock: 
     <div className="flex gap-3">
       <div className="w-20 shrink-0 tabular-nums">
         <div className={`font-bold ${compact ? '' : 'text-lg'}`}>{clock(item.expectedStart)}</div>
-        <div className="text-xs text-gray-600">bis {clock(item.expectedEnd)}</div>
+        <div className="text-xs text-gray-600 dark:text-gray-400">bis {clock(item.expectedEnd)}</div>
       </div>
       <div className="grow min-w-0">
         <p className={`font-bold ${compact ? '' : 'text-lg'} leading-tight`}>{item.title}</p>
@@ -424,7 +424,7 @@ function ItemHeading({ item, clock, compact = false }: { item: LiveItem; clock: 
           {item.insertedLive && <Badge>Einschub</Badge>}
           <Badge>{formatDuration(item.plannedDurationMin)}</Badge>
         </div>
-        {item.internalNote && !compact && <p className="text-sm text-amber-900 bg-amber-50 rounded px-2 py-1 mt-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}
+        {item.internalNote && !compact && <p className="text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 rounded px-2 py-1 mt-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}
       </div>
     </div>
   )
@@ -472,8 +472,8 @@ function DelayControls({ ctx, item, label }: { ctx: Ctx; item: LiveItem; label: 
       </Cmd>
       <Cmd ctx={ctx} command="delay" fields={{ itemId: item.id, baseDelay: base }} className="flex gap-2">
         <label htmlFor={`add-${item.id}`} className="sr-only">Eigene Minuten</label>
-        <input id={`add-${item.id}`} name="addMin" type="number" inputMode="numeric" min={1} max={LIVE_LIMITS.maxDelayMin} placeholder="eigene Minuten" required className="grow min-w-0 min-h-12 border border-gray-300 rounded px-2 text-base" />
-        <PendingButton className="shrink-0 min-h-12 rounded-lg border border-gray-300 bg-white font-medium px-4 hover:bg-gray-50">+ Melden</PendingButton>
+        <input id={`add-${item.id}`} name="addMin" type="number" inputMode="numeric" min={1} max={LIVE_LIMITS.maxDelayMin} placeholder="eigene Minuten" required className="grow min-w-0 min-h-12 border border-gray-300 dark:border-gray-600 rounded px-2 text-base" />
+        <PendingButton className="shrink-0 min-h-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 font-medium px-4 hover:bg-gray-50 dark:hover:bg-gray-900">+ Melden</PendingButton>
       </Cmd>
       {item.reportedDelayMin !== null && (
         <Cmd ctx={ctx} command="ontime" fields={{ itemId: item.id }}><PendingButton className={SECONDARY}>Im Plan (Meldung zurücknehmen)</PendingButton></Cmd>
@@ -501,8 +501,8 @@ function PlanChanges({ ctx, item, before, after, mayRemove }: { ctx: Ctx; item: 
       </div>
       <Cmd ctx={ctx} command="cancel" fields={{ itemId: item.id }} className="flex gap-2">
         <label htmlFor={`reason-${item.id}`} className="sr-only">Grund für den Ausfall (optional)</label>
-        <input id={`reason-${item.id}`} name="reason" maxLength={LIVE_LIMITS.cancelReasonMax} placeholder="Grund (optional)" className="grow min-w-0 min-h-12 border border-gray-300 rounded px-2 text-base" />
-        <PendingButton className="shrink-0 min-h-12 rounded-lg border border-red-300 bg-white text-red-800 font-medium px-3 hover:bg-red-50">Ausfall</PendingButton>
+        <input id={`reason-${item.id}`} name="reason" maxLength={LIVE_LIMITS.cancelReasonMax} placeholder="Grund (optional)" className="grow min-w-0 min-h-12 border border-gray-300 dark:border-gray-600 rounded px-2 text-base" />
+        <PendingButton className="shrink-0 min-h-12 rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-gray-800 text-red-800 dark:text-red-200 font-medium px-3 hover:bg-red-50 dark:hover:bg-red-950/50">Ausfall</PendingButton>
       </Cmd>
     </div>
   )
@@ -511,8 +511,8 @@ function PlanChanges({ ctx, item, before, after, mayRemove }: { ctx: Ctx; item: 
 function ItemList({ title, items, clock, children }: { title: string; items: LiveItem[]; clock: (date: Date) => string; children: (item: LiveItem) => React.ReactNode }) {
   return (
     <section className="space-y-2">
-      <h2 className="text-sm font-bold uppercase text-gray-600">{title}</h2>
-      <ul className="bg-white rounded-lg shadow divide-y divide-gray-200">
+      <h2 className="text-sm font-bold uppercase text-gray-600 dark:text-gray-400">{title}</h2>
+      <ul className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">
         {items.map(item => (
           <li key={item.id} data-live-item={item.id} className="p-3 space-y-2">
             <ItemHeading item={item} clock={clock} compact />

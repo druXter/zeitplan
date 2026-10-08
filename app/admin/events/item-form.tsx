@@ -92,7 +92,7 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
             <input type="radio" name="visibility" value={value} checked={visibility === value} onChange={() => setVisibility(value)} className="mt-1" />
             <span>
               {ITEM_VISIBILITY_LABELS[value]}
-              <span className="block text-xs text-gray-600">
+              <span className="block text-xs text-gray-600 dark:text-gray-400">
                 {value === 'PUBLIC' && 'Gäste sehen den Punkt (in öffentlichen Spuren).'}
                 {value === 'TEAM' && 'Alle Konten mit Zugriff aufs Event, keine Gäste – z. B. Aufbau, Technik.'}
                 {value === 'SECRET' && 'Inhalt nur für die gewählten Konten – auch nicht für Besitzer*in oder Admins. Alle anderen sehen nur „Geheimer Punkt“ mit Zeit und Dauer, Gäste gar nichts.'}
@@ -103,7 +103,7 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
       </fieldset>
 
       {visibility === 'SECRET' && (
-        <fieldset className="space-y-1 border border-purple-200 bg-purple-50 rounded p-3">
+        <fieldset className="space-y-1 border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/50 rounded p-3">
           <legend className={`${labelClass} px-1`}>Geheim für</legend>
           {options.accounts.map(account => (
             <label key={account.id} className="flex items-center gap-2 text-sm">
@@ -111,7 +111,7 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
               {account.label}
             </label>
           ))}
-          <p className="text-xs text-gray-600">Zur Auswahl stehen Konten mit Zugriff aufs Event. Nur diese können den Punkt auch ändern und live steuern.</p>
+          <p className="text-xs text-gray-600 dark:text-gray-400">Zur Auswahl stehen Konten mit Zugriff aufs Event. Nur diese können den Punkt auch ändern und live steuern.</p>
         </fieldset>
       )}
 
@@ -119,18 +119,18 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
         <legend className={labelClass}>Kette</legend>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="isAnchor" defaultChecked={values.isAnchor} className="mt-1" />
-          <span>Anker<span className="block text-xs text-gray-600">Feste Uhrzeit, rutscht nicht mit (Standesamt, Feuerwerk, Band laut Vertrag).</span></span>
+          <span>Anker<span className="block text-xs text-gray-600 dark:text-gray-400">Feste Uhrzeit, rutscht nicht mit (Standesamt, Feuerwerk, Band laut Vertrag).</span></span>
         </label>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="mayStartEarly" defaultChecked={values.mayStartEarly} className="mt-1" />
-          <span>Darf früher beginnen<span className="block text-xs text-gray-600">Ist der Punkt davor früher fertig, rückt dieser nach (z. B. Spiele). Sonst beginnt er nie vor seiner Planzeit.</span></span>
+          <span>Darf früher beginnen<span className="block text-xs text-gray-600 dark:text-gray-400">Ist der Punkt davor früher fertig, rückt dieser nach (z. B. Spiele). Sonst beginnt er nie vor seiner Planzeit.</span></span>
         </label>
       </fieldset>
 
       {options.items.length > 0 && (
-        <details open={values.waitsFor.length > 0} className="border border-gray-200 rounded p-3">
+        <details open={values.waitsFor.length > 0} className="border border-gray-200 dark:border-gray-700 rounded p-3">
           <summary className="text-sm font-medium cursor-pointer">Wartet auf ({values.waitsFor.length} gewählt)</summary>
-          <p className="text-xs text-gray-600 my-2">Der Punkt beginnt frühestens, wenn alle gewählten Punkte vorbei sind – meist Punkte anderer Spuren (Torte wartet auf das Fotoshooting).</p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 my-2">Der Punkt beginnt frühestens, wenn alle gewählten Punkte vorbei sind – meist Punkte anderer Spuren (Torte wartet auf das Fotoshooting).</p>
           <div className="max-h-64 overflow-y-auto space-y-1">
             {options.items.map(item => (
               <label key={item.id} className="flex items-center gap-2 text-sm">

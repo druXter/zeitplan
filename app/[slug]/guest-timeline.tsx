@@ -15,7 +15,7 @@ export default function GuestTimeline({ slug, initial, etag, remember }: { slug:
   const { event } = payload
 
   if (connection.gone) {
-    return <p role="status" className="bg-white rounded-lg shadow p-4 text-gray-700">Dieser Ablauf ist gerade nicht verfügbar.</p>
+    return <p role="status" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-gray-700 dark:text-gray-300">Dieser Ablauf ist gerade nicht verfügbar.</p>
   }
 
   const sections = timelineSections(payload.items, item => item.status, item => Date.parse(item.shownStart))
@@ -30,10 +30,10 @@ export default function GuestTimeline({ slug, initial, etag, remember }: { slug:
       <ConnectionNote connection={connection} timezone={event.timezone} />
 
       {payload.items.length === 0 && (
-        <p className="bg-white rounded-lg shadow p-4 text-gray-700">Der Ablauf wird gerade noch geplant. Schau später wieder vorbei.</p>
+        <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-gray-700 dark:text-gray-300">Der Ablauf wird gerade noch geplant. Schau später wieder vorbei.</p>
       )}
       {event.status === 'ENDED' && payload.items.length > 0 && (
-        <p className="text-sm text-gray-600">Das Event ist vorbei – hier kannst du den Ablauf nachlesen.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Das Event ist vorbei – hier kannst du den Ablauf nachlesen.</p>
       )}
 
       {sections.now.length > 0 && (
@@ -43,18 +43,18 @@ export default function GuestTimeline({ slug, initial, etag, remember }: { slug:
       )}
       {sections.next.length > 0 && (
         <Section title="Als Nächstes">
-          <ul className="bg-white rounded-lg shadow divide-y divide-gray-200">{sections.next.map(item => row(item))}</ul>
+          <ul className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">{sections.next.map(item => row(item))}</ul>
         </Section>
       )}
       {sections.later.length > 0 && (
         <Section title="Danach">
-          <ul className="bg-white rounded-lg shadow divide-y divide-gray-200">{sections.later.map(item => row(item))}</ul>
+          <ul className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">{sections.later.map(item => row(item))}</ul>
         </Section>
       )}
       {sections.past.length > 0 && (
         <details open={nothingAhead} className="group">
           <summary className="cursor-pointer text-lg font-bold py-1">Vorbei ({sections.past.length})</summary>
-          <ul className="mt-2 bg-white rounded-lg shadow divide-y divide-gray-200 opacity-80">{sections.past.map(item => row(item))}</ul>
+          <ul className="mt-2 bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700 opacity-80">{sections.past.map(item => row(item))}</ul>
         </details>
       )}
     </div>
@@ -74,7 +74,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function ConnectionNote({ connection, timezone, className = '' }: { connection: Connection; timezone: string; className?: string }) {
   if (!connection.offline) return null
   return (
-    <p role="status" className={`rounded border border-amber-200 bg-amber-50 text-amber-900 p-2 text-sm ${className}`}>
+    <p role="status" className={`rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 p-2 text-sm ${className}`}>
       Stand: {formatClock(new Date(connection.lastOk), timezone)}, keine Verbindung
     </p>
   )
@@ -90,17 +90,17 @@ function GuestRow({ item, clock, showTracks, highlight }: { item: GuestPayloadIt
   return (
     <li
       data-item-status={item.status}
-      className={`p-3 flex gap-3 ${highlight ? 'bg-blue-50 border-2 border-blue-600 rounded-lg shadow' : ''}`}
+      className={`p-3 flex gap-3 ${highlight ? 'bg-blue-50 dark:bg-blue-950/50 border-2 border-blue-600 rounded-lg shadow' : ''}`}
     >
       <div className="w-24 shrink-0 tabular-nums">
         {cancelled ? (
-          <span className="line-through text-gray-500">{clock(item.plannedStart)}</span>
+          <span className="line-through text-gray-500 dark:text-gray-400">{clock(item.plannedStart)}</span>
         ) : item.approximate ? (
           <>
-            {item.delayMin === null && <span className="block text-xs text-gray-600">neu:</span>}
+            {item.delayMin === null && <span className="block text-xs text-gray-600 dark:text-gray-400">neu:</span>}
             <span className="font-bold">ca. {clock(item.shownStart)}</span>
             {item.delayMin !== null && item.delayMin !== 0 && (
-              <span className="block text-xs font-bold text-amber-800">{formatDelay(item.delayMin)}</span>
+              <span className="block text-xs font-bold text-amber-800 dark:text-amber-200">{formatDelay(item.delayMin)}</span>
             )}
           </>
         ) : (
@@ -109,13 +109,13 @@ function GuestRow({ item, clock, showTracks, highlight }: { item: GuestPayloadIt
       </div>
       <div className="grow min-w-0 space-y-0.5">
         <p className="flex flex-wrap items-center gap-1">
-          <span className={`font-medium ${cancelled ? 'line-through text-gray-500' : ''}`}>{item.title}</span>
-          {cancelled && <span className="text-xs rounded px-1.5 py-0.5 bg-red-100 text-red-900">fällt aus</span>}
-          {showTracks && <span className="text-xs rounded px-1.5 py-0.5 bg-gray-100 text-gray-800">{item.track}</span>}
+          <span className={`font-medium ${cancelled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>{item.title}</span>
+          {cancelled && <span className="text-xs rounded px-1.5 py-0.5 bg-red-100 dark:bg-red-900 text-red-900 dark:text-red-200">fällt aus</span>}
+          {showTracks && <span className="text-xs rounded px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">{item.track}</span>}
         </p>
-        {item.location && <p className="text-sm text-gray-700">{item.location}</p>}
-        {!cancelled && item.description && <p className="text-sm text-gray-700 whitespace-pre-line">{item.description}</p>}
-        {cancelled && item.cancelReason && <p className="text-sm text-gray-700">{item.cancelReason}</p>}
+        {item.location && <p className="text-sm text-gray-700 dark:text-gray-300">{item.location}</p>}
+        {!cancelled && item.description && <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{item.description}</p>}
+        {cancelled && item.cancelReason && <p className="text-sm text-gray-700 dark:text-gray-300">{item.cancelReason}</p>}
       </div>
     </li>
   )

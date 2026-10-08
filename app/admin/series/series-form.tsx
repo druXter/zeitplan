@@ -28,11 +28,11 @@ export default function SeriesForm({ baseUrl, seriesId, values }: { baseUrl: str
       <div>
         <label htmlFor="series-slug" className={labelClass}>Adresse</label>
         <div className="flex items-center gap-1">
-          <span className="text-sm text-gray-600 whitespace-nowrap">{baseUrl}/</span>
+          <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{baseUrl}/</span>
           <input id="series-slug" name="slug" required maxLength={SLUG_MAX_LENGTH} value={slug} className={input} pattern="[a-z0-9]+(-[a-z0-9]+)*"
             onChange={event => { setSlug(event.currentTarget.value); setSlugTouched(true) }} />
         </div>
-        <p className="text-xs text-gray-600 mt-1">Die Übersichtsseite mit allen Events der Reihe. Events und Reihen teilen sich die Adressen.</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Die Übersichtsseite mit allen Events der Reihe. Events und Reihen teilen sich die Adressen.</p>
       </div>
       <SubmitButton disabled={pending}>{seriesId ? 'Reihe speichern' : 'Reihe anlegen'}</SubmitButton>
     </form>

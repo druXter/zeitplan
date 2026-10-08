@@ -28,13 +28,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de">
-      <body className="antialiased min-h-screen flex flex-col">
+      <body className="antialiased min-h-screen flex flex-col dark:bg-gray-900 dark:text-gray-100">
         {/* Der Konto-Status liest Cookies (dynamisch) - in Suspense, damit er den Rest der Seite nicht aufhält. */}
         <Suspense fallback={<div className="h-12" />}>
           <AccountNav />
         </Suspense>
         <div className="grow">{children}</div>
-        <footer className="print:hidden text-center text-xs text-gray-500 py-4">
+        <footer className="print:hidden text-center text-xs text-gray-500 dark:text-gray-400 py-4">
           <FooterLink href="/impressum">Impressum</FooterLink>
           {" · "}
           <FooterLink href="/datenschutz">Datenschutz</FooterLink>

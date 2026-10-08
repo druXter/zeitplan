@@ -48,6 +48,7 @@ löschen, sonst schreibt `next dev` seinen Block direkt in diese Datei.
   rufen den Kern auf und speichern das Ergebnis – Regeln stehen nie in Actions oder Komponenten.
 * `toGuestView` ist die **einzige** Stelle, an der Daten für Gäste entstehen. Gästeansicht, Tafel und Polling-Endpunkt
   nutzen nur deren Ergebnis.
+* **Darkmode:** wie in rsvp-app nach der Systemeinstellung, aber nur am Bildschirm (Ausdrucke bleiben hell; die Anzeigetafel ist immer dunkel und bekommt keine `dark:`-Klassen; `@custom-variant dark` in `app/globals.css`). Neue Oberflächen bekommen zu jeder hellen Farbklasse ihr `dark:`-Gegenstück nach demselben Schema: `bg-white` → `dark:bg-gray-800`, `bg-gray-50` → `dark:bg-gray-900`, `text-gray-900` → `dark:text-gray-100`, `text-gray-600` → `dark:text-gray-400`, `border-gray-300` → `dark:border-gray-600`, helle Farbflächen `bg-X-50` → `dark:bg-X-950/50`, Farbtext `text-X-700` → `dark:text-X-300`; kräftige Knopffarben bleiben.
 
 ## Sicherheitsregeln (nicht verhandelbar)
 

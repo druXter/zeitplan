@@ -9,8 +9,8 @@ export const metadata: Metadata = { title: 'Zeitplan öffnen', robots: { index: 
  */
 export default function RsvpLinkInvalidPage() {
   return (
-    <main className="bg-gray-50 py-6 px-4">
-      <div className="max-w-2xl mx-auto space-y-4 text-gray-900">
+    <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
+      <div className="max-w-2xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
         <h1 className="text-2xl font-bold">Zeitplan öffnen</h1>
         <Notice tone="warning">
           Dieser Link ist ungültig oder abgelaufen, oder der Zeitplan ist noch nicht veröffentlicht. Öffne ihn bitte erneut

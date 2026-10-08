@@ -29,9 +29,9 @@ export default async function NewItemPage({ params, searchParams }: { params: Pr
   const start = last ? new Date(last.plannedStart.getTime() + last.plannedDurationMin * 60_000) : new Date(event.date.getTime() + 14 * HOUR)
 
   return (
-    <main className="bg-gray-50 py-6 px-4">
-      <div className="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow space-y-4 text-gray-900">
-        <p className="text-sm"><Link href={`/admin/events/${event.id}/plan${track ? `?track=${trackId}` : ''}`} className="text-blue-700 hover:underline">Zurück zum Ablauf</Link></p>
+    <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
+      <div className="max-w-2xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-4 text-gray-900 dark:text-gray-100">
+        <p className="text-sm"><Link href={`/admin/events/${event.id}/plan${track ? `?track=${trackId}` : ''}`} className="text-blue-700 dark:text-blue-300 hover:underline">Zurück zum Ablauf</Link></p>
         <h1 className="text-2xl font-bold">Neuer Punkt</h1>
         <ItemForm
           eventId={event.id}

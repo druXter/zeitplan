@@ -25,6 +25,12 @@
     #stand .time { width: 5.5rem; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
     #stand .cancelled .time, #stand .cancelled .title { text-decoration: line-through; color: #6b7280; }
     #stand .where { display: block; font-size: .875rem; color: #4b5563; }
+    /* Darkmode wie in der App (Systemeinstellung) */
+    @media (prefers-color-scheme: dark) {
+      :root { color-scheme: dark; }
+      body { background: #111827; color: #f3f4f6; }
+      p { color: #9ca3af; }
+    }
   </style>
 </head>
 <body>

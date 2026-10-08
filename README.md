@@ -30,6 +30,9 @@ dem letzten Stand), vor Ort auf der Anzeigetafel; das Team sieht alles minutenge
 öffentlich oder geschützt (Zugangscode, Konto, Zusage in rsvp-app). Optional: Anmeldung mit Konten anderer Tools der
 Suite (Föderation) und die Anbindung an rsvp-app (dort Button „Zeitplan“, Weiterleitung und Webhook).
 
+**Darkmode:** folgt der Systemeinstellung des Geräts (wie rsvp-app), für Verwaltung, Live-Steuerung und Gästeansicht.
+Die Anzeigetafel ist unabhängig davon immer dunkel; Ausdrucke bleiben hell.
+
 ## Konten
 
 Konten gibt es für Planung und Moderation. Gäste brauchen keins – außer ein Event ist auf „nur mit Konto“ gestellt

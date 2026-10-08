@@ -1,12 +1,12 @@
 // app/ui/badge.tsx
 
 const TONES = {
-  gray: 'bg-gray-100 text-gray-800',
-  amber: 'bg-amber-100 text-amber-900',
-  purple: 'bg-purple-100 text-purple-900',
-  blue: 'bg-blue-100 text-blue-900',
-  red: 'bg-red-100 text-red-900',
-  green: 'bg-green-100 text-green-900'
+  gray: 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200',
+  amber: 'bg-amber-100 dark:bg-amber-900 text-amber-900 dark:text-amber-200',
+  purple: 'bg-purple-100 dark:bg-purple-900 text-purple-900 dark:text-purple-200',
+  blue: 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-200',
+  red: 'bg-red-100 dark:bg-red-900 text-red-900 dark:text-red-200',
+  green: 'bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-200'
 } as const
 
 /** Kleines Kennzeichen an einem Programmpunkt (Anker, Sichtbarkeit, Spur, Live-Zustand). */

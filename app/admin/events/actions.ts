@@ -18,6 +18,7 @@ import { SLUG_TAKEN, SlugTakenError, slugTaken } from '../../lib/planning/slug-s
 import { daysBetween, shiftDays, utcToZonedDate } from '../../lib/timezone'
 import { accessCodeConfigured, accessCodeHmac, displayLinkConfigured, validateAccessCode } from '../../lib/guest/tokens'
 import { linkedRsvpEventId, REMOTE_ID, rsvpConfigured } from '../../lib/rsvp/token'
+import { linkedShiftsEventId, parseShiftsLink, shiftsConfigured } from '../../lib/shifts/token'
 
 // Die Berechtigung prüft JEDE Aktion selbst (über loadEventForUser -> eventLevel), nie nur die Seite.
 // owner: Besitzer*in oder Admin - Einstellungen, Schalter, Status, Freigaben, Löschen (canManageEvent).
@@ -228,6 +229,24 @@ export async function updateGuestAccess(_previous: FormState, formData: FormData
     return { errors: [], message: `Gespeichert. Der Zugangscode lautet „${code}“ – notiere ihn jetzt, er wird nicht noch einmal angezeigt.` }
   }
   return { errors: [], message: changed ? 'Zugang gespeichert.' : 'Keine Änderung.' }
+}
+
+/**
+ * Verknüpfung mit einem Event in Schichten (dort docs/KONZEPT.md Abschnitt 9): Schichten-Link eintragen, dort
+ * umgekehrt die id dieses Events. Danach ruft Schichten die Prognose ab. Leer = lösen. Nur owner.
+ */
+export async function updateShiftsLink(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser('/admin/events')
+  const event = await loadEventForUser(formString(formData, 'eventId', 50), user)
+  if (!event || !canManageEvent(event.level)) redirect('/admin/events')
+  if (!shiftsConfigured()) return { errors: ['Schichten: Auf dem Server fehlen SHIFTS_SECRET bzw. SHIFTS_BASE_URL (siehe .env.example).'] }
+  const input = formString(formData, 'shiftsUrl', 300)
+  const shiftsEventId = input ? parseShiftsLink(input) : null
+  if (input && !shiftsEventId) return { errors: ['Schichten-Link: Erwartet wird der Link aus den Einstellungen des Events in Schichten (…/zeitplan/<id>).'] }
+  if (shiftsEventId === linkedShiftsEventId(event.shiftsLink)) return { errors: [], message: 'Keine Änderung.' }
+  await prisma.event.update({ where: { id: event.id }, data: { shiftsLink: shiftsEventId ? { shiftsEventId } : Prisma.DbNull } })
+  revalidatePath(`/admin/events/${event.id}`)
+  return { errors: [], message: shiftsEventId ? 'Verknüpft. Schichten ruft die Prognose ab, sobald dort die id dieses Events eingetragen ist.' : 'Verknüpfung gelöst.' }
 }
 
 /**

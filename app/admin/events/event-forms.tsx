@@ -2,7 +2,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { createEvent, duplicateEvent, importEvent, updateEventOptions, updateEventSettings, updateGuestAccess, type FormState } from './actions'
+import { createEvent, duplicateEvent, importEvent, updateEventOptions, updateEventSettings, updateGuestAccess, updateShiftsLink, type FormState } from './actions'
 import { suggestSlug, SLUG_MAX_LENGTH } from '../../lib/slugs'
 import { DESCRIPTION_MAX_LENGTH, OPTION_BOUNDS, TITLE_MAX_LENGTH, type EventOptions } from '../../lib/events/settings'
 import SubmitButton from '../../ui/submit-button'
@@ -318,6 +318,26 @@ export function DuplicateEventForm({ eventId, title, baseUrl }: { eventId: strin
       <TitleAndSlug initialTitle={`${title} (Kopie)`.slice(0, TITLE_MAX_LENGTH)} initialSlug="" baseUrl={baseUrl} />
       <EventDate value="" hint="Alle Punkte rutschen auf diesen Tag, die Uhrzeiten bleiben." />
       <SubmitButton disabled={pending}>Kopie anlegen</SubmitButton>
+    </form>
+  )
+}
+
+/** Verknüpfung mit Schichten (Schichten folgen Programmpunkten): Schichten-Link eintragen, id dieses Events zeigen. */
+export function ShiftsLinkForm({ eventId, shiftsUrl, origin }: { eventId: string; shiftsUrl: string; origin: string }) {
+  const [state, action, pending] = useActionState(updateShiftsLink, null)
+  return (
+    <form action={action} className="space-y-3">
+      <input type="hidden" name="eventId" value={eventId} />
+      <Feedback state={state} />
+      <div>
+        <label htmlFor="shifts-url" className={labelClass}>Schichten-Link</label>
+        <input id="shifts-url" name="shiftsUrl" type="url" defaultValue={shiftsUrl} className={`${input} text-sm`} placeholder={`${origin}/zeitplan/…`} />
+        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+          Aus den Einstellungen des Events in Schichten. Dort umgekehrt die id dieses Events eintragen: <code className="select-all">{eventId}</code>.
+          Schichten bekommt dann Titel, Spur und Zeiten aller Punkte außer geheimen – keine Notizen, Orte oder Namen.
+        </p>
+      </div>
+      <SubmitButton disabled={pending}>Verknüpfung speichern</SubmitButton>
     </form>
   )
 }

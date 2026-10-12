@@ -76,3 +76,10 @@ Alle Regeln aus dem suite-kit-README und wie in Seating umgesetzt. Zusätzlich:
   (was, Annahmen, offene Punkte) und **Hinweis an mich, zu committen und zu pushen**.
 * Phase 7a findet im rsvp-app-Repo statt – dort eigene Sitzung, dieses Repo nicht anfassen.
 * Live-Steuerung am echten Handy prüfen (einhändig, große Ziele, Rückgängig erreichbar).
+
+## Anbindung an Schichten
+
+Schichten (`../schichten`) ruft `POST /api/schichten/forecast` ab (`app/lib/shifts/token.ts`, `forecast.ts`): nur mit
+`Event.shiftsLink`, eigenes Secret `SHIFTS_SECRET`, **nie SECRET-Punkte**, keine Notizen/Orte. Feste Prüfnachricht in
+`tests/unit/shifts-token.test.ts` (von Schichten erzeugt) - bei Formatänderungen auf beiden Seiten neu erzeugen.
+

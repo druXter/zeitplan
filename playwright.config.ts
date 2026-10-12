@@ -3,6 +3,11 @@ import { SMTP_PORT } from './tests/e2e/mail-server'
 import { SUITE_TOOLS, TEST_SUITE_IDPS, TEST_SUITE_TRUSTED_APPS, TEST_ZEITPLAN_SIGNING_KEY } from './tests/e2e/suite-server'
 import { TEST_RSVP_TIMELINE_SECRET } from './tests/e2e/rsvp-server'
 
+// Anbindung an Schichten (app/lib/shifts/token.ts): eigenes Secret; unter dem Origin läuft nichts - Schichten ruft
+// Zeitplan ab, nicht umgekehrt (tests/e2e/shifts.spec.ts spielt die Anfragen selbst).
+export const TEST_SHIFTS_SECRET = 'e2e-zeitplan-shifts-secret-0123456789abc'
+export const TEST_SHIFTS_BASE_URL = 'http://127.0.0.1:3111'
+
 // E2E-Tests gegen eine echte, frisch gebaute Instanz (next build + next start) mit eigener
 // Datenbank (prisma/test.db) - nie gegen die Entwicklungs- oder Produktivdatenbank.
 //
@@ -45,6 +50,8 @@ const SERVER_ENV: Record<string, string> = {
   SUITE_APP_NAME: 'Zeitplan Test',
   // Anbindung an rsvp-app (Phase 7b): Test-Doppel aus tests/e2e/rsvp-server.ts.
   RSVP_TIMELINE_SECRET: TEST_RSVP_TIMELINE_SECRET,
+  SHIFTS_SECRET: TEST_SHIFTS_SECRET,
+  SHIFTS_BASE_URL: TEST_SHIFTS_BASE_URL,
   // Test-SMTP aus tests/e2e/mail-server.ts (in global-setup gestartet). Empfänger @nomail.test
   // lehnt er ab - dann greift der angezeigte Einladungslink.
   SMTP_HOST: '127.0.0.1',

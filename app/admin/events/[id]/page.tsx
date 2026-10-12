@@ -10,7 +10,8 @@ import { formatDate, utcToZonedDate } from '../../../lib/timezone'
 import { accessCodeConfigured, displayLinkConfigured, displayToken, suggestAccessCode } from '../../../lib/guest/tokens'
 import { linkedRsvpEventId, rsvpConfigured, timelineLinkFor } from '../../../lib/rsvp/token'
 import { changeEventStatus, deleteEvent, regenerateDisplayLink, shareEvent, unshareEvent } from '../actions'
-import { EventOptionsForm, EventSettingsForm, GuestAccessForm } from '../event-forms'
+import { EventOptionsForm, EventSettingsForm, GuestAccessForm, ShiftsLinkForm } from '../event-forms'
+import { linkedShiftsEventId, shiftsConfigured, shiftsLinkUrl, shiftsOrigin } from '../../../lib/shifts/token'
 import ConfirmForm from '../../../ui/confirm-form'
 import CopyableField from '../../../ui/copyable-field'
 import StatusBadge from '../../../ui/status-badge'
@@ -185,6 +186,15 @@ export default async function EventPage({ params, searchParams }: { params: Prom
                 }}
               />
             </div>
+
+            {shiftsConfigured() && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
+                <h2 className="font-bold">Schichten</h2>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Helfer*innen-Schichten in Schichten können Programmpunkten folgen und verschieben sich mit, wenn sich ein Punkt verspätet.</p>
+                <ShiftsLinkForm eventId={event.id} origin={shiftsOrigin()!}
+                  shiftsUrl={linkedShiftsEventId(event.shiftsLink) ? shiftsLinkUrl(linkedShiftsEventId(event.shiftsLink)!) ?? '' : ''} />
+              </div>
+            )}
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
               <h2 className="font-bold">Freigaben</h2>

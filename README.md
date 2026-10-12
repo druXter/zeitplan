@@ -275,6 +275,23 @@ Eigener Vertrag nach dem Muster von Seating (`app/lib/rsvp/token.ts`), mit **eig
 Regeln und Tokens stehen in `app/lib/guest/access.ts` (Sichtbarkeit, rein) und `app/lib/guest/tokens.ts` (Code und
 Tafel-Link), Sitzungen in `app/lib/guest/session.ts`, die Code-Eingabe in `app/[slug]/actions.ts`.
 
+### Anbindung an Schichten (Helfer*innen-Schichten folgen Programmpunkten)
+
+Optional. Im Tool [Schichten](https://github.com/druXter/schichten) tragen sich Helfer\*innen in Dienste ein; eine
+Schicht kann einem Programmpunkt folgen („Garderobe Abholung“ folgt „Ende des Balls“). Verspätet sich der Punkt, sehen
+Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, verschiebt sich die Schicht mit.
+
+* **Einrichten:** In beiden `.env` dasselbe, eigene Secret: hier `SHIFTS_SECRET`, in Schichten `TIMELINE_SHIFTS_SECRET`;
+  hier `SHIFTS_BASE_URL`, dort `TIMELINE_BASE_URL`. Dann **beide Seiten verknüpfen:** hier auf der Seite des Events im
+  Abschnitt „Schichten“ den Schichten-Link (`<SHIFTS_BASE_URL>/zeitplan/<id>`) eintragen, dort die id dieses Events.
+* **Abruf durch Schichten:** `POST /api/schichten/forecast` mit der signierten Anfrage `forecast-request`; die Antwort
+  `timeline-forecast` enthält alle Programmpunkte **außer `SECRET`** (auch `TEAM`, Schichten ist intern) mit Titel,
+  Spur, geplantem Beginn und Dauer, Prognose (`project`) und Status – keine Notizen, Orte oder Beschreibungen, keine
+  personenbezogenen Daten. Schichten fragt höchstens einmal pro Minute und nur, wenn dort jemand eine Seite öffnet;
+  Zeitplan schickt von sich aus nichts. 401 bei ungültiger Anfrage, 404 ohne Verknüpfung.
+* **Vertrag** (`app/lib/shifts/token.ts`, Gegenstück in Schichten `app/lib/timeline/token.ts`): Format wie alle Verträge
+  der Suite; feste Prüfnachrichten in beiden Repos (`tests/unit/shifts-token.test.ts`).
+
 ## Ansichten
 
 | Ansicht | Adresse | Für |
@@ -631,6 +648,7 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | `CRON_SECRET` | Schutz des Aufräum-Endpunkts |
 | `ACCESS_CODE_SECRET` | Schlüssel für Zugangscodes (HMAC), mindestens 32 Zeichen; leer = kein Zugang per Code |
 | `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events; der vorherige hält alte Links beim Wechsel gültig |
+| `SHIFTS_SECRET`, `SHIFTS_BASE_URL` | optional: Anbindung an Schichten (eigenes Secret, dort `TIMELINE_SHIFTS_SECRET`), mindestens 32 Zeichen |
 | `RSVP_TIMELINE_SECRET` | optional: eigenes Secret der Anbindung an rsvp-app (dort `TIMELINE_SECRET`), mindestens 32 Zeichen; leer = kein Zugang „nur mit Zusage“ |
 | `SUITE_IDPS`, `SUITE_SIGNING_KEY`, `SUITE_SIGNING_KEY_PREVIOUS`, `SUITE_TRUSTED_APPS`, `SUITE_APP_NAME`, `SUITE_LOGIN_REDIRECT` | optional: Konto-Föderation (siehe „Anmelden mit einem Konto aus einem anderen Tool“) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mailversand für Einladungen und Passwort-Reset (optional) |

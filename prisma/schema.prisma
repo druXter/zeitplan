@@ -159,6 +159,9 @@ model Event {
 
   // Verknüpfung mit einem Termin in rsvp-app (Phase 7b), Aufbau wie in Seating.
   rsvpLink Json?
+  // Verknüpfung mit einem Event in Schichten ({ shiftsEventId }, app/lib/shifts/token.ts): Schichten ruft die
+  // Prognose der Programmpunkte ab, damit Schichten Punkten folgen können. Beide Seiten tragen die andere id ein.
+  shiftsLink Json?
 
   seriesId  String?
   series    Series?  @relation(fields: [seriesId], references: [id], onDelete: SetNull)

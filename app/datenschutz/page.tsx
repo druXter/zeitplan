@@ -8,7 +8,7 @@ import Link from 'next/link'
 // Export/Import, Drosselung, Löschfristen, installierbare App mit Service Worker, Gästeansicht und Tafel mit
 // Offline-Stand im Browser, Phase 4: Live-Steuerung mit Verlauf, Phase 5: Zugangscode mit Gast-Sitzung und
 // Drosselung, Zugang per Konto, Tafel-Link, Phase 6: Anmeldung mit Konten anderer Tools der Suite, Phase 7:
-// Zugang über eine Zusage in rsvp-app).
+// Zugang über eine Zusage in rsvp-app; Abruf der Programmpunkte durch Schichten).
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -218,6 +218,11 @@ export default function DatenschutzPage() {
             <strong>rsvp-app:</strong> Bei Abläufen, die mit einer Veranstaltung in rsvp-app verknüpft sind, schickt
             rsvp-app uns die unter Punkt 5 genannten Kennungen und ob deine Zusage noch gilt (signiert, über eine
             verschlüsselte Verbindung). Wir schicken rsvp-app nichts.
+          </p>
+          <p className="mt-2">
+            <strong>Schichten:</strong> Ist ein Ablauf mit einem Event in der Anwendung „Schichten“ (Dienste für
+            Helfer*innen) verknüpft, ruft diese die Programmpunkte ab – Titel, Spur und (voraussichtliche) Zeiten, ohne
+            geheime Punkte, Notizen, Orte und ohne personenbezogene Daten.
           </p>
           <p className="mt-2">
             <strong>Andere Tools der Suite:</strong> Meldest du dich über ein anderes Tool an oder mit deinem Konto von hier

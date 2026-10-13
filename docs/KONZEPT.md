@@ -172,7 +172,9 @@ Einschub kommt.
 | Gästeansicht `/<slug>` | Gäste | Ablauf mit Prognose, aktueller Punkt hervorgehoben, "Als Nächstes", Vergangenes eingeklappt, Ort je Punkt |
 | Anzeigetafel `/<slug>/tafel` | Beamer/TV vor Ort | große Schrift, jetzt + nächste 3–4 Punkte, Uhr, lädt selbst nach, kein Scrollen |
 | Live-Steuerung `/admin/events/<id>/live` | Moderator*innen | siehe Abschnitt 3 |
-| Team-Ansicht | Moderator*innen, Creator | wie Gäste, plus Team-Punkte, geheime Punkte (je nach Eintrag), interne Notizen, Konflikte, minutengenau |
+| Team-Ansicht | Moderator*innen, Creator | wie Gäste, plus Team-Punkte, geheime Punkte (je nach Eintrag), interne Notizen, Konflikte, minutengenau, Zuständige und „Meine Punkte“ (L16) |
+| Team-Link `/<slug>/team?k=…` | Dienstleister ohne Konto | Team-Ansicht nur lesen, geheime Punkte als Platzhalter (Idee L18, siehe "Entschieden") |
+| Drucken `/admin/events/<id>/druck` | alle Konten mit Zugriff | Regieplan fürs Team, Programmheft für Gäste (Idee L21, siehe "Entschieden") |
 | Reihen-Übersicht `/<reihen-slug>` | Gäste | Liste der Events einer Reihe mit Datum und Link |
 | Planung | Creator, Admin | Abschnitt 4 |
 | Rückblick `/admin/events/<id>/rueckblick` | alle Konten mit Zugriff | Plan gegen Ist, Protokollnotizen, Verlauf, CSV (Idee L24, siehe "Entschieden") |
@@ -267,6 +269,7 @@ Event        id, slug (unique), title, description, date, timezone,
              displayTokenVersion, liveVersion (int, steigt mit jeder Änderung),
              rsvpLink (JSON?), shiftsLink (JSON?),
              announcementText?, announcementAt?, announcementUntil?,   -- Durchsage (L15)
+             crewLinkEnabled (bool), crewLinkVersion,                  -- Team-Link (L18)
              ownerId, createdAt, updatedAt
 
 Series       id, slug (unique), title, ownerId
@@ -286,6 +289,8 @@ Item         id, eventId, trackId, sortOrder,
 
 ItemDependency  itemId, waitsForItemId                         -- Zusammenführung, keine Zyklen
 ItemSecretViewer itemId, userId                                -- wer SECRET-Punkte sieht
+ItemAssignee itemId, userId                                    -- Zuständige (L16)
+Place        id, eventId, name, address, mapUrl?               -- Orte mit Adresse (L22), Zuordnung über Item.location
 
 LiveAction   id, eventId, itemId?, actorId, type, before (JSON), after (JSON),
              createdAt, undoneAt?, undoneById?
@@ -328,7 +333,9 @@ Anbindungen zuletzt. Jede Phase ist erst fertig, wenn ihre **Definition of Done*
 
 Später, nicht für die Hochzeit nötig: kürzbare Punkte (Mindestdauer), SSE, Push-Benachrichtigungen. Weiter verfolgt als
 Ideen L11–L13 in `suite-kit/docs/IDEEN.md`, dort auch die späteren Zeitplan-Ideen L15–L25. Umgesetzt (2026-10-13):
-Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24) - Regeln unter "Entschieden".
+Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24), Orte mit Adresse (L22), Team-Link
+für Dienstleister (L18), Regieplan und Programmheft (L21), Zuständige und "Meine Punkte" (L16) - Regeln unter
+"Entschieden".
 
 ## 12. Offene Entscheidungen
 
@@ -580,3 +587,34 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   Punkt. Kein Teil des Plans: ändert weder `Item.version` noch `liveVersion`, nicht im Export, nicht beim Duplizieren
   und Import. Gleichzeitiges Schreiben: Das Formular schickt die angezeigte Fassung mit; weicht sie ab, wird abgelehnt.
   Tagesordnung einer Sitzung = Programmpunkte; vertagt = zurückgestellt, abgesetzt = Ausfall mit Grund. (Annahme)
+* **Orte mit Adresse (Idee L22):** eigene Tabelle `Place` je Event (Name, Adresse, optional eigener Kartenlink, nur
+  https), höchstens 30. Zuordnung über den Namen im Feld "Ort" des Punkts (`placeKey`: ohne Groß-/Kleinschreibung und
+  doppelte Leerzeichen), keine Fremdschlüssel - Formulare, Live-Einschübe, Export und Gästeansicht bleiben beim
+  Freitext. Namen sind je Event eindeutig. Umbenennen ändert `location` aller Punkte mit dem alten Namen, die das Konto
+  bearbeiten darf (Version + 1); geheime ohne Eintrag behalten den alten Namen. Löschen lässt den Text stehen. Recht:
+  "Plan bearbeiten". Gäste bekommen Adresse und `routeUrl` als eigene Felder aus `toGuestView`, nur an öffentlichen,
+  nicht ausgefallenen Punkten. Route: eigener Link, sonst Google Maps (`/maps/dir/?api=1&destination=`), öffnet in
+  neuem Tab mit `noopener noreferrer`, nichts eingebettet. Orte gehen in Export (`places`, optional - ältere Dateien
+  bleiben gültig, `schemaVersion` bleibt 1), Import und Duplizieren mit; ein geändertes Eventdatum lässt sie
+  unberührt. (Annahme)
+* **Team-Link für Dienstleister (Idee L18):** `/<slug>/team?k=<HMAC(DISPLAY_LINK_SECRET, crew:<eventId>:<crewLinkVersion>)>`
+  - dasselbe Secret wie die Tafel, aber eigene Nachricht und Version, damit ein Tafel-Schlüssel nie die Team-Ansicht
+  öffnet und ein neuer Tafel-Link den Team-Link nicht ändert. Standardmäßig aus (`crewLinkEnabled`). Einschalten, neu
+  erzeugen und ausschalten nur Besitzer*in und Admin; den Link sehen alle Konten mit Zugriff. Neu erzeugen und
+  Ausschalten zählen die Version hoch (ein alter Link kommt beim Wiedereinschalten nicht zurück). Gilt in jedem Status
+  außer Archiv, auch im Entwurf (Dienstleister bereiten sich vor). Inhalt wie die Team-Ansicht eines Kontos ohne
+  Eintrag in SECRET-Listen: geheime Punkte als "Geheimer Punkt" mit Zeit und Dauer, Zuständige nur mit Namen (Konten
+  ohne Namen erscheinen dort nicht), keine Links in die Verwaltung. Ungültig, aus oder archiviert: 404. Header:
+  `no-store`, `noindex`, `no-referrer`, nicht einbettbar. (Annahme)
+* **Regieplan und Programmheft (Idee L21):** eine Druckseite für alle Konten mit Zugriff. Regieplan mit Planzeiten
+  (aktueller Plan, keine Prognose - Papier veraltet), Ende, Dauer, Puffer, Ort mit Adresse, Zuständigen, Beschreibung,
+  interner Notiz, Ausfällen und Zurückgestelltem; pro Spur auf eigener Seite, alle zusammen oder eine Spur; SECRET über
+  `loadPlan`. Programmheft über `toProgramme` in `guest-view.ts` (dieselbe Auswahl wie `toGuestView`, Planzeit, ohne
+  Ausfälle), mit QR-Code zur Gästeansicht. (Annahme)
+* **Zuständige (Idee L16):** Tabelle `ItemAssignee`, Auswahl aus den Konten mit Zugriff, bei SECRET nur aus "Geheim
+  für". Teil des Punkt-Formulars (Recht "Plan bearbeiten", Version wie jede Änderung), bei SECRET ohne Eintrag
+  unsichtbar (`redactItem`). Angezeigt werden nur Zuständige, die noch Zugriff haben. Nicht im Export, nicht beim
+  Duplizieren und Import (wie Kontenlisten). Ein entfernter Einschub kommt beim Rückgängig mit seinen Zuständigen
+  zurück. "Meine Punkte" oben in der Team-Ansicht: kommende und laufende eigene Punkte nach erwartetem Beginn, "in X
+  Min" bis 12 Stunden vorher; `?meine=1` zeigt nur die eigenen. Keine Anzeige in der Live-Steuerung (dort zählt der
+  Ablauf, nicht die Person). Vorwarnung per Push folgt mit L17. (Annahme)

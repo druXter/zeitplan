@@ -63,6 +63,8 @@ const nextConfig: NextConfig = {
       // Die Tafel eines geschützten Events trägt ihren Schlüssel in der URL (/<slug>/tafel?k=...) - er darf
       // nicht per Referer weitergegeben werden (wie beim Reset-Link).
       { source: "/:slug/tafel", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+      // Team-Link für Dienstleister (Idee L18, /<slug>/team?k=...): interne Notizen - kein Referer, kein Cache, kein Index.
+      { source: "/:slug/team", headers: [...PRIVATE_PAGE, { key: "Referrer-Policy", value: "no-referrer" }] },
 
       // 3. Gästeansicht und Reihen-Übersicht (app/[slug]) sind einbettbar.
       { source: "/:slug", headers: EMBEDDABLE },

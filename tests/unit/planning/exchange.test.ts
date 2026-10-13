@@ -154,3 +154,33 @@ describe('Vorlage "Hochzeit" und materializePlan', () => {
     expect(WEDDING_TEMPLATE.format).toBe(EXPORT_FORMAT)
   })
 })
+
+describe('Orte mit Adresse (Idee L22)', () => {
+  const places = [
+    { name: 'Schloss', address: 'Schlossallee 5', mapUrl: 'https://maps.example.org/s' },
+    { name: 'Kirche', address: 'Marienplatz 1', mapUrl: null }
+  ]
+
+  it('gehen mit in die Datei und kommen beim Import zurück', () => {
+    const file = buildExport(event, tracks, [], places)
+    expect(file.places).toEqual([{ name: 'Kirche', address: 'Marienplatz 1' }, { name: 'Schloss', address: 'Schlossallee 5', mapUrl: 'https://maps.example.org/s' }])
+    const parsed = parseExport(clone(file))
+    expect(parsed.ok && parsed.plan.places).toEqual([
+      { name: 'Kirche', address: 'Marienplatz 1', mapUrl: null }, { name: 'Schloss', address: 'Schlossallee 5', mapUrl: 'https://maps.example.org/s' }
+    ])
+    expect(parsed.ok && materializePlan(parsed.plan, event.date).places).toHaveLength(2)
+  })
+
+  it('ohne Orte kein Feld; ältere Dateien ohne Orte bleiben gültig', () => {
+    const file = buildExport(event, tracks, [])
+    expect('places' in file).toBe(false)
+    const parsed = parseExport(clone(file))
+    expect(parsed.ok && parsed.plan.places).toEqual([])
+  })
+
+  it('lehnt doppelte Orte und Kartenlinks ohne https ab', () => {
+    const file = clone(buildExport(event, tracks, [], places))
+    file.places = [{ name: 'Kirche', address: 'A' }, { name: 'KIRCHE', address: 'B', mapUrl: 'javascript:alert(1)' }]
+    expect(parseExport(file)).toEqual({ ok: false, errors: ['Ort „KIRCHE“: Der Kartenlink ist kein https-Link.', 'Ort „KIRCHE“ kommt doppelt vor.'] })
+  })
+})

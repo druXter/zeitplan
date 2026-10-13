@@ -130,6 +130,8 @@ export async function saveItem(_previous: ItemFormState, formData: FormData): Pr
       if (fields.waitsFor.length > 0) await tx.itemDependency.createMany({ data: fields.waitsFor.map(other => ({ itemId: savedId, waitsForItemId: other })) })
       await tx.itemSecretViewer.deleteMany({ where: { itemId: savedId } })
       if (fields.secretViewerIds.length > 0) await tx.itemSecretViewer.createMany({ data: fields.secretViewerIds.map(userId => ({ itemId: savedId, userId })) })
+      await tx.itemAssignee.deleteMany({ where: { itemId: savedId } })
+      if (fields.assigneeIds.length > 0) await tx.itemAssignee.createMany({ data: fields.assigneeIds.map(userId => ({ itemId: savedId, userId })) })
       await bumpLiveVersion(event.id, tx)
       return { savedId, trackId: fields.trackId }
     })

@@ -50,7 +50,8 @@ describe('buildGuestPayload', () => {
     expect(Object.keys(payload.event).sort()).toEqual(['date', 'description', 'series', 'status', 'timezone', 'title'])
     for (const entry of payload.items) {
       expect(Object.keys(entry).sort()).toEqual([
-        'approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'shownStart', 'status', 'title', 'track'
+        'address', 'approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'routeUrl', 'shownStart', 'status',
+        'title', 'track'
       ])
       expect(entry.shownStart).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/)
     }

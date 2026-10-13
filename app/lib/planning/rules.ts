@@ -17,6 +17,8 @@ export const PLAN_LIMITS = {
   /** Zusammenführung: so viele Punkte, auf die einer wartet. */
   maxWaitsFor: 20,
   maxSecretViewers: 50,
+  /** Zuständige je Punkt (Idee L16). */
+  maxAssignees: 20,
   /**
    * Punkte beginnen frühestens am Vortag (Aufbau) und spätestens 3 Tage nach dem Eventtag - längere Abläufe
    * sind mehrere Events in einer Reihe (Abschnitt 4).

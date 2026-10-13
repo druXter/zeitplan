@@ -5,6 +5,7 @@ import { DEFAULT_EVENT_OPTIONS, OPTION_BOUNDS, type EventOptions } from '../even
 import { DEFAULT_TIMEZONE, daysBetween, shiftDays, toZonedIso, utcToZonedDate, zonedDateToUtc } from '../timezone'
 import { cleanText, PLAN_LIMITS, startRange } from './rules'
 import type { PlanItem } from './items'
+import { normalizeMapUrl, placeKey, PLACE_LIMITS, type PlaceFields } from './places'
 
 /**
  * Export/Import eines Ablaufs als JSON (docs/KONZEPT.md Abschnitt 4) - auch Grundlage für Duplizieren und die
@@ -14,6 +15,8 @@ import type { PlanItem } from './items'
  * Punkte einer Spur in `items` ist die Kette. `start` ist ISO 8601 mit Versatz ("2026-06-20T14:00:00+02:00"),
  * `date` der Eventtag. Beim Import auf einen anderen Tag rutschen alle Punkte um ganze Tage und behalten ihre
  * Uhrzeit.
+ *
+ * Orte mit Adresse (Idee L22) stehen optional in `places` - ältere Dateien ohne sie bleiben gültig.
  *
  * Nicht enthalten: Live-Stand, Ursprungsplan, Freigaben, Schalter der Moderator*innen, Zugang und die
  * SECRET-Kontenliste (Konten gibt es in einer anderen Instanz nicht). Geheime Punkte, die das exportierende
@@ -54,7 +57,10 @@ export type PlanExport = {
   settings: EventOptions
   tracks: ExportTrack[]
   items: ExportItem[]
+  places?: ExportPlace[]
 }
+
+export type ExportPlace = { name: string; address: string; mapUrl?: string }
 
 type ExportSource = { title: string; description: string; date: Date; timezone: string } & EventOptions
 
@@ -62,7 +68,8 @@ type ExportSource = { title: string; description: string; date: Date; timezone: 
 export function buildExport(
   event: ExportSource,
   tracks: { id: string; name: string; visibility: TrackVisibility; sortOrder: number }[],
-  items: PlanItem[]
+  items: PlanItem[],
+  places: PlaceFields[] = []
 ): PlanExport {
   const orderedTracks = [...tracks].sort((a, b) => a.sortOrder - b.sortOrder)
   const trackKey = new Map(orderedTracks.map((track, index) => [track.id, `spur-${index + 1}`]))
@@ -105,7 +112,12 @@ export function buildExport(
       durationMin: item.plannedDurationMin,
       // Nur Punkte, die mit exportiert werden (alle Punkte des Events, siehe filter oben).
       waitsFor: item.waitsFor.filter(id => itemKey.has(id)).map(id => itemKey.get(id)!)
-    }))
+    })),
+    ...(places.length > 0 ? {
+      places: [...places]
+        .sort((a, b) => a.name.localeCompare(b.name, 'de'))
+        .map(place => ({ name: place.name, address: place.address, ...(place.mapUrl ? { mapUrl: place.mapUrl } : {}) }))
+    } : {})
   }
 }
 
@@ -147,7 +159,12 @@ const exportSchema = z.object({
     start: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})$/),
     durationMin: z.int().min(0).max(PLAN_LIMITS.durationMaxMin),
     waitsFor: z.array(key).max(PLAN_LIMITS.maxWaitsFor).default([])
-  })).max(PLAN_LIMITS.maxItems)
+  })).max(PLAN_LIMITS.maxItems),
+  places: z.array(z.strictObject({
+    name: text(PLACE_LIMITS.nameMax).pipe(z.string().min(1)),
+    address: text(PLACE_LIMITS.addressMax).pipe(z.string().min(1)),
+    mapUrl: z.string().max(PLACE_LIMITS.mapUrlMax).optional()
+  })).max(PLACE_LIMITS.maxPlaces).default([])
 })
 
 export type ParsedPlan = {
@@ -163,6 +180,7 @@ export type ParsedPlan = {
     description: string | null
     internalNote: string | null
   })[]
+  places: PlaceFields[]
 }
 
 export type ParsedExport = { ok: true; plan: ParsedPlan } | { ok: false; errors: string[] }
@@ -226,6 +244,14 @@ export function parseExport(input: unknown): ParsedExport {
     })
   }
 
+  const places: PlaceFields[] = []
+  for (const place of data.places) {
+    const mapUrl = place.mapUrl ? normalizeMapUrl(place.mapUrl) : null
+    if (place.mapUrl && !mapUrl) errors.push(`Ort „${place.name}“: Der Kartenlink ist kein https-Link.`)
+    if (places.some(other => placeKey(other.name) === placeKey(place.name))) errors.push(`Ort „${place.name}“ kommt doppelt vor.`)
+    places.push({ name: place.name, address: place.address, mapUrl })
+  }
+
   if (errors.length === 0) {
     const problem = checkDependencies(items.map((item, index) => ({ id: item.key, trackId: item.track, sortOrder: index, waitsFor: item.waitsFor })))
     if (problem?.kind === 'cycle') {
@@ -243,12 +269,14 @@ export function parseExport(input: unknown): ParsedExport {
       date,
       settings: { ...DEFAULT_EVENT_OPTIONS, ...data.settings },
       tracks: data.tracks,
-      items
+      items,
+      places
     }
   }
 }
 
 export type MaterializedPlan = {
+  places: PlaceFields[]
   tracks: (ExportTrack & { sortOrder: number })[]
   items: (Omit<ParsedPlan['items'][number], 'start' | 'durationMin'> & { sortOrder: number; plannedStart: Date; plannedDurationMin: number })[]
 }
@@ -261,6 +289,7 @@ export function materializePlan(plan: ParsedPlan, targetDate: Date, timeZone: st
   const days = daysBetween(plan.date, targetDate, timeZone)
   const position = new Map<string, number>()
   return {
+    places: plan.places,
     tracks: plan.tracks.map((track, index) => ({ ...track, sortOrder: index + 1 })),
     items: plan.items.map(({ start, durationMin, ...item }) => {
       const sortOrder = (position.get(item.track) ?? 0) + 1

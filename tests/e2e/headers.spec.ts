@@ -69,6 +69,12 @@ test('Einmal-Links und Tafel-Links gehen nicht per Referer weiter', async ({ req
   const board = await headersOf(request, '/irgendein-event/tafel?k=abc')
   expect(board['referrer-policy']).toBe('no-referrer')
   expect(board['x-frame-options']).toBe('DENY')
+  // Team-Link für Dienstleister (Idee L18): Schlüssel in der URL, interne Notizen - kein Referer, Cache, Index, iFrame.
+  const crew = await headersOf(request, '/irgendein-event/team?k=abc')
+  expect(crew['referrer-policy']).toBe('no-referrer')
+  expect(crew['cache-control']).toContain('no-store')
+  expect(crew['x-robots-tag']).toBe('noindex, nofollow')
+  expect(crew['x-frame-options']).toBe('DENY')
   // Die Gästeansicht selbst behält die normale Referrer-Policy.
   expect((await headersOf(request, '/irgendein-event'))['referrer-policy']).toBe('strict-origin-when-cross-origin')
 })

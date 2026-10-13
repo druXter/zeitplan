@@ -14,6 +14,8 @@ export type GuestSourceItem = ScheduleItem & {
   internalNote?: string | null
   visibility: Visibility
   cancelReason: string | null
+  /** Ort mit Adresse (Idee L22), vom Server über das Feld "Ort" zugeordnet - für Gäste nur an öffentlichen Punkten. */
+  place?: { address: string; routeUrl: string } | null
 }
 
 export type GuestTrack = { id: string; name: string; visibility: TrackVisibility; sortOrder: number }
@@ -38,6 +40,9 @@ export type GuestItem = {
   id: string
   title: string
   location: string | null
+  /** Adresse und Link "Route öffnen" des Orts (Idee L22), nicht bei ausgefallenen Punkten. */
+  address: string | null
+  routeUrl: string | null
   description: string | null
   /** Name der Spur (nur öffentliche Spuren). */
   track: string
@@ -59,6 +64,12 @@ export type GuestView = {
   items: GuestItem[]
   /** Angezeigter Beginn je Punkt - der Server speichert ihn als guestShownStart für die nächste Hysterese. */
   shown: Record<string, Date>
+}
+
+/** Öffentliche Spur eines für Gäste sichtbaren Punkts, sonst null (TEAM/SECRET, Team-Spur, unbekannte Spur, zurückgestellt). */
+function guestTrack(source: GuestSourceItem, publicTracks: Map<string, GuestTrack>): GuestTrack | null {
+  const track = publicTracks.get(source.trackId)
+  return track && source.visibility === 'PUBLIC' && source.status !== 'DEFERRED' ? track : null
 }
 
 function roundTo(ms: number, stepMin: number): number {
@@ -94,8 +105,8 @@ export function toGuestView(
   const rows: { item: GuestItem; trackOrder: number; sortOrder: number }[] = []
 
   for (const source of projection.items) {
-    const track = publicTracks.get(source.trackId)
-    if (!track || source.visibility !== 'PUBLIC' || source.status === 'DEFERRED') continue
+    const track = guestTrack(source, publicTracks)
+    if (!track) continue
 
     const planned = source.plannedStart.getTime()
     const cancelled = source.status === 'CANCELLED'
@@ -117,6 +128,8 @@ export function toGuestView(
         id: source.id,
         title: source.title,
         location: source.location,
+        address: cancelled ? null : source.place?.address ?? null,
+        routeUrl: cancelled ? null : source.place?.routeUrl ?? null,
         description: source.description,
         track: track.name,
         status: cancelled ? 'cancelled' : source.phase === 'now' || source.phase === 'past' ? source.phase : 'upcoming',
@@ -133,4 +146,44 @@ export function toGuestView(
     a.item.shownStart.getTime() - b.item.shownStart.getTime() || a.trackOrder - b.trackOrder || a.sortOrder - b.sortOrder
   )
   return { items: rows.map(row => row.item), shown }
+}
+
+/** Ein Punkt im gedruckten Programmheft (Idee L21) - wie GuestItem, aber zur Planzeit, ohne Prognose. */
+export type ProgrammeItem = {
+  id: string
+  title: string
+  location: string | null
+  address: string | null
+  description: string | null
+  track: string
+  start: Date
+}
+
+/**
+ * Programmheft für Gäste zum Drucken (Idee L21): dieselben Punkte wie in toGuestView, aber mit der Planzeit (aktueller
+ * Plan) statt der Prognose - Papier veraltet nicht minütlich - und ohne ausgefallene Punkte. Chronologisch, öffentliche
+ * Spuren zusammengeführt. Auch hier ist jedes Feld ausdrücklich freigegeben.
+ */
+export function toProgramme(items: GuestSourceItem[], tracks: GuestTrack[]): ProgrammeItem[] {
+  const publicTracks = new Map(tracks.filter(t => t.visibility === 'PUBLIC').map(t => [t.id, t]))
+  const rows: { item: ProgrammeItem; trackOrder: number; sortOrder: number }[] = []
+  for (const source of items) {
+    const track = guestTrack(source, publicTracks)
+    if (!track || source.status === 'CANCELLED') continue
+    rows.push({
+      trackOrder: track.sortOrder,
+      sortOrder: source.sortOrder,
+      item: {
+        id: source.id,
+        title: source.title,
+        location: source.location,
+        address: source.place?.address ?? null,
+        description: source.description,
+        track: track.name,
+        start: source.plannedStart
+      }
+    })
+  }
+  rows.sort((a, b) => a.item.start.getTime() - b.item.start.getTime() || a.trackOrder - b.trackOrder || a.sortOrder - b.sortOrder)
+  return rows.map(row => row.item)
 }

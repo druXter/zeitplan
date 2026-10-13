@@ -7,9 +7,9 @@ import { canAddRemoveItems, canCreateEvents, canEditPlan, canManageEvent } from 
 import { allowedStatusChanges, STATUS_LABELS } from '../../../lib/events/settings'
 import { isGuestVisibleStatus } from '../../../lib/guest/access'
 import { formatDate, utcToZonedDate } from '../../../lib/timezone'
-import { accessCodeConfigured, displayLinkConfigured, displayToken, suggestAccessCode } from '../../../lib/guest/tokens'
+import { accessCodeConfigured, crewToken, displayLinkConfigured, displayToken, suggestAccessCode } from '../../../lib/guest/tokens'
 import { linkedRsvpEventId, rsvpConfigured, timelineLinkFor } from '../../../lib/rsvp/token'
-import { changeEventStatus, deleteEvent, regenerateDisplayLink, shareEvent, unshareEvent } from '../actions'
+import { changeEventStatus, deleteEvent, regenerateDisplayLink, setCrewLink, shareEvent, unshareEvent } from '../actions'
 import { EventOptionsForm, EventSettingsForm, GuestAccessForm, ShiftsLinkForm } from '../event-forms'
 import { linkedShiftsEventId, shiftsConfigured, shiftsLinkUrl, shiftsOrigin } from '../../../lib/shifts/token'
 import ConfirmForm from '../../../ui/confirm-form'
@@ -19,7 +19,7 @@ import Notice from '../../../ui/notice'
 
 export const dynamic = 'force-dynamic'
 
-type Search = { created?: string; imported?: string; duplicated?: string; status?: string; shared?: string; unshared?: string; shareError?: string; display?: string }
+type Search = { created?: string; imported?: string; duplicated?: string; status?: string; shared?: string; unshared?: string; shareError?: string; display?: string; crew?: string }
 
 const ACCESS_LABELS = { PUBLIC: 'jede*r mit Link', CODE: 'nur mit Zugangscode', ACCOUNT: 'nur mit Konto', RSVP: 'nur mit Zusage in rsvp-app' } as const
 
@@ -80,6 +80,9 @@ export default async function EventPage({ params, searchParams }: { params: Prom
         {search.shareError === 'notfound' && <Notice tone="error">Zu dieser Adresse gibt es kein Konto. Lade die Person zuerst unter „Konten“ ein.</Notice>}
         {search.shareError === 'owner' && <Notice tone="error">Diesem Konto gehört das Event bereits.</Notice>}
         {search.display === '1' && <Notice tone="success">Neuer Tafel-Link erzeugt. Der bisherige funktioniert nicht mehr.</Notice>}
+        {search.crew === 'on' && <Notice tone="success">Team-Link eingeschaltet.</Notice>}
+        {search.crew === 'new' && <Notice tone="success">Neuer Team-Link erzeugt. Der bisherige funktioniert nicht mehr.</Notice>}
+        {search.crew === 'off' && <Notice tone="success">Team-Link ausgeschaltet. Der bisherige funktioniert nicht mehr.</Notice>}
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
           <h2 className="font-bold">Ablauf</h2>
@@ -127,7 +130,46 @@ export default async function EventPage({ params, searchParams }: { params: Prom
             <Link href={`/${event.slug}`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Gästeansicht</Link>
             <Link href={`/${event.slug}/tafel`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Tafel</Link>
             <Link href={`/admin/events/${event.id}/qr`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">QR-Code zum Ausdrucken</Link>
+            <Link href={`/admin/events/${event.id}/druck`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Regieplan und Programmheft</Link>
           </div>
+        </div>
+
+        <div id="team-link" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
+          <h2 className="font-bold">Team-Link für Dienstleister</h2>
+          <p className="text-xs text-gray-600 dark:text-gray-400">
+            Für DJ, Fotograf*in oder Catering ohne eigenes Konto: die Team-Ansicht nur zum Lesen – mit Team-Punkten,
+            internen Notizen und Zuständigen (nur Namen), geheime Punkte nur als „Geheimer Punkt“ mit Zeit und Dauer.
+          </p>
+          {!displayLinkConfigured() ? (
+            <p className="text-xs text-amber-900 dark:text-amber-200">Auf dem Server fehlt <code>DISPLAY_LINK_SECRET</code> – ohne ihn gibt es keinen Team-Link (siehe README).</p>
+          ) : event.crewLinkEnabled ? (
+            <>
+              <CopyableField label="Team-Link (nur lesen)" value={`${baseUrl()}/${event.slug}/team?k=${crewToken(event.id, event.crewLinkVersion)}`} />
+              <p className="text-xs text-gray-600 dark:text-gray-400">Wer den Link hat, liest die internen Notizen – gib ihn nur an Dienstleister weiter, nicht an Gäste.</p>
+              {isOwner && (
+                <div className="flex flex-wrap gap-3 text-sm">
+                  <ConfirmForm action={setCrewLink} message="Neuen Team-Link erzeugen? Der bisherige funktioniert danach nicht mehr.">
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <input type="hidden" name="mode" value="new" />
+                    <button type="submit" className="text-blue-700 dark:text-blue-300 hover:underline">Neuen Team-Link erzeugen</button>
+                  </ConfirmForm>
+                  <ConfirmForm action={setCrewLink} message="Team-Link ausschalten? Der bisherige funktioniert danach nicht mehr.">
+                    <input type="hidden" name="eventId" value={event.id} />
+                    <input type="hidden" name="mode" value="off" />
+                    <button type="submit" className="text-red-700 dark:text-red-300 hover:underline">Team-Link ausschalten</button>
+                  </ConfirmForm>
+                </div>
+              )}
+            </>
+          ) : isOwner ? (
+            <form action={setCrewLink}>
+              <input type="hidden" name="eventId" value={event.id} />
+              <input type="hidden" name="mode" value="on" />
+              <button type="submit" className="text-sm py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Team-Link einschalten</button>
+            </form>
+          ) : (
+            <p className="text-sm text-gray-700 dark:text-gray-300">Ausgeschaltet. Einschalten können Besitzer*in und Admins.</p>
+          )}
         </div>
 
         {isOwner ? (

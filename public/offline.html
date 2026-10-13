@@ -85,7 +85,7 @@
           if (item.location) {
             var where = document.createElement('span')
             where.className = 'where'
-            where.textContent = item.location
+            where.textContent = item.location + (item.address ? ', ' + item.address : '')
             text.appendChild(where)
           }
           li.appendChild(time)

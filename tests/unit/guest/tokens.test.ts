@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  accessCodeConfigured, accessCodeHmac, accessCodeMatches, displayLinkConfigured, displayToken, displayTokenValid,
+  accessCodeConfigured, accessCodeHmac, accessCodeMatches, crewToken, crewTokenValid, displayLinkConfigured, displayToken, displayTokenValid,
   normalizeAccessCode, suggestAccessCode, validateAccessCode
 } from '../../../app/lib/guest/tokens'
 
@@ -99,5 +99,28 @@ describe('Tafel-Link', () => {
     // Auch nicht allein mit dem vorherigen Secret.
     vi.stubEnv('DISPLAY_LINK_SECRET_PREVIOUS', SECRET_A)
     expect(displayTokenValid('e1', 1, token)).toBe(false)
+  })
+})
+
+describe('Team-Link (Idee L18)', () => {
+  it('eigene Nachricht und Version: Tafel- und Team-Schlüssel sind nie austauschbar', () => {
+    const crew = crewToken('e1', 1)
+    expect(crewTokenValid('e1', 1, crew)).toBe(true)
+    expect(crew).not.toBe(displayToken('e1', 1))
+    expect(displayTokenValid('e1', 1, crew)).toBe(false)
+    expect(crewTokenValid('e1', 1, displayToken('e1', 1))).toBe(false)
+    expect(crewTokenValid('e1', 2, crew)).toBe(false)
+    expect(crewTokenValid('e2', 1, crew)).toBe(false)
+  })
+
+  it('Schlüsselwechsel über DISPLAY_LINK_SECRET_PREVIOUS, ohne Secret abgeschaltet', () => {
+    const old = crewToken('e1', 1)
+    vi.stubEnv('DISPLAY_LINK_SECRET', SECRET_B)
+    expect(crewTokenValid('e1', 1, old)).toBe(false)
+    vi.stubEnv('DISPLAY_LINK_SECRET_PREVIOUS', SECRET_A)
+    expect(crewTokenValid('e1', 1, old)).toBe(true)
+    vi.stubEnv('DISPLAY_LINK_SECRET', '')
+    expect(crewTokenValid('e1', 1, old)).toBe(false)
+    expect(() => crewToken('e1', 1)).toThrow()
   })
 })

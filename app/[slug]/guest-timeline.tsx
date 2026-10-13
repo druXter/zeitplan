@@ -116,6 +116,17 @@ function GuestRow({ item, clock, showTracks, highlight }: { item: GuestPayloadIt
           {showTracks && <span className="text-xs rounded px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">{item.track}</span>}
         </p>
         {item.location && <p className="text-sm text-gray-700 dark:text-gray-300">{item.location}</p>}
+        {item.address && (
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            {item.address}
+            {item.routeUrl && (
+              <>
+                {' · '}
+                <a href={item.routeUrl} target="_blank" rel="noopener noreferrer" className="text-blue-700 dark:text-blue-300 underline">Route öffnen</a>
+              </>
+            )}
+          </p>
+        )}
         {!cancelled && item.description && <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{item.description}</p>}
         {cancelled && item.cancelReason && <p className="text-sm text-gray-700 dark:text-gray-300">{item.cancelReason}</p>}
       </div>

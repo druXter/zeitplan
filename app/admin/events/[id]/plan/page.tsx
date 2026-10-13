@@ -9,6 +9,12 @@ import { loadPlan, type PlanTrack } from '../../../../lib/planning/store'
 import type { PlanItem } from '../../../../lib/planning/items'
 import { formatDuration as minutes, formatItemClock } from '../../../../lib/timezone'
 import { createTrack, deleteTrack, moveItem, moveTrack, updateTrack } from '../../plan-actions'
+import { deletePlace } from '../../place-actions'
+import { prisma } from '../../../../lib/prisma'
+import { placeIndex, type Place } from '../../../../lib/planning/places'
+import PlaceForm from '../../place-form'
+import ConfirmForm from '../../../../ui/confirm-form'
+import PlaceLine from '../../../../ui/place-line'
 import StatusBadge from '../../../../ui/status-badge'
 import Notice from '../../../../ui/notice'
 import Badge from '../../../../ui/badge'
@@ -17,7 +23,7 @@ export const dynamic = 'force-dynamic'
 
 type Search = {
   track?: string; saved?: string; deleted?: string; moved?: string; moveError?: string; shifted?: string
-  trackSaved?: string; trackDeleted?: string; trackError?: string
+  trackSaved?: string; trackDeleted?: string; trackError?: string; placeDeleted?: string
 }
 
 const MOVE_ERRORS: Record<string, string> = {
@@ -48,7 +54,11 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const user = await requireUser(`/admin/events/${id}/plan`)
   const event = await loadEventOr404(id, user)
   const search = await searchParams
-  const { tracks, items } = await loadPlan(event.id, user.id)
+  const [{ tracks, items }, places] = await Promise.all([
+    loadPlan(event.id, user.id),
+    prisma.place.findMany({ where: { eventId: event.id }, orderBy: { name: 'asc' }, select: { id: true, name: true, address: true, mapUrl: true } })
+  ])
+  const placeOf = placeIndex(places)
 
   const current = tracks.find(track => track.id === search.track) ?? null
   const trackById = new Map(tracks.map(track => [track.id, track]))
@@ -81,6 +91,7 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         {search.moveError && <Notice tone="error">{MOVE_ERRORS[search.moveError] ?? 'Das hat nicht geklappt.'}</Notice>}
         {search.trackSaved === '1' && <Notice tone="success">Spur gespeichert.</Notice>}
         {search.trackDeleted === '1' && <Notice tone="success">Spur gelöscht.</Notice>}
+        {search.placeDeleted === '1' && <Notice tone="success">Ort gelöscht. Die Punkte behalten ihn als Text, ohne Adresse.</Notice>}
         {search.trackError && <Notice tone="error">{TRACK_ERRORS[search.trackError] ?? 'Das hat nicht geklappt.'}</Notice>}
 
         {!projection.ok && (
@@ -136,11 +147,14 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
                     return neighbour !== undefined && canEditItem(event.level, event, neighbour, neighbour.canSee)
                   }}
                   trackQuery={trackQuery}
+                  place={placeOf(row.item.location)}
                 />
               ))}
             </ol>
           )}
         </div>
+
+        <Places eventId={event.id} places={places} editable={mayEdit} />
 
         {isOwner && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-4">
@@ -168,6 +182,49 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         )}
       </div>
     </main>
+  )
+}
+
+/** Orte mit Adresse (Idee L22): Punkte gehören über ihr Feld „Ort“ dazu, Gäste sehen Adresse und „Route öffnen“. */
+function Places({ eventId, places, editable }: { eventId: string; places: Place[]; editable: boolean }) {
+  if (!editable && places.length === 0) return null
+  return (
+    <div id="orte" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
+      <h2 className="font-bold">Orte</h2>
+      <p className="text-xs text-gray-600 dark:text-gray-400">
+        Orte mit Adresse, z. B. Kirche und Feier-Location. Steht ihr Name im Feld „Ort“ eines Punkts, sehen Gäste dort die
+        Adresse und „Route öffnen“. Umbenennen ändert den Ort auch an den Punkten.
+      </p>
+      {places.length > 0 && (
+        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+          {places.map(place => (
+            <li key={place.id} data-place={place.name} className="py-2 space-y-2">
+              {editable ? (
+                <details>
+                  <summary className="cursor-pointer text-sm"><span className="font-medium">{place.name}</span> – {place.address}</summary>
+                  <div className="mt-2 space-y-2">
+                    <PlaceForm eventId={eventId} place={place} />
+                    <ConfirmForm action={deletePlace} message={`Ort „${place.name}“ löschen? Die Punkte behalten ihn als Text, ohne Adresse.`}>
+                      <input type="hidden" name="eventId" value={eventId} />
+                      <input type="hidden" name="placeId" value={place.id} />
+                      <button type="submit" className="text-xs text-red-700 dark:text-red-300 hover:underline">Ort löschen</button>
+                    </ConfirmForm>
+                  </div>
+                </details>
+              ) : (
+                <p className="text-sm"><span className="font-medium">{place.name}</span> – {place.address}</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {editable && (
+        <details open={places.length === 0} className="border-t border-gray-200 dark:border-gray-700 pt-2">
+          <summary className="cursor-pointer text-sm font-medium">Neuer Ort</summary>
+          <div className="mt-2"><PlaceForm eventId={eventId} /></div>
+        </details>
+      )}
+    </div>
   )
 }
 
@@ -232,7 +289,7 @@ function MoveButton({ eventId, itemId, otherId, trackQuery, label, symbol }: { e
   )
 }
 
-function Row({ row, eventId, track, showTrack, showGap, clock, waitsFor, editable, neighbourEditable, trackQuery }: {
+function Row({ row, eventId, track, showTrack, showGap, clock, waitsFor, editable, neighbourEditable, trackQuery, place }: {
   row: PlanRow<PlanItem>
   eventId: string
   track: PlanTrack | undefined
@@ -243,6 +300,7 @@ function Row({ row, eventId, track, showTrack, showGap, clock, waitsFor, editabl
   editable: boolean
   neighbourEditable: (id: string | null) => boolean
   trackQuery: string
+  place: Place | null
 }) {
   const { item } = row
   const inactive = item.status === 'DEFERRED' || item.status === 'CANCELLED'
@@ -270,7 +328,7 @@ function Row({ row, eventId, track, showTrack, showGap, clock, waitsFor, editabl
             {item.status === 'CANCELLED' && <Badge>fällt aus</Badge>}
             {showTrack && track && <Badge>{track.name}</Badge>}
           </div>
-          {item.location && <p className="text-sm text-gray-700 dark:text-gray-300">{item.location}</p>}
+          {item.location && <PlaceLine location={item.location} place={place} />}
           {item.description && <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{item.description}</p>}
           {item.internalNote && <p className="text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 rounded px-2 py-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}
           {waitsFor.length > 0 && <p className="text-xs text-gray-600 dark:text-gray-400">wartet auf: {waitsFor.map(other => other.title).join(', ')}</p>}

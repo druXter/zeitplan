@@ -10,6 +10,11 @@ import { hasGuestSession } from './session'
 import { displayTokenValid } from './tokens'
 import { buildGuestPayload, type GuestPayload } from './payload'
 import { currentAnnouncement } from './announcement'
+import { placeIndex, routeUrl, type PlaceFields } from '../planning/places'
+
+function guestPlace(place: PlaceFields | null): { address: string; routeUrl: string } | null {
+  return place ? { address: place.address, routeUrl: routeUrl(place) } : null
+}
 
 const guestEventSelect = {
   id: true, slug: true, title: true, description: true, date: true, timezone: true, status: true, access: true,
@@ -67,7 +72,7 @@ export const resolveGuestEvent = cache(async (slug: string, displayKey?: string)
  * braucht die Punkte für die Kette) - heraus kommt aber nur, was toGuestView freigibt.
  */
 export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<GuestPayload> {
-  const [tracks, rows] = await Promise.all([
+  const [tracks, rows, places] = await Promise.all([
     prisma.track.findMany({ where: { eventId: event.id }, select: { id: true, name: true, visibility: true, sortOrder: true } }),
     prisma.item.findMany({
       where: { eventId: event.id },
@@ -77,9 +82,11 @@ export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<Gu
         actualStart: true, actualEnd: true, reportedDelayMin: true, cancelReason: true, guestShownStart: true,
         waitsFor: { select: { waitsForItemId: true } }
       }
-    })
+    }),
+    prisma.place.findMany({ where: { eventId: event.id }, select: { name: true, address: true, mapUrl: true } })
   ])
 
+  const placeOf = placeIndex(places)
   const items: GuestSourceItem[] = rows.map(row => ({
     id: row.id,
     trackId: row.trackId,
@@ -97,6 +104,7 @@ export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<Gu
     actualEnd: row.actualEnd,
     reportedDelayMin: row.reportedDelayMin,
     cancelReason: row.cancelReason,
+    place: guestPlace(placeOf(row.location)),
     waitsFor: row.waitsFor.map(d => d.waitsForItemId)
   }))
 

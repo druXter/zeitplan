@@ -9,11 +9,14 @@ import { safeEqual } from '../permissions'
  * | Token       | Erzeugung                                            | Speicherung                    |
  * | Zugangscode | frei gewählt (oder Vorschlag), mindestens 8 Zeichen  | HMAC(ACCESS_CODE_SECRET, ...)  |
  * | Tafel-Link  | HMAC(DISPLAY_LINK_SECRET, eventId:Version)           | gar nicht (abgeleitet)         |
+ * | Team-Link   | HMAC(DISPLAY_LINK_SECRET, crew:eventId:Version)      | gar nicht (abgeleitet)         |
  *
  * Der Code wird per HMAC gespeichert, nie als reiner Hash: Frei gewählte Codes sind aus einem Datenbank-Abzug
  * sonst per Wörterbuch schnell zurückgerechnet. Er hängt an der Event-id, damit derselbe Code in zwei Events
  * verschiedene Werte ergibt. Der Tafel-Link wird abgeleitet statt gespeichert; displayTokenVersion + 1 macht
- * alle alten Links ungültig.
+ * alle alten Links ungültig. Der Team-Link für Dienstleister (Idee L18) teilt sich das Secret mit der Tafel, die
+ * Nachricht beginnt aber mit "crew:" - ein Tafel-Schlüssel öffnet nie die Team-Ansicht und umgekehrt. Eigene
+ * Version (crewLinkVersion), damit ein neuer Tafel-Link den Team-Link nicht ändert.
  *
  * Fehlt ein Secret oder ist es zu kurz, ist die jeweilige Funktion abgeschaltet (accessCodeConfigured,
  * displayLinkConfigured) - es gibt keinen unsicheren Rückfall auf einen Standardwert.
@@ -94,12 +97,27 @@ export function displayToken(eventId: string, version: number): string {
   return hmac(requireSecret('DISPLAY_LINK_SECRET'), `display:${eventId}:${version}`)
 }
 
-/** Prüft einen Tafel-Link - mit dem aktuellen und (Schlüsselrotation) dem vorherigen Secret. */
-export function displayTokenValid(eventId: string, version: number, token: string): boolean {
+/** Prüft einen abgeleiteten Link - mit dem aktuellen und (Schlüsselrotation) dem vorherigen Secret. */
+function derivedTokenValid(message: string, token: string): boolean {
   if (!token || token.length > 100 || !displayLinkConfigured()) return false
   const keys = [secret('DISPLAY_LINK_SECRET'), secret('DISPLAY_LINK_SECRET_PREVIOUS')].filter((k): k is string => k !== null)
   // Alle Schlüssel prüfen (kein frühes Ende), damit die Laufzeit nicht verrät, welcher passt.
   let valid = false
-  for (const key of keys) if (safeEqual(hmac(key, `display:${eventId}:${version}`), token)) valid = true
+  for (const key of keys) if (safeEqual(hmac(key, message), token)) valid = true
   return valid
+}
+
+/** Prüft einen Tafel-Link. */
+export function displayTokenValid(eventId: string, version: number, token: string): boolean {
+  return derivedTokenValid(`display:${eventId}:${version}`, token)
+}
+
+// --- Team-Link (Idee L18) -------------------------------------------------------------------------
+
+export function crewToken(eventId: string, version: number): string {
+  return hmac(requireSecret('DISPLAY_LINK_SECRET'), `crew:${eventId}:${version}`)
+}
+
+export function crewTokenValid(eventId: string, version: number, token: string): boolean {
+  return derivedTokenValid(`crew:${eventId}:${version}`, token)
 }

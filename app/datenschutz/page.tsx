@@ -9,7 +9,7 @@ import Link from 'next/link'
 // Offline-Stand im Browser, Phase 4: Live-Steuerung mit Verlauf, Phase 5: Zugangscode mit Gast-Sitzung und
 // Drosselung, Zugang per Konto, Tafel-Link, Phase 6: Anmeldung mit Konten anderer Tools der Suite, Phase 7:
 // Zugang über eine Zusage in rsvp-app; Abruf der Programmpunkte durch Schichten; Durchsagen, Protokollnotizen und
-// Rückblick als CSV).
+// Rückblick als CSV; Orte mit Adresse und Routen-Link, Zuständige je Punkt, Team-Link für Dienstleister, Druckansichten).
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -114,7 +114,16 @@ export default function DatenschutzPage() {
             (z. B. einer Überraschung) speichern wir zusätzlich, welche Konten den Inhalt sehen dürfen; alle anderen sehen
             nur Zeit und Dauer. Gegenüber dem Betreiber der Anwendung, der Zugriff auf die Datenbank hat, sind auch geheime
             Punkte nicht verborgen. Mehrere Veranstaltungen lassen sich zu einer <strong>Reihe</strong> mit Titel und
-            Adresse bündeln.
+            Adresse bündeln. Zu einer Veranstaltung können <strong>Orte</strong> mit Name und Anschrift (z. B. Kirche und
+            Feier-Location) gespeichert sein.
+          </p>
+          <p className="mt-2">
+            Pro Programmpunkt kann das Team <strong>Zuständige</strong> eintragen (Konten mit Zugriff auf die
+            Veranstaltung). Konten mit Zugriff sehen sie mit Name bzw. E-Mail-Adresse. Die Veranstalter*innen können
+            außerdem einen <strong>Team-Link</strong> für Dienstleister (z. B. DJ oder Catering) einschalten: Wer ihn hat,
+            sieht ohne Konto den Ablauf fürs Team mit internen Notizen und den <em>Namen</em> der Zuständigen (keine
+            E-Mail-Adressen). Der Link lässt sich jederzeit ausschalten oder neu erzeugen; danach funktioniert der alte
+            nicht mehr. Über den Team-Link speichern wir nichts über die Person, die ihn öffnet.
           </p>
           <p className="mt-2">
             Während der Veranstaltung melden Moderator*innen den Ablauf (Beginn, Ende, Verspätungen, Änderungen). Jede
@@ -133,8 +142,10 @@ export default function DatenschutzPage() {
             herunterladen - für deren Weitergabe ist verantwortlich, wer sie herunterlädt.
           </p>
           <p className="mt-2">
-            Ein <strong>Export</strong> als Datei enthält den Ablauf mit internen Notizen, aber keine Konten, E-Mail-Adressen
-            oder Freigaben; für die Weitergabe einer exportierten Datei ist verantwortlich, wer sie herunterlädt.
+            Ein <strong>Export</strong> als Datei enthält den Ablauf mit internen Notizen und Orten, aber keine Konten,
+            E-Mail-Adressen, Zuständigen oder Freigaben; für die Weitergabe einer exportierten Datei ist verantwortlich, wer
+            sie herunterlädt. Dasselbe gilt für den ausgedruckten <strong>Regieplan</strong> (mit internen Notizen und den
+            Namen der Zuständigen).
           </p>
         </div>
 
@@ -157,6 +168,12 @@ export default function DatenschutzPage() {
             Zusage dort. rsvp-app übermittelt uns dabei nur eine Kennung deiner Zusage und der Veranstaltung (kein Name,
             keine E-Mail-Adresse); wir speichern sie zu deinem Zugang wie oben. Sagst du in rsvp-app ab, meldet rsvp-app
             uns das mit derselben Kennung, und wir beenden deinen Zugang.
+          </p>
+          <p className="mt-2">
+            Steht an einem Programmpunkt eine Adresse, öffnet <strong>„Route öffnen“</strong> einen Kartendienst (Google
+            Maps oder einen von den Veranstalter*innen hinterlegten Link) in einem neuen Tab. Erst mit diesem Klick
+            verbindet sich dein Browser mit dem Kartendienst, und es gilt dessen Datenschutzerklärung; vorher wird nichts
+            von dort geladen.
           </p>
           <p className="mt-2">
             Damit du den Ablauf auch bei schlechtem Empfang siehst, merkt sich dein Browser den zuletzt geladenen Stand

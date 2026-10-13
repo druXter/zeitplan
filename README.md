@@ -21,7 +21,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 6 | Konto-Föderation über `suite-kit`: mit Konten anderer Tools anmelden, für andere Tools bestätigen | ✅ umgesetzt |
 | 7 | Anbindung an rsvp-app (Zugang `RSVP`): 7a Anbindungen in rsvp-app verallgemeinern, 7b Link, Gast-Sitzung, Webhook | ✅ umgesetzt (beide Seiten; rsvp-app ab Commit `c6fa5d3`) |
 | 8 | Abschluss: README, Lasttest (200 Gäste), Handy-Layout-Test, Vorschlag für das suite-kit-README | ✅ umgesetzt – Test auf echtem Handy und Fernseher steht noch aus (Checkliste unter „Vor dem Einsatz“) |
-| – | Ergänzungen aus der Ideensammlung der Suite (`suite-kit/docs/IDEEN.md`): Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24) | ✅ umgesetzt (2026-10-13) |
+| – | Ergänzungen aus der Ideensammlung der Suite (`suite-kit/docs/IDEEN.md`): Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24), Orte mit Adresse (L22), Team-Link für Dienstleister (L18), Regieplan und Programmheft (L21), Zuständige und „Meine Punkte“ (L16) | ✅ umgesetzt (2026-10-13) |
 
 **Im Überblick:** Planende legen Events an (leer oder mit der Vorlage „Hochzeit“), planen Programmpunkte in Spuren mit
 Ankern, Puffern, Team- und geheimen Punkten und bündeln mehrere Events zu einer Reihe. Am Tag selbst melden
@@ -31,7 +31,9 @@ dem letzten Stand), vor Ort auf der Anzeigetafel; das Team sieht alles minutenge
 öffentlich oder geschützt (Zugangscode, Konto, Zusage in rsvp-app). Optional: Anmeldung mit Konten anderer Tools der
 Suite (Föderation) und die Anbindung an rsvp-app (dort Button „Zeitplan“, Weiterleitung und Webhook). Kurze
 **Durchsagen** erscheinen oben in Gästeansicht und Tafel; nach dem Event (oder einer Sitzung) zeigt der **Rückblick** Plan
-gegen Ist mit Protokollnotizen, zum Drucken und als CSV.
+gegen Ist mit Protokollnotizen, zum Drucken und als CSV. **Orte mit Adresse** bringen Gästen „Route öffnen“, **Zuständige**
+finden ihre Punkte unter „Meine Punkte“, Dienstleister lesen über einen **Team-Link** ohne Konto mit, und der
+**Regieplan** (fürs Team) bzw. das **Programmheft** (für Gäste) lassen sich ausdrucken.
 
 **Darkmode:** folgt der Systemeinstellung des Geräts (wie rsvp-app), für Verwaltung, Live-Steuerung und Gästeansicht.
 Die Anzeigetafel ist unabhängig davon immer dunkel; Ausdrucke bleiben hell.
@@ -157,8 +159,18 @@ Unter `/admin/events/<id>/plan` (für alle Konten mit Zugriff; bearbeiten nur mi
   „Alle“ zeigt alles chronologisch mit Spur-Kennzeichnung. Spuren anlegen, umbenennen, umsortieren und (leer) löschen
   darf nur Besitzer\*in oder Admin.
 * **Programmpunkte:** Titel, Ort, Beschreibung für Gäste, **interne Notiz** (nur Team), Beginn, Dauer (das Ende wird
-  angezeigt), Spur, Anker, „darf früher beginnen“, Sichtbarkeit und „wartet auf“ (Zusammenführung, auch über Spuren).
-  Neue und zeitlich geänderte Punkte werden nach ihrem Beginn einsortiert.
+  angezeigt), Spur, Anker, „darf früher beginnen“, Sichtbarkeit, **Zuständige** und „wartet auf“ (Zusammenführung,
+  auch über Spuren). Neue und zeitlich geänderte Punkte werden nach ihrem Beginn einsortiert.
+* **Orte mit Adresse** (Abschnitt „Orte“ unter dem Ablauf, bearbeiten mit Planrecht): Name, Adresse und optional ein
+  eigener Kartenlink (https), z. B. für Kirche und Feier-Location. Ein Punkt gehört zu einem Ort, wenn im Feld „Ort“
+  derselbe Name steht (Groß-/Kleinschreibung egal; das Formular schlägt die Namen vor). Gäste sehen dann die Adresse und
+  „Route öffnen“ – zu Google Maps oder zum eigenen Link; erst der Klick öffnet die Karte, eingebettet wird nichts.
+  Umbenennen ändert den Ort an allen Punkten mit, die das Konto bearbeiten darf; Löschen lässt den Namen als Text stehen.
+  Orte gehen mit in Export, Import und Duplizieren.
+* **Zuständige:** pro Punkt Konten mit Zugriff aufs Event (bei geheimen Punkten nur aus „Geheim für“). Sie stehen in
+  Team-Ansicht, Team-Link (dort nur mit Namen) und Regieplan; jedes Konto sieht oben in der Team-Ansicht „Meine
+  Punkte“ mit der erwarteten Zeit („ca. 21:40, in 25 Min“) und kann die Liste auf die eigenen Punkte beschränken.
+  Zuständige stehen wie die Kontenliste geheimer Punkte in keiner Export-Datei.
 * **Puffer und Überschneidungen** stehen als eigene Zeile zwischen zwei Punkten einer Spur; Konflikte mit Ankern und
   Schleifen bei „wartet auf“ meldet die Seite oben (berechnet mit dem Prognose-Kern).
 * **Umsortieren** per „nach oben“/„nach unten“: tauscht mit dem Nachbarn wie im Live-Betrieb (`swapAdjacent`) – der
@@ -318,16 +330,18 @@ Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, vers
 | Gästeansicht | `/<adresse>` | Gäste – je nach Zugang mit Link, Code, Konto oder über die Zusage in rsvp-app |
 | Anzeigetafel | `/<adresse>/tafel` (geschützt: `?k=…`) | Beamer oder Fernseher vor Ort |
 | Reihen-Übersicht | `/<reihen-adresse>` | Gäste |
-| Team-Ansicht | `/admin/events/<id>/team` | alle Konten mit Zugriff aufs Event |
+| Team-Ansicht | `/admin/events/<id>/team` (nur eigene Punkte: `?meine=1`) | alle Konten mit Zugriff aufs Event |
+| Team-Link | `/<adresse>/team?k=…` | Dienstleister ohne Konto (DJ, Fotograf\*in, Catering), nur wenn eingeschaltet |
 | QR-Code | `/admin/events/<id>/qr` | zum Ausdrucken (Tischkarten, Menükarte) |
+| Regieplan, Programmheft | `/admin/events/<id>/druck` (Programmheft: `?art=programm`) | alle Konten mit Zugriff aufs Event |
 | Rückblick | `/admin/events/<id>/rueckblick` (CSV: `…/rueckblick/csv`) | alle Konten mit Zugriff aufs Event |
 
 * **Sichtbar** sind Gästeansicht und Tafel für veröffentlichte, laufende und beendete Events (Rückblick). Entwürfe und
   archivierte Events ergeben 404 – Konten mit Zugriff sehen stattdessen eine Vorschau mit Hinweis. Geschützte Events
   zeigen ohne gültigen Zugang nur den Titel („nur mit Zugang sichtbar“) und den Weg hinein (siehe „Zugang für
   Gäste“).
-* **Gästeansicht:** „Jetzt“ hervorgehoben, „Als Nächstes“, danach der Rest, Vergangenes eingeklappt; Ort und
-  Beschreibung je Punkt, ausgefallene Punkte durchgestrichen mit Grund. Weicht die Prognose ab, steht dort die neue
+* **Gästeansicht:** „Jetzt“ hervorgehoben, „Als Nächstes“, danach der Rest, Vergangenes eingeklappt; Ort (mit Adresse
+  und „Route öffnen“, wenn es den Ort mit Adresse gibt) und Beschreibung je Punkt, ausgefallene Punkte durchgestrichen mit Grund. Weicht die Prognose ab, steht dort die neue
   Uhrzeit („neu: ca. 15:40“, auf 5 Minuten gerundet, mit Horizont und Hysterese); „+10“ nur, wenn in den Einstellungen
   eingeschaltet. Gäste sehen nur öffentliche Punkte öffentlicher Spuren – nie Team- oder geheime Punkte, Team-Spuren,
   zurückgestellte Punkte oder interne Notizen, auch nicht im ausgelieferten HTML oder JSON.
@@ -344,8 +358,20 @@ Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, vers
 * **Team-Ansicht** (nur lesen): chronologisch wie für Gäste, aber minutengenau mit geplanter und erwarteter Zeit,
   „letzte Meldung vor X Min“, Ursprungsplan bei verlegten Punkten,
   Abweichung, Team- und geheimen Punkten (Inhalt nur für eingetragene Konten), internen Notizen, Konflikten mit Ankern,
-  „nicht bestätigt“, „überzogen“, „unklar“ und „läuft noch?“, zurückgestellten Punkten und der Zeit, die Gäste gerade
-  sehen. Lädt sich alle 30 Sekunden neu.
+  „nicht bestätigt“, „überzogen“, „unklar“ und „läuft noch?“, zurückgestellten Punkten, Orten mit Adresse,
+  Zuständigen und der Zeit, die Gäste gerade sehen. Oben „Meine Punkte“ (siehe „Planung“). Lädt sich alle 30 Sekunden neu.
+* **Team-Link für Dienstleister** (Eventseite, Abschnitt „Team-Link für Dienstleister“): dieselbe Team-Ansicht nur zum
+  Lesen, ohne Konto und ohne Links in die Verwaltung – mit Team-Punkten und internen Notizen, geheime Punkte nur als
+  „Geheimer Punkt“ mit Zeit und Dauer, Zuständige nur mit Namen (nie mit E-Mail-Adresse). Standardmäßig aus;
+  einschalten, neu erzeugen und ausschalten dürfen Besitzer\*in und Admin, den Link sehen alle Konten mit Zugriff. Neu
+  erzeugen und Ausschalten machen den alten Link sofort ungültig (auch nach erneutem Einschalten). Gilt auch für
+  Entwürfe, nicht für archivierte Events. Der Link ist wie der Tafel-Link per HMAC abgeleitet (`DISPLAY_LINK_SECRET`,
+  eigene Nachricht und Version – ein Tafel-Schlüssel öffnet nie die Team-Ansicht); ungültige Links ergeben 404.
+* **Regieplan** (Drucken, fürs Team): A4 mit Planzeiten, Ende, Dauer und Puffern, Orten mit Adresse, Zuständigen,
+  Beschreibung und interner Notiz – pro Spur auf eigener Seite, alle Spuren zusammen oder eine Spur. Als Rückfall, wenn
+  Netz oder Akku ausfallen; aktuelle Zeiten stehen in der Team-Ansicht. Geheime Punkte nur mit Eintrag.
+* **Programmheft** (Drucken, für Gäste): nur, was Gäste sehen dürfen (öffentliche Punkte öffentlicher Spuren, ohne
+  Ausfälle), zur Planzeit, mit Ort, Adresse, Beschreibung und QR-Code zur Gästeansicht für den aktuellen Stand.
 * **Durchsage:** steht über dem Ablauf in der Gästeansicht (mit Uhrzeit) und als gelbe Leiste unter dem Kopf der Tafel
   – über denselben Polling-Endpunkt, also spätestens nach einer halben Minute. Auch die Team-Ansicht zeigt sie.
 * **QR-Code:** zur Gästeansicht, als SVG zum Drucken oder Herunterladen.
@@ -449,6 +475,9 @@ Verwaltungsbereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im
   Polling-Endpunkt (`403`). Zugangscode nur als HMAC, Gast-Sitzung nur als Hash, Tafel-Link per HMAC abgeleitet,
   Code-Eingabe gedrosselt (siehe „Zugang für Gäste“). Die Tafel sendet keinen Referer (`Referrer-Policy:
   no-referrer`), damit der Schlüssel in ihrer Adresse nicht weitergegeben wird.
+* **Team-Link** (`/<adresse>/team?k=…`): nur eingeschaltet und mit passendem Schlüssel, sonst 404 ohne Hinweis auf den
+  Grund; `no-store`, `noindex`, `no-referrer`, nicht einbettbar. Er zeigt interne Notizen – wer ihn hat, liest mit,
+  bis er neu erzeugt oder ausgeschaltet wird.
 * **Föderation** (`app/api/suite/*`): Bestätigungen gelten 60 s, nur zusammen mit dem einmaligen `state`-Cookie
   desselben Browsers (`__Host-suite-state`, 10 Minuten, wird bei jedem Rücksprung gelöscht); Signatur, Anbieter, Empfänger
   und `nonce` werden geprüft, der genaue Ablehnungsgrund steht nur im Server-Log. Unbekannte Schlüssel-ID: Discovery
@@ -480,9 +509,11 @@ Was das Tool bewusst nicht kann oder wo es an Grenzen stößt – vor dem Einsat
 * **Zeitzone:** vorerst immer Europe/Berlin. Punkte liegen höchstens einen Tag vor und drei Tage nach dem Eventtag,
   Dauer höchstens 24 Stunden – längere Abläufe sind mehrere Events in einer Reihe.
 * **Durchsagen** erreichen nur, wer Gästeansicht oder Tafel offen hat – es gibt keine Push-Nachrichten.
-* **Nicht umgesetzt** (siehe Konzept „Später“ und die Ideen L11–L25 in `suite-kit/docs/IDEEN.md`): kürzbare Punkte mit
-  Mindestdauer, Echtzeit per SSE, Push-Benachrichtigungen, Mails an Gäste, Zuständigkeiten, Lesezugang für
-  Dienstleister, „Was wäre wenn“, Regieplan zum Drucken, Orte mit Karte, weitere Vorlagen, Kalender-Export.
+* **Orte:** Die Zuordnung läuft über den Namen im Feld „Ort“ – ein Tippfehler dort bedeutet „keine Adresse“. Die Route
+  führt standardmäßig zu Google Maps (ein eigener Kartenlink pro Ort ersetzt das, z. B. OpenStreetMap).
+* **Nicht umgesetzt** (siehe Konzept „Später“ und die Ideen in `suite-kit/docs/IDEEN.md`): kürzbare Punkte mit
+  Mindestdauer, Echtzeit per SSE, Push-Benachrichtigungen (auch keine Vorwarnung für Zuständige), Mails an Gäste,
+  „Was wäre wenn“, weitere Vorlagen, Kalender-Export.
 
 ## Automatische Löschung
 
@@ -681,7 +712,7 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | `TRUST_PROXY_HOPS` | Anzahl eigener Reverse Proxys (für die IP der Drosselung) |
 | `CRON_SECRET` | Schutz des Aufräum-Endpunkts |
 | `ACCESS_CODE_SECRET` | Schlüssel für Zugangscodes (HMAC), mindestens 32 Zeichen; leer = kein Zugang per Code |
-| `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events; der vorherige hält alte Links beim Wechsel gültig |
+| `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events und Team-Links für Dienstleister; der vorherige hält alte Links beim Wechsel gültig; leer = kein Tafel- und kein Team-Link |
 | `SHIFTS_SECRET`, `SHIFTS_BASE_URL` | optional: Anbindung an Schichten (eigenes Secret, dort `TIMELINE_SHIFTS_SECRET`), mindestens 32 Zeichen |
 | `RSVP_TIMELINE_SECRET` | optional: eigenes Secret der Anbindung an rsvp-app (dort `TIMELINE_SECRET`), mindestens 32 Zeichen; leer = kein Zugang „nur mit Zusage“ |
 | `SUITE_IDPS`, `SUITE_SIGNING_KEY`, `SUITE_SIGNING_KEY_PREVIOUS`, `SUITE_TRUSTED_APPS`, `SUITE_APP_NAME`, `SUITE_LOGIN_REDIRECT` | optional: Konto-Föderation (siehe „Anmelden mit einem Konto aus einem anderen Tool“) |

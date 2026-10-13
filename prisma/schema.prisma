@@ -55,6 +55,7 @@ model User {
   eventAccess   EventAccess[]
   series        Series[]
   secretItems   ItemSecretViewer[]
+  assignedItems ItemAssignee[]
   liveActions   LiveAction[]       @relation("LiveActionActor")
   undoneActions LiveAction[]       @relation("LiveActionUndoneBy")
   identities    ExternalIdentity[]
@@ -157,8 +158,14 @@ model Event {
   displayTokenVersion Int @default(1)
   liveVersion         Int @default(0)
 
+  // Team-Link für Dienstleister (Idee L18, app/lib/guest/tokens.ts crewToken): Team-Ansicht nur lesen, ohne Konto,
+  // per HMAC abgeleitet wie der Tafel-Link. Standardmäßig aus; crewLinkVersion + 1 macht alte Links ungültig
+  // (auch beim Ausschalten, damit ein alter Link beim Wiedereinschalten nicht zurückkommt).
+  crewLinkEnabled Boolean @default(false)
+  crewLinkVersion Int     @default(1)
+
   // Verknüpfung mit einem Termin in rsvp-app (Phase 7b), Aufbau wie in Seating.
-  rsvpLink Json?
+  rsvpLink   Json?
   // Verknüpfung mit einem Event in Schichten ({ shiftsEventId }, app/lib/shifts/token.ts): Schichten ruft die
   // Prognose der Programmpunkte ab, damit Schichten Punkten folgen können. Beide Seiten tragen die andere id ein.
   shiftsLink Json?
@@ -182,6 +189,7 @@ model Event {
   items         Item[]
   liveActions   LiveAction[]
   guestSessions GuestSession[]
+  places        Place[]
 
   @@index([ownerId])
   @@index([date])
@@ -304,10 +312,27 @@ model Item {
   waitsFor      ItemDependency[]   @relation("DependencyItem")
   waitedOnBy    ItemDependency[]   @relation("DependencyTarget")
   secretViewers ItemSecretViewer[]
+  assignees     ItemAssignee[]
   liveActions   LiveAction[]
 
   @@index([eventId])
   @@index([trackId, sortOrder])
+}
+
+// Ort mit Adresse (Idee L22, app/lib/planning/places.ts): Ein Punkt gehört zu einem Ort, wenn sein Feld "Ort"
+// (Item.location) dem Namen entspricht - ohne Groß-/Kleinschreibung, keine Fremdschlüssel. So bleiben Formulare,
+// Export und Gästeansicht beim Freitext; Umbenennen zieht die Punkte mit. Gäste sehen Adresse und Routen-Link nur
+// an öffentlichen Punkten (toGuestView). mapUrl: eigener Kartenlink (https), sonst eine Route zu Google Maps.
+model Place {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name      String
+  address   String
+  mapUrl    String?
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
 }
 
 // Zusammenführung: itemId beginnt frühestens nach dem Ende von waitsForItemId. Keine Zyklen - geprüft vor
@@ -325,6 +350,19 @@ model ItemDependency {
 // Wer den Inhalt eines SECRET-Punkts sieht (und ihn bearbeiten bzw. live steuern darf). Verliert ein Konto
 // die Freigabe fürs Event, bleibt der Eintrag wirkungslos - ohne Zugriff aufs Event sieht es nichts.
 model ItemSecretViewer {
+  itemId String
+  item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, userId])
+  @@index([userId])
+}
+
+// Zuständige eines Punkts (Idee L16): Konten mit Zugriff aufs Event, "Meine Punkte" in der Team-Ansicht. Bei
+// SECRET nur Konten aus der Kontenliste. Wie ItemSecretViewer: Verliert ein Konto die Freigabe, bleibt der Eintrag
+// wirkungslos (angezeigt werden nur Konten mit Zugriff). Steht in keiner Export-Datei.
+model ItemAssignee {
   itemId String
   item   Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
   userId String

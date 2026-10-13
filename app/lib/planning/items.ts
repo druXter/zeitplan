@@ -32,9 +32,11 @@ export type PlanItem = {
   canSee: boolean
   /** Eingetragene Konten eines SECRET-Punkts - nur, wenn canSee, sonst leer. */
   secretViewerIds: string[]
+  /** Zuständige Konten (Idee L16) - nur, wenn canSee, sonst leer. */
+  assigneeIds: string[]
 }
 
-export type StoredItem = Omit<PlanItem, 'canSee' | 'secretViewerIds'> & { secretViewerIds: string[] }
+export type StoredItem = Omit<PlanItem, 'canSee' | 'secretViewerIds' | 'assigneeIds'> & { secretViewerIds: string[]; assigneeIds?: string[] }
 
 /**
  * DIE Stelle, an der die SECRET-Regel für Konten greift (docs/KONZEPT.md Abschnitt 4): Wer nicht eingetragen
@@ -44,9 +46,10 @@ export type StoredItem = Omit<PlanItem, 'canSee' | 'secretViewerIds'> & { secret
  */
 export function redactItem(item: StoredItem, userId: string): PlanItem {
   const canSee = seesItemContent(item, item.secretViewerIds.includes(userId))
-  if (canSee) return { ...item, canSee }
+  if (canSee) return { ...item, assigneeIds: item.assigneeIds ?? [], canSee }
   return {
     ...item,
+    assigneeIds: [],
     title: SECRET_PLACEHOLDER,
     location: null,
     description: null,
@@ -70,6 +73,7 @@ export type ItemFields = {
   mayStartEarly: boolean
   waitsFor: string[]
   secretViewerIds: string[]
+  assigneeIds: string[]
 }
 
 export type ItemFormContext = {
@@ -78,7 +82,7 @@ export type ItemFormContext = {
   trackIds: string[]
   /** Punkte, auf die gewartet werden darf (alle des Events außer dem Punkt selbst). */
   itemIds: string[]
-  /** Konten, die für die SECRET-Liste infrage kommen (mit Zugriff aufs Event). */
+  /** Konten, die für die SECRET-Liste und als Zuständige infrage kommen (mit Zugriff aufs Event). */
   viewerIds: string[]
 }
 
@@ -115,6 +119,7 @@ export function parseItemForm(formData: FormData, ctx: ItemFormContext): ParsedI
   const durationInput = raw('durationMin', 10).trim()
   const waitsFor = strings(formData, 'waitsFor', PLAN_LIMITS.maxWaitsFor)
   const viewers = strings(formData, 'secretViewers', PLAN_LIMITS.maxSecretViewers)
+  const assignees = strings(formData, 'assignees', PLAN_LIMITS.maxAssignees)
 
   if (!title) errors.push('Titel: Bitte gib einen Titel ein.')
   if (title.length > PLAN_LIMITS.titleMax) errors.push(`Titel: höchstens ${PLAN_LIMITS.titleMax} Zeichen.`)
@@ -146,6 +151,13 @@ export function parseItemForm(formData: FormData, ctx: ItemFormContext): ParsedI
     secretViewerIds = viewers
   }
 
+  // Zuständige (Idee L16): Konten mit Zugriff; bei SECRET nur, wer den Punkt auch sehen darf.
+  if (assignees.length > PLAN_LIMITS.maxAssignees) errors.push(`Zuständig: höchstens ${PLAN_LIMITS.maxAssignees} Konten.`)
+  else if (assignees.some(id => !ctx.viewerIds.includes(id))) errors.push('Zuständig: Ein gewähltes Konto hat keinen Zugriff auf das Event.')
+  else if (visibility === 'SECRET' && assignees.some(id => !viewers.includes(id))) {
+    errors.push('Zuständig: Bei geheimen Punkten nur Konten, für die der Punkt sichtbar ist („Geheim für“).')
+  }
+
   if (errors.length > 0 || !plannedStart || !isValidVisibility(visibility)) return { ok: false, errors }
   return {
     ok: true,
@@ -161,7 +173,8 @@ export function parseItemForm(formData: FormData, ctx: ItemFormContext): ParsedI
       isAnchor: formData.get('isAnchor') === 'on',
       mayStartEarly: formData.get('mayStartEarly') === 'on',
       waitsFor,
-      secretViewerIds
+      secretViewerIds,
+      assigneeIds: assignees
     }
   }
 }

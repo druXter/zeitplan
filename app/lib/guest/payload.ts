@@ -11,6 +11,8 @@ export type GuestPayloadItem = {
   id: string
   title: string
   location: string | null
+  address: string | null
+  routeUrl: string | null
   description: string | null
   track: string
   status: GuestStatus
@@ -65,6 +67,8 @@ export function buildGuestPayload(event: GuestEventSource, view: GuestView, publ
       id: item.id,
       title: item.title,
       location: item.location,
+      address: item.address,
+      routeUrl: item.routeUrl,
       description: item.description,
       track: item.track,
       status: item.status,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toGuestView, DEFAULT_GUEST_SETTINGS, type GuestSettings, type GuestSourceItem, type GuestTrack } from '../../../app/lib/schedule/guest-view'
+import { toGuestView, toProgramme, DEFAULT_GUEST_SETTINGS, type GuestSettings, type GuestSourceItem, type GuestTrack } from '../../../app/lib/schedule/guest-view'
 import { project } from '../../../app/lib/schedule/project'
 import { DEFAULT_PROJECT_SETTINGS, type ScheduleItem } from '../../../app/lib/schedule/types'
 import { at, hhmm, item, patch, weddingPlan } from './fixtures'
@@ -73,7 +73,7 @@ describe('Sichtbarkeit', () => {
       expect(json, key).not.toContain(`"${key}"`)
     }
     expect(Object.keys(result.items[0]).sort()).toEqual(
-      ['approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'shownStart', 'status', 'title', 'track'].sort()
+      ['address', 'approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'routeUrl', 'shownStart', 'status', 'title', 'track'].sort()
     )
   })
 
@@ -214,5 +214,36 @@ describe('Status, Ausfall und Reihenfolge', () => {
     // Trauung gedeckelt bis 15:15, Sekt danach - die Anzeige wächst nicht weiter mit.
     expect(result.get('sekt')).toMatchObject({ shownStart: at('15:15'), approximate: true })
     expect(view(items, at('15:40')).get('sekt')!.shownStart).toEqual(at('15:15'))
+  })
+})
+
+describe('Orte mit Adresse (Idee L22) und Programmheft (Idee L21)', () => {
+  const place = { address: 'Marienplatz 1', routeUrl: 'https://www.google.com/maps/dir/?api=1&destination=Marienplatz%201' }
+  const items = () => [
+    guest(item({ id: 'trauung', start: '14:00', min: 45, sortOrder: 1 }), { location: 'Kirche', place }),
+    guest(item({ id: 'aufbau', start: '13:00', min: 30, sortOrder: 0 }), { visibility: 'TEAM', location: 'Lager', place: { address: 'Geheimweg 7', routeUrl: 'https://example.org/lager' } }),
+    guest(item({ id: 'kutsche', start: '15:00', min: 30, sortOrder: 2, status: 'CANCELLED' }), { place }),
+    guest(item({ id: 'rede', start: '15:30', min: 10, sortOrder: 3, status: 'DEFERRED' }), { place }),
+    guest(item({ id: 'brautpaar', trackId: 'paar', start: '14:50', min: 20 }), { place: null })
+  ]
+
+  it('Adresse und Route nur an öffentlichen, nicht ausgefallenen Punkten', () => {
+    const result = view(items(), at('12:00'))
+    expect(result.get('trauung')).toMatchObject({ address: 'Marienplatz 1', routeUrl: place.routeUrl })
+    expect(result.get('kutsche')).toMatchObject({ address: null, routeUrl: null })
+    expect(result.get('brautpaar')).toMatchObject({ address: null, routeUrl: null })
+    const json = JSON.stringify(result)
+    expect(json).not.toContain('Geheimweg')
+    expect(json).not.toContain('example.org/lager')
+  })
+
+  it('Programmheft: öffentliche Punkte zur Planzeit, ohne Ausfälle und Zurückgestelltes', () => {
+    const late = items().map(entry => entry.id === 'trauung' ? { ...entry, reportedDelayMin: 30 } : entry)
+    const programme = toProgramme(late, TRACKS)
+    expect(programme.map(entry => entry.id)).toEqual(['trauung', 'brautpaar'])
+    expect(programme[0]).toEqual({
+      id: 'trauung', title: 'Titel trauung', location: 'Kirche', address: 'Marienplatz 1', description: 'Beschreibung trauung', track: 'Ablauf', start: at('14:00')
+    })
+    expect(JSON.stringify(programme)).not.toContain('Notiz')
   })
 })

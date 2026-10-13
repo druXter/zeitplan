@@ -46,7 +46,8 @@ const recordSelect = {
   plannedDurationMin: true, insertedLive: true, originalStart: true, originalDurationMin: true, originalSortOrder: true, createdAt: true,
   waitsFor: { select: { waitsForItemId: true } },
   waitedOnBy: { select: { itemId: true } },
-  secretViewers: { select: { userId: true } }
+  secretViewers: { select: { userId: true } },
+  assignees: { select: { userId: true } }
 } as const
 
 /**
@@ -76,6 +77,7 @@ export async function readRecords(tx: Tx, eventId: string, ids: string[], withCo
           waitsFor: row.waitsFor.map(d => d.waitsForItemId),
           waitedOnBy: row.waitedOnBy.map(d => d.itemId),
           secretViewerIds: row.secretViewers.map(v => v.userId),
+          assigneeIds: row.assignees.map(a => a.userId),
           createdAt: row.createdAt.toISOString()
         }
       } : {})
@@ -141,6 +143,10 @@ export async function restoreRecords(tx: Tx, eventId: string, target: Record<str
     const existing = new Set((await tx.item.findMany({
       where: { eventId, id: { in: [...content.waitsFor, ...content.waitedOnBy] } }, select: { id: true }
     })).map(row => row.id))
+    // Zuständige nur, solange es die Konten noch gibt (ein gelöschtes Konto ließe das Anlegen scheitern).
+    const assignees = content.assigneeIds?.length
+      ? (await tx.user.findMany({ where: { id: { in: content.assigneeIds } }, select: { id: true } })).map(row => row.id)
+      : []
     await tx.item.create({
       data: {
         id,
@@ -160,7 +166,8 @@ export async function restoreRecords(tx: Tx, eventId: string, target: Record<str
         originalSortOrder: content.originalSortOrder,
         createdAt: new Date(content.createdAt),
         waitsFor: { create: content.waitsFor.filter(other => existing.has(other)).map(waitsForItemId => ({ waitsForItemId })) },
-        secretViewers: { create: content.secretViewerIds.map(userId => ({ userId })) }
+        secretViewers: { create: content.secretViewerIds.map(userId => ({ userId })) },
+        assignees: { create: assignees.map(userId => ({ userId })) }
       }
     })
     const waitedOnBy = content.waitedOnBy.filter(other => existing.has(other))

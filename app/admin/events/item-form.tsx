@@ -20,6 +20,7 @@ export type ItemFormValues = {
   mayStartEarly: boolean
   waitsFor: string[]
   secretViewers: string[]
+  assignees: string[]
 }
 
 export type ItemFormOptions = {
@@ -27,6 +28,8 @@ export type ItemFormOptions = {
   /** Punkte, auf die gewartet werden kann - Titel schon nach der SECRET-Regel (Platzhalter). */
   items: { id: string; label: string }[]
   accounts: { id: string; label: string }[]
+  /** Namen der Orte mit Adresse (Idee L22) - Vorschläge fürs Feld "Ort". */
+  places: string[]
 }
 
 /**
@@ -74,7 +77,13 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
       </div>
       <div>
         <label htmlFor="item-location" className={labelClass}>Ort (optional)</label>
-        <input id="item-location" name="location" maxLength={PLAN_LIMITS.locationMax} defaultValue={values.location} className={input} />
+        <input id="item-location" name="location" maxLength={PLAN_LIMITS.locationMax} defaultValue={values.location} className={input} list={options.places.length > 0 ? 'item-places' : undefined} />
+        {options.places.length > 0 && (
+          <>
+            <datalist id="item-places">{options.places.map(name => <option key={name} value={name} />)}</datalist>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Heißt der Ort wie einer der Orte mit Adresse ({options.places.join(', ')}), sehen Gäste die Adresse und „Route öffnen“.</p>
+          </>
+        )}
       </div>
       <div>
         <label htmlFor="item-description" className={labelClass}>Beschreibung für Gäste (optional)</label>
@@ -112,6 +121,21 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
             </label>
           ))}
           <p className="text-xs text-gray-600 dark:text-gray-400">Zur Auswahl stehen Konten mit Zugriff aufs Event. Nur diese können den Punkt auch ändern und live steuern.</p>
+        </fieldset>
+      )}
+
+      {options.accounts.length > 0 && (
+        <fieldset className="space-y-1">
+          <legend className={labelClass}>Zuständig (optional)</legend>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {options.accounts.map(account => (
+              <label key={account.id} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="assignees" value={account.id} defaultChecked={values.assignees.includes(account.id)} />
+                {account.label}
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400">Wer den Punkt verantwortet (Rede, Musik, Technik). Zuständige finden ihn in der Team-Ansicht unter „Meine Punkte“ mit der erwarteten Zeit.</p>
         </fieldset>
       )}
 

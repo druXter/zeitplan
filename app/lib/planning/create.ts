@@ -4,11 +4,11 @@ import type { MaterializedPlan } from './exchange'
 import { SlugTakenError, slugTaken } from './slug-store'
 
 /** Leerer Ablauf eines neuen Events: eine öffentliche Spur. */
-export const EMPTY_PLAN: MaterializedPlan = { tracks: [{ key: 'ablauf', name: 'Ablauf', visibility: 'PUBLIC', sortOrder: 1 }], items: [] }
+export const EMPTY_PLAN: MaterializedPlan = { places: [], tracks: [{ key: 'ablauf', name: 'Ablauf', visibility: 'PUBLIC', sortOrder: 1 }], items: [] }
 
 /**
  * Legt ein neues Event samt Spuren, Punkten, Abhängigkeiten und SECRET-Liste in EINER Transaktion an - für
- * "Neues Event" (leer oder mit Vorlage), Import und Duplizieren. Der Plan ist vorher geprüft (parseExport) und
+ * "Neues Event" (leer oder mit Vorlage), Import und Duplizieren - samt Orten mit Adresse. Der Plan ist vorher geprüft (parseExport) und
  * auf den Eventtag gelegt (materializePlan). Neue Events sind immer Entwurf, ohne Freigaben und mit
  * ausgeschalteten Schaltern für Moderator*innen.
  *
@@ -49,6 +49,8 @@ export async function createEventFromPlan(ownerId: string, fields: EventFields, 
       })
       itemIds.set(item.key, created.id)
     }
+
+    if (plan.places.length > 0) await tx.place.createMany({ data: plan.places.map(place => ({ ...place, eventId: event.id })) })
 
     const dependencies = plan.items.flatMap(item => item.waitsFor.map(other => ({ itemId: itemIds.get(item.key)!, waitsForItemId: itemIds.get(other)! })))
     if (dependencies.length > 0) await tx.itemDependency.createMany({ data: dependencies })

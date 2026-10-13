@@ -3,6 +3,7 @@ import { getCurrentUser } from '../../../../lib/auth'
 import { loadEventForUser } from '../../../../lib/events/store'
 import { buildExport } from '../../../../lib/planning/exchange'
 import { loadPlan } from '../../../../lib/planning/store'
+import { prisma } from '../../../../lib/prisma'
 
 /**
  * Download des Ablaufs als JSON (Format siehe app/lib/planning/exchange.ts). Nur lesend - GET verändert
@@ -16,8 +17,11 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const event = await loadEventForUser((await params).id, user)
   if (!event) return new NextResponse('Nicht gefunden', { status: 404 })
 
-  const { tracks, items } = await loadPlan(event.id, user.id)
-  const body = JSON.stringify(buildExport(event, tracks, items), null, 2)
+  const [{ tracks, items }, places] = await Promise.all([
+    loadPlan(event.id, user.id),
+    prisma.place.findMany({ where: { eventId: event.id }, select: { name: true, address: true, mapUrl: true } })
+  ])
+  const body = JSON.stringify(buildExport(event, tracks, items, places), null, 2)
 
   // Dateiname: die Adresse des Events (nur a-z, 0-9, Bindestrich) - ohne Sonderzeichen-Probleme.
   return new NextResponse(body, {

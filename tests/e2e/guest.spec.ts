@@ -206,7 +206,8 @@ test('Polling-Endpunkt: ETag und 304, neuer Inhalt nach Änderung in der Datenba
   const body = await first.json()
   expect(body.items.map((i: { title: string }) => i.title)).toEqual(['Alter Titel'])
   expect(Object.keys(body.items[0]).sort()).toEqual([
-    'approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'shownStart', 'status', 'title', 'track'
+    'address', 'approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'routeUrl', 'shownStart', 'status',
+    'title', 'track'
   ])
 
   const unchanged = await request.get(`/api/view/${event.slug}`, { headers: { 'If-None-Match': etag } })

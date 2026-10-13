@@ -105,8 +105,11 @@ export async function duplicateEvent(_previous: FormState, formData: FormData): 
   const parsed = parseEventForm(formData)
   if (!parsed.ok) return { errors: parsed.errors }
 
-  const { tracks, items } = await loadPlan(event.id, user.id)
-  const copy = parseExport(buildExport(event, tracks, items))
+  const [{ tracks, items }, places] = await Promise.all([
+    loadPlan(event.id, user.id),
+    prisma.place.findMany({ where: { eventId: event.id }, select: { name: true, address: true, mapUrl: true } })
+  ])
+  const copy = parseExport(buildExport(event, tracks, items, places))
   if (!copy.ok) return { errors: copy.errors.map(error => `Ablauf: ${error}`) }
   return createAndOpen(user, parsed.fields, copy.plan.settings, materializePlan(copy.plan, parsed.fields.date), 'duplicated')
 }
@@ -260,6 +263,26 @@ export async function regenerateDisplayLink(formData: FormData) {
 
   await prisma.event.update({ where: { id: event.id }, data: { displayTokenVersion: { increment: 1 } } })
   redirect(`/admin/events/${event.id}?display=1`)
+}
+
+/**
+ * Team-Link für Dienstleister (Idee L18): einschalten, neu erzeugen oder ausschalten. Neu erzeugen und Ausschalten
+ * zählen crewLinkVersion hoch - ein alter Link funktioniert danach nie wieder, auch nicht nach erneutem Einschalten.
+ * Nur owner.
+ */
+export async function setCrewLink(formData: FormData) {
+  const user = await requireUser('/admin/events')
+  const event = await loadEventForUser(formString(formData, 'eventId', 50), user)
+  if (!event || !canManageEvent(event.level) || !displayLinkConfigured()) redirect('/admin/events')
+  const mode = formString(formData, 'mode', 10)
+  if (mode === 'on' && !event.crewLinkEnabled) {
+    await prisma.event.update({ where: { id: event.id }, data: { crewLinkEnabled: true } })
+  } else if (mode === 'new' && event.crewLinkEnabled) {
+    await prisma.event.update({ where: { id: event.id }, data: { crewLinkVersion: { increment: 1 } } })
+  } else if (mode === 'off' && event.crewLinkEnabled) {
+    await prisma.event.update({ where: { id: event.id }, data: { crewLinkEnabled: false, crewLinkVersion: { increment: 1 } } })
+  }
+  redirect(`/admin/events/${event.id}?crew=${mode === 'off' ? 'off' : mode === 'new' ? 'new' : 'on'}#team-link`)
 }
 
 /** Entwurf, veröffentlicht, archiviert (allowedStatusChanges). LIVE/ENDED setzt die Live-Steuerung. Nur owner. */

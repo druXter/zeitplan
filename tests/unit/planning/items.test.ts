@@ -28,9 +28,21 @@ describe('parseItemForm', () => {
       fields: {
         title: 'Trauung', location: 'Kirche', description: null, internalNote: null, trackId: 't1',
         plannedStart: zonedInputToUtc('2026-06-20T14:00')!, plannedDurationMin: 45, visibility: 'PUBLIC',
-        isAnchor: true, mayStartEarly: false, waitsFor: ['a', 'b'], secretViewerIds: []
+        isAnchor: true, mayStartEarly: false, waitsFor: ['a', 'b'], secretViewerIds: [], assigneeIds: []
       }
     })
+  })
+
+  it('Zuständige (Idee L16): nur Konten mit Zugriff, bei SECRET nur aus „Geheim für“', () => {
+    const ok = parseItemForm(form({ ...valid, assignees: ['u1', 'u2', 'u1'] }), ctx)
+    expect(ok.ok && ok.fields.assigneeIds).toEqual(['u1', 'u2'])
+    const stranger = parseItemForm(form({ ...valid, assignees: ['fremd'] }), ctx)
+    expect(stranger).toEqual({ ok: false, errors: ['Zuständig: Ein gewähltes Konto hat keinen Zugriff auf das Event.'] })
+    const secret = parseItemForm(form({ ...valid, visibility: 'SECRET', secretViewers: ['u1'], assignees: ['u2'] }), ctx)
+    expect(secret.ok).toBe(false)
+    expect(!secret.ok && secret.errors[0]).toMatch(/^Zuständig: Bei geheimen Punkten/)
+    const secretOk = parseItemForm(form({ ...valid, visibility: 'SECRET', secretViewers: ['u1', 'u2'], assignees: ['u2'] }), ctx)
+    expect(secretOk.ok && secretOk.fields.assigneeIds).toEqual(['u2'])
   })
 
   it('nach Mitternacht und in der doppelten Stunde der Zeitumstellung', () => {
@@ -83,7 +95,7 @@ describe('redactItem', () => {
     internalNote: 'Zünder bei Tom', visibility: 'SECRET', isAnchor: false, mayStartEarly: false,
     plannedStart: new Date('2026-06-20T20:00:00Z'), plannedDurationMin: 10, status: 'CANCELLED', insertedLive: false,
     actualStart: null, actualEnd: null, reportedDelayMin: null, cancelReason: 'Regen', version: 3, waitsFor: ['a'],
-    secretViewerIds: ['u1']
+    secretViewerIds: ['u1'], assigneeIds: ['u1']
   }
 
   it('eingetragene Konten sehen alles', () => {
@@ -94,7 +106,7 @@ describe('redactItem', () => {
     const redacted = redactItem(secret, 'owner')
     expect(redacted).toMatchObject({
       title: 'Geheimer Punkt', location: null, description: null, internalNote: null, cancelReason: null,
-      secretViewerIds: [], canSee: false, plannedStart: secret.plannedStart, plannedDurationMin: 10, waitsFor: ['a']
+      secretViewerIds: [], assigneeIds: [], canSee: false, plannedStart: secret.plannedStart, plannedDurationMin: 10, waitsFor: ['a']
     })
     const serialized = JSON.stringify(redacted)
     for (const word of ['Überraschung', 'Garten', 'Feuerwerk', 'Tom', 'Regen', 'u1']) expect(serialized).not.toContain(word)

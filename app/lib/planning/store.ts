@@ -17,7 +17,7 @@ export async function loadPlan(eventId: string, userId: string, db: Db = prisma)
     db.item.findMany({
       where: { eventId },
       orderBy: [{ trackId: 'asc' }, { sortOrder: 'asc' }],
-      include: { waitsFor: { select: { waitsForItemId: true } }, secretViewers: { select: { userId: true } } }
+      include: { waitsFor: { select: { waitsForItemId: true } }, secretViewers: { select: { userId: true } }, assignees: { select: { userId: true } } }
     })
   ])
   const items = rows.map(row => redactItem({
@@ -41,7 +41,8 @@ export async function loadPlan(eventId: string, userId: string, db: Db = prisma)
     cancelReason: row.cancelReason,
     version: row.version,
     waitsFor: row.waitsFor.map(d => d.waitsForItemId),
-    secretViewerIds: row.secretViewers.map(v => v.userId)
+    secretViewerIds: row.secretViewers.map(v => v.userId),
+    assigneeIds: row.assignees.map(a => a.userId)
   }, userId))
   return { tracks, items }
 }

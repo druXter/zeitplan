@@ -39,6 +39,8 @@ export type ItemContent = {
   waitsFor: string[]
   waitedOnBy: string[]
   secretViewerIds: string[]
+  /** Zuständige (Idee L16) - fehlt in Einträgen von vorher. */
+  assigneeIds?: string[]
   createdAt: string
 }
 

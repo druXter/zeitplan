@@ -41,7 +41,7 @@ export default async function NewItemPage({ params, searchParams }: { params: Pr
           values={{
             title: '', location: '', description: '', internalNote: '', trackId,
             start: utcToZonedInput(start, event.timezone), durationMin: '30', visibility: 'PUBLIC',
-            isAnchor: false, mayStartEarly: false, waitsFor: [], secretViewers: [user.id]
+            isAnchor: false, mayStartEarly: false, waitsFor: [], secretViewers: [user.id], assignees: []
           }}
         />
       </div>

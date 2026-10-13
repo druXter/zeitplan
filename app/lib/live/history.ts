@@ -50,19 +50,24 @@ export type ActionMeta = {
   minutesAgo?: number
   delayMin?: number
   auto?: boolean
+  /** Durchsage (Idee L15): ihr Text - öffentlich, Gäste sehen ihn ohnehin. */
+  text?: string
 }
 
 /** before/after einer LiveAction: null = Punkt gab es (vorher bzw. nachher) nicht. */
 export type ActionState = { items: Record<string, ItemRecord | null>; meta?: ActionMeta }
 
 export const LIVE_ACTION_TYPES = [
-  'advance', 'start', 'end', 'delay', 'ontime', 'swap', 'defer', 'cancel', 'restore', 'requeue', 'insert', 'remove', 'golive', 'endevent'
+  'advance', 'start', 'end', 'delay', 'ontime', 'swap', 'defer', 'cancel', 'restore', 'requeue', 'insert', 'remove', 'golive', 'endevent',
+  'announce', 'unannounce'
 ] as const
 export type LiveActionType = (typeof LIVE_ACTION_TYPES)[number]
 
-/** Live schalten und Beenden sind Statuswechsel des Events, keine Änderungen an Punkten - nicht rückgängig zu machen. */
+/** Nur Aktionen an Punkten sind rückgängig zu machen - nicht Live schalten, Beenden und Durchsagen (Event-Ebene). */
+const EVENT_LEVEL_TYPES = ['golive', 'endevent', 'announce', 'unannounce']
+
 export function isUndoable(type: string): boolean {
-  return (LIVE_ACTION_TYPES as readonly string[]).includes(type) && type !== 'golive' && type !== 'endevent'
+  return (LIVE_ACTION_TYPES as readonly string[]).includes(type) && !EVENT_LEVEL_TYPES.includes(type)
 }
 
 type SnapshotSource = {
@@ -147,6 +152,23 @@ export function describeAction(type: string, after: ActionState | null, title: (
     case 'remove': return `${q(first)} entfernt`
     case 'golive': return 'Live geschaltet'
     case 'endevent': return meta?.auto ? 'Event automatisch beendet' : 'Event beendet'
+    case 'announce': return `Durchsage: „${meta?.text ?? ''}“`
+    case 'unannounce': return 'Durchsage entfernt'
     default: return type
   }
+}
+
+/**
+ * Titel eines Punkts für den Verlauf: aus dem aktuellen Plan (known, schon nach der SECRET-Regel), sonst aus den
+ * Momentaufnahmen der Aktion (recordTitle) - für gelöschte Punkte. Live-Steuerung und Rückblick nutzen dasselbe.
+ */
+export function historyTitle(itemId: string | null, known: Map<string, string>, states: unknown[], userId: string): string {
+  if (!itemId) return '?'
+  const title = known.get(itemId)
+  if (title !== undefined) return title
+  for (const state of states) {
+    const fromRecord = recordTitle(parseState(state)?.items[itemId], userId)
+    if (fromRecord) return fromRecord
+  }
+  return 'gelöschter Punkt'
 }

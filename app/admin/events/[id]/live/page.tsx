@@ -9,7 +9,7 @@ import {
 import { loadPlan } from '../../../../lib/planning/store'
 import type { PlanItem } from '../../../../lib/planning/items'
 import { PLAN_LIMITS } from '../../../../lib/planning/rules'
-import { describeAction, isUndoable, parseState, recordTitle } from '../../../../lib/live/history'
+import { describeAction, historyTitle, isUndoable, parseState } from '../../../../lib/live/history'
 import { endIfOver } from '../../../../lib/live/store'
 import { formatDuration, formatItemClock } from '../../../../lib/timezone'
 import AutoRefresh from '../../../../ui/auto-refresh'
@@ -17,13 +17,19 @@ import Badge from '../../../../ui/badge'
 import Notice from '../../../../ui/notice'
 import PendingButton from '../../../../ui/pending-button'
 import StatusBadge from '../../../../ui/status-badge'
-import { liveCommand } from './actions'
+import { ANNOUNCEMENT_LIMITS, currentAnnouncement } from '../../../../lib/guest/announcement'
+import { loadReviewExtras } from '../../../../lib/review/store'
+import { announce, liveCommand } from './actions'
+import { saveResultNote } from '../../review-actions'
 import UndoBar from './undo-bar'
 
 export const dynamic = 'force-dynamic'
 
 type LiveItem = Projected<PlanItem>
-type Search = { track?: string; done?: string; error?: string; undone?: string; live?: string; ended?: string }
+type Search = {
+  track?: string; done?: string; error?: string; undone?: string; live?: string; ended?: string
+  announced?: string; cleared?: string; noted?: string; noteError?: string
+}
 
 const ERRORS: Record<string, string> = {
   already: 'Das ist schon passiert – vermutlich war jemand anderes schneller. Hier ist der aktuelle Stand.',
@@ -46,8 +52,18 @@ const ERRORS: Record<string, string> = {
   'not-live': 'Das Event ist nicht live – die Live-Steuerung ist gesperrt.',
   'not-published': 'Live schalten geht nur bei veröffentlichten Events.',
   invalid: `Einschub: Bitte Titel (höchstens ${PLAN_LIMITS.titleMax} Zeichen), Dauer (1–${LIVE_LIMITS.maxInsertMin} Min) und Sichtbarkeit angeben.`,
-  'not-inserted': 'Entfernen lassen sich nur eingeschobene Punkte, die noch nicht begonnen haben.'
+  'not-inserted': 'Entfernen lassen sich nur eingeschobene Punkte, die noch nicht begonnen haben.',
+  announcement: `Durchsage: Bitte einen Text (höchstens ${ANNOUNCEMENT_LIMITS.textMax} Zeichen) und eine Dauer angeben.`,
+  'announcement-changed': 'Die Durchsage hat sich inzwischen geändert. Hier ist der aktuelle Stand.'
 }
+
+const NOTE_ERRORS: Record<string, string> = {
+  long: `Protokollnotiz: höchstens ${PLAN_LIMITS.noteMax} Zeichen.`,
+  changed: 'Die Protokollnotiz wurde inzwischen von jemand anderem geändert. Hier ist der aktuelle Stand – bitte noch einmal eintragen.',
+  forbidden: 'Diese Notiz darfst du nicht ändern.'
+}
+
+const DURATION_LABELS: Record<number, string> = { 15: '15 Minuten', 30: '30 Minuten', 60: '1 Stunde', 120: '2 Stunden', 0: 'bis ich sie entferne' }
 
 const PRIMARY = 'w-full min-h-14 rounded-lg bg-blue-600 text-white text-lg font-bold px-4 hover:bg-blue-700'
 const SECONDARY = 'w-full min-h-12 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 font-medium px-3 hover:bg-gray-50 dark:hover:bg-gray-900'
@@ -84,15 +100,19 @@ export default async function LivePage({ params, searchParams }: { params: Promi
   const now = new Date()
   const status = (await endIfOver(event, now)) ? 'ENDED' : event.status
 
-  const [{ tracks, items }, actions] = await Promise.all([
+  const [{ tracks, items }, actions, eventRow] = await Promise.all([
     loadPlan(event.id, user.id),
     prisma.liveAction.findMany({
       where: { eventId: event.id },
       orderBy: { createdAt: 'desc' },
       take: 30,
       include: { actor: { select: { email: true, name: true } }, undoneBy: { select: { email: true, name: true } } }
-    })
+    }),
+    prisma.event.findUniqueOrThrow({ where: { id: event.id }, select: { announcementText: true, announcementAt: true, announcementUntil: true } })
   ])
+  const extras = await loadReviewExtras(event.id, items)
+  const announcement = currentAnnouncement({ ...eventRow, status }, now)
+  const mayAnnounce = status === 'PUBLISHED' || status === 'LIVE'
   let projection = project(items, now, event)
   if (!projection.ok) projection = project(items.map(item => ({ ...item, waitsFor: [] })), now, event)
   const projected: LiveItem[] = projection.ok ? projection.items : []
@@ -107,16 +127,8 @@ export default async function LivePage({ params, searchParams }: { params: Promi
   const isLive = status === 'LIVE'
 
   // Verlauf: Titel nur, soweit das Konto sie sehen darf (loadPlan bzw. gespeicherte SECRET-Liste).
-  const titleOf = (itemId: string | null, states: unknown[]) => {
-    if (!itemId) return '?'
-    const known = byId.get(itemId)
-    if (known) return known.title
-    for (const state of states) {
-      const title = recordTitle(parseState(state)?.items[itemId], user.id)
-      if (title) return title
-    }
-    return 'gelöschter Punkt'
-  }
+  const titles = new Map(projected.map(item => [item.id, item.title]))
+  const titleOf = (itemId: string | null, states: unknown[]) => historyTitle(itemId, titles, states, user.id)
   const history = actions.map(action => ({
     id: action.id,
     at: action.createdAt,
@@ -158,6 +170,7 @@ export default async function LivePage({ params, searchParams }: { params: Promi
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {clock(now)} Uhr{lastAction ? ` · letzte Meldung vor ${formatDuration(Math.max(0, Math.round((now.getTime() - lastAction.at.getTime()) / 60_000)))}` : ''}
             {' · '}<Link href={`/admin/events/${event.id}/team`} className="text-blue-700 dark:text-blue-300 hover:underline">Team-Ansicht</Link>
+            {' · '}<Link href={`/admin/events/${event.id}/rueckblick`} className="text-blue-700 dark:text-blue-300 hover:underline">Rückblick</Link>
           </p>
         </div>
 
@@ -165,6 +178,24 @@ export default async function LivePage({ params, searchParams }: { params: Promi
         {search.undone === '1' && <Notice tone="success">Rückgängig gemacht.</Notice>}
         {search.live === '1' && <Notice tone="success">Live geschaltet – der Ursprungsplan ist eingefroren.</Notice>}
         {search.ended === '1' && <Notice tone="success">Event beendet. Gäste sehen den Ablauf als Rückblick.</Notice>}
+        {search.announced === '1' && <Notice tone="success">Durchsage veröffentlicht – Gäste und Tafel sehen sie spätestens nach einer halben Minute.</Notice>}
+        {search.cleared === '1' && <Notice tone="success">Durchsage entfernt.</Notice>}
+        {search.noted === '1' && <Notice tone="success">Protokollnotiz gespeichert.</Notice>}
+        {search.noteError && <Notice tone="error">{NOTE_ERRORS[search.noteError] ?? 'Das hat nicht geklappt.'}</Notice>}
+
+        {announcement && (
+          <div data-announcement className="rounded-lg border-2 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/50 p-3 space-y-2">
+            <p className="text-sm font-bold">Durchsage {announcement.until ? `bis ${clock(announcement.until)} Uhr` : 'ohne Ablauf'}</p>
+            <p className="whitespace-pre-line">{announcement.text}</p>
+            <form action={announce}>
+              <input type="hidden" name="eventId" value={event.id} />
+              <input type="hidden" name="track" value={ctx.track} />
+              <input type="hidden" name="command" value="clear" />
+              <input type="hidden" name="at" value={announcement.at.toISOString()} />
+              <PendingButton className={SECONDARY}>Durchsage entfernen</PendingButton>
+            </form>
+          </div>
+        )}
 
         {status === 'PUBLISHED' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
@@ -238,6 +269,7 @@ export default async function LivePage({ params, searchParams }: { params: Promi
                       )}
                       <EndButtons ctx={ctx} item={item} />
                       <DelayControls ctx={ctx} item={item} label="Dauert länger" />
+                      <ResultNote ctx={ctx} item={item} note={extras.get(item.id)?.resultNote ?? null} />
                     </>
                   ) : <SecretHint />}
                 </div>
@@ -350,6 +382,31 @@ export default async function LivePage({ params, searchParams }: { params: Promi
           </>
         )}
 
+        {mayAnnounce && (
+          <details className="bg-white dark:bg-gray-800 rounded-lg shadow p-4" data-announce-form>
+            <summary className="cursor-pointer font-bold min-h-11 flex items-center">{announcement ? 'Neue Durchsage' : 'Durchsage an Gäste'}</summary>
+            <form action={announce} className="space-y-3 pt-2">
+              <input type="hidden" name="eventId" value={event.id} />
+              <input type="hidden" name="track" value={ctx.track} />
+              <input type="hidden" name="command" value="set" />
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Erscheint oben in der Gästeansicht und auf der Tafel{announcement ? ' und ersetzt die jetzige Durchsage' : ''}.
+              </p>
+              <div>
+                <label htmlFor="announce-text" className="block text-sm font-medium mb-1">Text</label>
+                <textarea id="announce-text" name="text" required maxLength={ANNOUNCEMENT_LIMITS.textMax} rows={2} placeholder="z. B. Bitte zum Gruppenfoto in den Garten" className="w-full border border-gray-300 dark:border-gray-600 p-3 rounded text-base" />
+              </div>
+              <div>
+                <label htmlFor="announce-duration" className="block text-sm font-medium mb-1">Anzeigen für</label>
+                <select id="announce-duration" name="durationMin" defaultValue="30" className="w-full border border-gray-300 dark:border-gray-600 p-3 rounded text-base bg-white dark:bg-gray-800">
+                  {ANNOUNCEMENT_LIMITS.durations.map(minutes => <option key={minutes} value={minutes}>{DURATION_LABELS[minutes]}</option>)}
+                </select>
+              </div>
+              <PendingButton className={PRIMARY}>Durchsage veröffentlichen</PendingButton>
+            </form>
+          </details>
+        )}
+
         {done.length > 0 && (
           <details className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
             <summary className="cursor-pointer font-bold min-h-11 flex items-center">Vorbei ({done.length})</summary>
@@ -427,6 +484,25 @@ function ItemHeading({ item, clock, compact = false }: { item: LiveItem; clock: 
         {item.internalNote && !compact && <p className="text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 rounded px-2 py-1 mt-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}
       </div>
     </div>
+  )
+}
+
+/** Protokollnotiz zum laufenden Punkt (Idee L24), z. B. das Ergebnis eines Tagesordnungspunkts - erscheint im Rückblick. */
+function ResultNote({ ctx, item, note }: { ctx: Ctx; item: LiveItem; note: string | null }) {
+  return (
+    <details open={note ? true : undefined}>
+      <summary className="cursor-pointer text-sm text-blue-700 dark:text-blue-300 min-h-11 flex items-center">Protokollnotiz{note ? '' : ' hinzufügen'}</summary>
+      <form action={saveResultNote} className="space-y-2 pt-1">
+        <input type="hidden" name="eventId" value={ctx.eventId} />
+        <input type="hidden" name="track" value={ctx.track} />
+        <input type="hidden" name="from" value="live" />
+        <input type="hidden" name="itemId" value={item.id} />
+        <input type="hidden" name="previous" value={note ?? ''} />
+        <label htmlFor={`note-${item.id}`} className="sr-only">Protokollnotiz zu „{item.title}“</label>
+        <textarea id={`note-${item.id}`} name="note" defaultValue={note ?? ''} maxLength={PLAN_LIMITS.noteMax} rows={3} placeholder="z. B. Ergebnis, Beschluss" className="w-full border border-gray-300 dark:border-gray-600 p-3 rounded text-base" />
+        <PendingButton className={SECONDARY}>Notiz speichern</PendingButton>
+      </form>
+    </details>
   )
 }
 

@@ -4,6 +4,7 @@ import type { GuestPayload, GuestPayloadItem } from '../lib/guest/payload'
 import { timelineSections } from '../lib/timeline'
 import { formatClock, formatItemClock } from '../lib/timezone'
 import { useGuestView, type Connection } from './use-guest-view'
+import AnnouncementBanner from './announcement-banner'
 
 /**
  * Gästeansicht (docs/KONZEPT.md Abschnitt 5): laufender Punkt hervorgehoben, "Als Nächstes", danach der Rest,
@@ -28,6 +29,7 @@ export default function GuestTimeline({ slug, initial, etag, remember }: { slug:
   return (
     <div className="space-y-4">
       <ConnectionNote connection={connection} timezone={event.timezone} />
+      <AnnouncementBanner announcement={payload.announcement} timezone={event.timezone} />
 
       {payload.items.length === 0 && (
         <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-gray-700 dark:text-gray-300">Der Ablauf wird gerade noch geplant. Schau später wieder vorbei.</p>

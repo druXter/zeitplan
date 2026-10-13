@@ -16,7 +16,7 @@ import Badge from '../../../../ui/badge'
 export const dynamic = 'force-dynamic'
 
 type Search = {
-  track?: string; saved?: string; deleted?: string; moved?: string; moveError?: string
+  track?: string; saved?: string; deleted?: string; moved?: string; moveError?: string; shifted?: string
   trackSaved?: string; trackDeleted?: string; trackError?: string
 }
 
@@ -75,6 +75,9 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
         {search.saved === '1' && <Notice tone="success">Punkt gespeichert.</Notice>}
         {search.deleted === '1' && <Notice tone="success">Punkt gelöscht.</Notice>}
         {search.moved === '1' && <Notice tone="success">Reihenfolge geändert.</Notice>}
+        {search.shifted && /^\d+$/.test(search.shifted) && (
+          <Notice tone="success">{search.shifted === '1' ? 'Punkt verschoben.' : `${search.shifted} Punkte verschoben.`}</Notice>
+        )}
         {search.moveError && <Notice tone="error">{MOVE_ERRORS[search.moveError] ?? 'Das hat nicht geklappt.'}</Notice>}
         {search.trackSaved === '1' && <Notice tone="success">Spur gespeichert.</Notice>}
         {search.trackDeleted === '1' && <Notice tone="success">Spur gelöscht.</Notice>}

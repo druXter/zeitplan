@@ -93,3 +93,53 @@ export function insertAfter<T extends ScheduleItem>(
   if (problem) return { ok: false, reason: problem.kind }
   return { ok: true, item, changes }
 }
+
+/** Wie weit ein Block reicht: bis vor den nächsten Anker der Spur oder bis zu ihrem Ende (Anker eingeschlossen). */
+export type ShiftScope = 'until-anchor' | 'track-end'
+
+export type ShiftRefusal = 'not-found' | 'started' | 'range' | 'order'
+
+/** Höchstens einen Tag in jede Richtung - wie die längste Dauer eines Punkts. */
+export const MAX_SHIFT_MIN = 24 * 60
+
+/**
+ * Block verschieben (Planung, Idee L20): `fromId` und die folgenden Punkte seiner Spur (nach Reihenfolge)
+ * beginnen laut Plan `minutes` später (negativ: früher). Dauern, Reihenfolge und Abstände im Block bleiben.
+ *
+ * - 'until-anchor' (Standard): bis vor den nächsten aktiven Anker - der Anker behält seine feste Uhrzeit, der
+ *   Puffer davor schrumpft oder wächst (zu wenig Puffer erscheint wie sonst als Konflikt). Ist `fromId` selbst
+ *   ein Anker, wandert er mit.
+ * - 'track-end': bis zum Ende der Spur, Anker eingeschlossen.
+ *
+ * Zurückgestellte und ausgefallene Punkte im Block rutschen mit (Wiederherstellen setzt sie an ihre Stelle).
+ * Abgelehnt wird, wenn ein Punkt im Block schon begonnen hat ('started'), wenn der Block früher begänne als der
+ * vorherige aktive Punkt der Spur ('order' - Reihenfolge und Uhrzeiten passten nicht mehr zusammen) und wenn
+ * die Minuten oder ein neuer Beginn außerhalb der Grenzen liegen ('range'; `bounds` aus der Planung).
+ * Zusammenführungen bleiben unberührt, Kreise können so nicht entstehen.
+ */
+export function shiftBlock(
+  items: ScheduleItem[],
+  fromId: string,
+  minutes: number,
+  scope: ShiftScope,
+  bounds?: { from: Date; until: Date }
+): { ok: true; changes: PlanChange[] } | { ok: false; reason: ShiftRefusal } {
+  const from = items.find(i => i.id === fromId)
+  if (!from) return { ok: false, reason: 'not-found' }
+  if (!Number.isInteger(minutes) || minutes === 0 || Math.abs(minutes) > MAX_SHIFT_MIN) return { ok: false, reason: 'range' }
+
+  const track = items.filter(i => i.trackId === from.trackId).sort((a, b) => a.sortOrder - b.sortOrder)
+  const following = track.filter(i => i.sortOrder > from.sortOrder)
+  const stop = scope === 'until-anchor' ? following.findIndex(i => i.isAnchor && isActive(i)) : -1
+  const block = [from, ...(stop === -1 ? following : following.slice(0, stop))]
+  if (block.some(i => i.actualStart || i.actualEnd)) return { ok: false, reason: 'started' }
+
+  const shift = minutes * MINUTE
+  const changes: PlanChange[] = block.map(i => ({ id: i.id, plannedStart: new Date(i.plannedStart.getTime() + shift) }))
+  if (bounds && changes.some(c => c.plannedStart! < bounds.from || c.plannedStart! >= bounds.until)) return { ok: false, reason: 'range' }
+
+  const previous = track.filter(i => i.sortOrder < from.sortOrder && isActive(i)).pop()
+  const firstActive = block.find(isActive)
+  if (previous && firstActive && firstActive.plannedStart.getTime() + shift < previous.plannedStart.getTime()) return { ok: false, reason: 'order' }
+  return { ok: true, changes }
+}

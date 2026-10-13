@@ -415,3 +415,70 @@ test('Reihen: anlegen, Event zuordnen, Adressen teilen sich einen Namensraum mit
   await expect(page.getByText('Reihe gelöscht.')).toBeVisible()
   expect((await prisma.event.findUniqueOrThrow({ where: { id: event.id } })).seriesId).toBeNull()
 })
+
+test('Block verschieben: bis vor den Anker oder bis zum Ende der Spur; ohne Recht und mit fremdem geheimen Punkt wirkungslos', async ({ page, browser }) => {
+  const owner = await loggedIn(page)
+  const event = await createEventRecord(owner.id, { date: SUMMER_DAY })
+  const track = await createTrackRecord(event.id)
+  const trauung = await createItemRecord(event, track.id, { title: 'Trauung', start: '14:00', durationMin: 45, sortOrder: 1 })
+  const sekt = await createItemRecord(event, track.id, { title: 'Sektempfang', start: '14:45', durationMin: 45, sortOrder: 2 })
+  const foto = await createItemRecord(event, track.id, { title: 'Gruppenfoto', start: '15:30', durationMin: 30, sortOrder: 3 })
+  const essen = await createItemRecord(event, track.id, { title: 'Abendessen', start: '18:30', durationMin: 120, sortOrder: 4, isAnchor: true })
+  const party = await createItemRecord(event, track.id, { title: 'Party', start: '20:30', durationMin: 240, sortOrder: 5 })
+  const starts = async () => Object.fromEntries((await prisma.item.findMany({ where: { eventId: event.id } })).map(i => [i.title, i.plannedStart.toISOString()]))
+
+  // Bis vor den nächsten Anker: Sekt und Foto 30 Min später, Abendessen und Party bleiben.
+  await page.goto(`/admin/events/${event.id}/items/${sekt.id}`)
+  await page.getByLabel('Minuten', { exact: true }).fill('30')
+  await page.getByRole('button', { name: 'Verschieben' }).click()
+  await expect(page).toHaveURL(/\/plan\?.*shifted=2/)
+  await expect(page.getByText('2 Punkte verschoben.')).toBeVisible()
+  expect(await starts()).toEqual({
+    Trauung: summer('14:00'), Sektempfang: summer('15:15'), Gruppenfoto: summer('16:00'), Abendessen: summer('18:30'), Party: summer('20:30')
+  })
+
+  // Bis zum Ende der Spur, 10 Min früher: auch Anker und alles danach.
+  await page.goto(`/admin/events/${event.id}/items/${sekt.id}`)
+  await page.getByLabel('Minuten', { exact: true }).fill('10')
+  await page.getByLabel('Richtung', { exact: true }).selectOption('earlier')
+  await page.getByLabel('Bis', { exact: true }).selectOption('track-end')
+  await page.getByRole('button', { name: 'Verschieben' }).click()
+  await expect(page.getByText('4 Punkte verschoben.')).toBeVisible()
+  expect(await starts()).toMatchObject({ Trauung: summer('14:00'), Sektempfang: summer('15:05'), Gruppenfoto: summer('15:50'), Abendessen: summer('18:20'), Party: summer('20:20') })
+
+  // Nicht vor den vorherigen Punkt: abgelehnt mit Hinweis, nichts geändert.
+  await page.goto(`/admin/events/${event.id}/items/${foto.id}`)
+  await page.getByLabel('Minuten', { exact: true }).fill('120')
+  await page.getByLabel('Richtung', { exact: true }).selectOption('earlier')
+  await page.getByRole('button', { name: 'Verschieben' }).click()
+  await expect(pageAlert(page)).toContainText('vor dem vorherigen Punkt')
+  expect((await prisma.item.findUniqueOrThrow({ where: { id: foto.id } })).plannedStart.toISOString()).toBe(summer('15:50'))
+
+  // Moderator*in ohne "Plan bearbeiten": nachgespielter POST wirkungslos - mit Schalter wirksam.
+  await page.goto(`/admin/events/${event.id}/items/${trauung.id}`)
+  const shift = await readForm(page, 'form:has(button:text("Verschieben"))')
+  const moderator = await createAccount('MODERATOR')
+  await prisma.eventAccess.create({ data: { eventId: event.id, userId: moderator.id } })
+  const modPage = await browser.newPage()
+  await login(modPage, moderator.email)
+  await submitForm(modPage, shift, { minutes: '5' })
+  expect((await prisma.item.findUniqueOrThrow({ where: { id: trauung.id } })).plannedStart.toISOString()).toBe(summer('14:00'))
+  await prisma.event.update({ where: { id: event.id }, data: { modsMayEditPlan: true } })
+  await submitForm(modPage, shift, { minutes: '5' })
+  expect((await prisma.item.findUniqueOrThrow({ where: { id: trauung.id } })).plannedStart.toISOString()).toBe(summer('14:05'))
+
+  // Veraltete Version (der Punkt wurde inzwischen verschoben): abgelehnt.
+  await submitForm(modPage, shift, { minutes: '5' })
+  expect((await prisma.item.findUniqueOrThrow({ where: { id: trauung.id } })).plannedStart.toISOString()).toBe(summer('14:05'))
+
+  // Ein geheimer Punkt, den Besitzer*in nicht sieht, liegt im Block: abgelehnt, statt ihn heimlich mitzunehmen.
+  await createItemRecord(event, track.id, { title: 'Flashmob', start: '17:00', durationMin: 10, sortOrder: 6, visibility: 'SECRET', secretViewers: [moderator.id] })
+  await prisma.item.update({ where: { id: essen.id }, data: { sortOrder: 7 } })
+  await prisma.item.update({ where: { id: party.id }, data: { sortOrder: 8 } })
+  await page.goto(`/admin/events/${event.id}/items/${foto.id}`)
+  await page.getByLabel('Minuten', { exact: true }).fill('15')
+  await page.getByRole('button', { name: 'Verschieben' }).click()
+  await expect(pageAlert(page)).toContainText('geheimer Punkt')
+  // (15:55: Die Moderatorin hat den Block ab der Trauung oben um 5 Min verschoben - das Foto war darin.)
+  expect((await prisma.item.findUniqueOrThrow({ where: { id: foto.id } })).plannedStart.toISOString()).toBe(summer('15:55'))
+})

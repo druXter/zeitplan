@@ -49,6 +49,8 @@ describe('Beschreibung und Rückgängig', () => {
     expect(describeAction('advance', { items: {}, meta: { ids: ['a', 'b'] } }, title)).toBe('„Trauung“ beendet, „Sektempfang“ gestartet')
     expect(describeAction('advance', { items: {}, meta: { ids: [null, 'a'] } }, title)).toBe('„Trauung“ gestartet')
     expect(describeAction('end', { items: {}, meta: { ids: ['a'], minutesAgo: 10 } }, title)).toBe('„Trauung“ beendet (vor 10 Min)')
+    expect(describeAction('announce', { items: {}, meta: { ids: [], text: 'Bus fährt 23:30' } }, title)).toBe('Durchsage: „Bus fährt 23:30“')
+    expect(describeAction('unannounce', { items: {}, meta: { ids: [] } }, title)).toBe('Durchsage entfernt')
     expect(describeAction('delay', { items: {}, meta: { ids: ['b'], delayMin: 15 } }, title)).toBe('Verspätung „Sektempfang“: +15 Min')
     expect(describeAction('swap', { items: {}, meta: { ids: ['a', 'b'] } }, title)).toBe('„Trauung“ und „Sektempfang“ getauscht')
     expect(describeAction('endevent', { items: {}, meta: { ids: [], auto: true } }, title)).toBe('Event automatisch beendet')
@@ -56,7 +58,7 @@ describe('Beschreibung und Rückgängig', () => {
 
   it('Live schalten und Beenden sind nicht rückgängig zu machen', () => {
     expect(['advance', 'swap', 'insert', 'remove'].every(isUndoable)).toBe(true)
-    expect(['golive', 'endevent', 'unbekannt'].some(isUndoable)).toBe(false)
+    expect(['golive', 'endevent', 'announce', 'unannounce', 'unbekannt'].some(isUndoable)).toBe(false)
   })
 
   it('Titel entfernter geheimer Punkte nur für Eingetragene', () => {

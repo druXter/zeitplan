@@ -163,6 +163,13 @@ model Event {
   // Prognose der Programmpunkte ab, damit Schichten Punkten folgen können. Beide Seiten tragen die andere id ein.
   shiftsLink Json?
 
+  // Durchsage an Gäste und Tafel (Idee L15, app/lib/guest/announcement.ts): höchstens eine zur Zeit, aus der
+  // Live-Steuerung. announcementAt kennzeichnet sie (Entfernen nennt sie, damit keine neuere verschwindet),
+  // announcementUntil null = bis sie jemand entfernt. Sichtbar nur bei PUBLISHED und LIVE.
+  announcementText  String?
+  announcementAt    DateTime?
+  announcementUntil DateTime?
+
   seriesId  String?
   series    Series?  @relation(fields: [seriesId], references: [id], onDelete: SetNull)
   ownerId   String?
@@ -286,6 +293,9 @@ model Item {
   reportedAt       DateTime?
   cancelReason     String?
   guestShownStart  DateTime?
+  // Protokollnotiz (Idee L24, Rückblick): Ergebnis bzw. Verlauf des Punkts, z. B. bei Tagesordnungspunkten
+  // einer Sitzung. Nur fürs Team wie internalNote, bei SECRET nur für Eingetragene; nicht im Export.
+  resultNote       String?
 
   version   Int      @default(1)
   createdAt DateTime @default(now())

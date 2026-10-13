@@ -21,6 +21,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 6 | Konto-Föderation über `suite-kit`: mit Konten anderer Tools anmelden, für andere Tools bestätigen | ✅ umgesetzt |
 | 7 | Anbindung an rsvp-app (Zugang `RSVP`): 7a Anbindungen in rsvp-app verallgemeinern, 7b Link, Gast-Sitzung, Webhook | ✅ umgesetzt (beide Seiten; rsvp-app ab Commit `c6fa5d3`) |
 | 8 | Abschluss: README, Lasttest (200 Gäste), Handy-Layout-Test, Vorschlag für das suite-kit-README | ✅ umgesetzt – Test auf echtem Handy und Fernseher steht noch aus (Checkliste unter „Vor dem Einsatz“) |
+| – | Ergänzungen aus der Ideensammlung der Suite (`suite-kit/docs/IDEEN.md`): Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24) | ✅ umgesetzt (2026-10-13) |
 
 **Im Überblick:** Planende legen Events an (leer oder mit der Vorlage „Hochzeit“), planen Programmpunkte in Spuren mit
 Ankern, Puffern, Team- und geheimen Punkten und bündeln mehrere Events zu einer Reihe. Am Tag selbst melden
@@ -28,7 +29,9 @@ Moderator\*innen am Handy Beginn, Ende, Verspätungen, Tausch, Ausfall und Einsc
 zu erwartenden Ablauf. Gäste sehen ihn in der Gästeansicht (auch eingebettet in die Hochzeits-Website und offline mit
 dem letzten Stand), vor Ort auf der Anzeigetafel; das Team sieht alles minutengenau in der Team-Ansicht. Events sind
 öffentlich oder geschützt (Zugangscode, Konto, Zusage in rsvp-app). Optional: Anmeldung mit Konten anderer Tools der
-Suite (Föderation) und die Anbindung an rsvp-app (dort Button „Zeitplan“, Weiterleitung und Webhook).
+Suite (Föderation) und die Anbindung an rsvp-app (dort Button „Zeitplan“, Weiterleitung und Webhook). Kurze
+**Durchsagen** erscheinen oben in Gästeansicht und Tafel; nach dem Event (oder einer Sitzung) zeigt der **Rückblick** Plan
+gegen Ist mit Protokollnotizen, zum Drucken und als CSV.
 
 **Darkmode:** folgt der Systemeinstellung des Geräts (wie rsvp-app), für Verwaltung, Live-Steuerung und Gästeansicht.
 Die Anzeigetafel ist unabhängig davon immer dunkel; Ausdrucke bleiben hell.
@@ -165,6 +168,12 @@ Unter `/admin/events/<id>/plan` (für alle Konten mit Zugriff; bearbeiten nur mi
   Punkte sehen und ändern nur eingetragene Konten – auch nicht Besitzer\*in oder Admin; alle anderen sehen „Geheimer
   Punkt“ mit Zeit und Dauer. Das gilt auch für Export und Duplizieren (dort als Platzhalter), Fehlermeldungen und die
   Auswahl bei „wartet auf“.
+* **Block verschieben** (auf der Seite eines Punkts): dieser Punkt und alle folgenden seiner Spur um N Minuten später
+  oder früher – wahlweise **bis vor den nächsten Anker** (der Anker behält seine Uhrzeit, der Puffer davor schrumpft
+  bzw. wächst; zu wenig Puffer erscheint als Konflikt) oder **bis zum Ende der Spur** (Anker mit). Dauern und Abstände
+  bleiben, zurückgestellte und ausgefallene Punkte rutschen mit. Abgelehnt, wenn ein Punkt im Block schon begonnen hat,
+  wenn der Block vor dem vorherigen Punkt begänne, wenn ein Punkt den erlaubten Zeitraum verließe oder ein geheimer
+  Punkt im Block liegt, den das Konto nicht bearbeiten darf (`shiftBlock` im Kern, `app/lib/schedule/plan-changes.ts`).
 * **Gleichzeitige Änderungen:** Jeder Punkt hat eine Version; wer einen veralteten Stand speichert, bekommt einen
   Hinweis statt die Änderung eines anderen zu überschreiben. Tauschen ist absichtsbasiert (beide Punkte werden genannt).
   Jede Änderung erhöht `liveVersion` des Events.
@@ -198,6 +207,8 @@ Knöpfe, „Weiter“ ganz oben, Rückgängig als Leiste unten.
 | Einschub / Einschub entfernen | neuer Punkt nach dem laufenden; nur mit Recht (Moderator\*innen: Schalter „Einschübe und Löschen“) |
 | **Rückgängig** | letzte eigene Aktion (Leiste) oder jede Aktion im Verlauf – solange die Punkte seitdem unverändert sind |
 | Event beenden | sperrt die Live-Steuerung; Gäste sehen den Rückblick |
+| **Durchsage** / Durchsage entfernen | kurzer Hinweis (höchstens 280 Zeichen) oben in Gästeansicht und Tafel, für 15/30/60/120 Minuten oder bis jemand ihn entfernt; schon bei veröffentlichten Events |
+| Protokollnotiz | beim laufenden Punkt, z. B. das Ergebnis eines Tagesordnungspunkts – erscheint im Rückblick |
 
 * **Zeit ist immer die des Servers**, nie die des Handys; das Formular liefert höchstens „vor N Minuten“.
 * **Mehrere Moderator\*innen:** Aktionen nennen den gemeinten Punkt („beende Trauung, starte Sektempfang“) und sind
@@ -205,7 +216,15 @@ Knöpfe, „Weiter“ ganz oben, Rückgängig als Leiste unten.
   den aktuellen Stand. Die Transaktion schreibt zuerst und serialisiert so gleichzeitige Aktionen (SQLite).
 * **Nachfrage:** Läuft ein Punkt 5 Minuten über sein Ende, fragt die Seite „läuft noch?“ mit „+5“ und „Beendet“.
   Punkte, deren Beginn ohne Meldung erreicht ist, stehen als „noch nicht bestätigt“ da.
-* **Verlauf:** jede Aktion mit Konto, Zeit und Vorher/Nachher (`LiveAction`); die Seite zeigt die letzten 30.
+* **Verlauf:** jede Aktion mit Konto, Zeit und Vorher/Nachher (`LiveAction`); die Seite zeigt die letzten 30, der
+  Rückblick alle.
+* **Durchsagen:** höchstens eine zur Zeit, eine neue ersetzt die alte. Sie stehen im Verlauf, lassen sich aber nicht
+  rückgängig machen (stattdessen entfernen). „Entfernen“ nennt die gemeinte Durchsage – hat inzwischen jemand eine neue
+  veröffentlicht, bleibt diese stehen. Gäste sehen sie nur bei veröffentlichten und laufenden Events, nie im Rückblick
+  eines beendeten; ein im Browser gemerkter Stand blendet sie zur Ablaufzeit aus (`app/lib/guest/announcement.ts`).
+* **Protokollnotizen** schreiben alle Konten mit Zugriff (bei geheimen Punkten nur Eingetragene), auch nach dem Event
+  im Rückblick. Sie gehören nicht zum Plan: keine neue Version des Punkts, nicht im Export, nicht beim Duplizieren.
+  Haben zwei gleichzeitig geschrieben, wird die zweite Fassung abgelehnt statt die erste zu überschreiben.
 * **Geheime Punkte:** steuern nur eingetragene Konten; alle anderen sehen „Geheimer Punkt“ ohne Knöpfe.
 * **Automatisch beendet** wird ein Event sechs Stunden nach dem Ende seines letzten Punkts (beim Öffnen der
   Live-Steuerung, bei jeder Aktion und im täglichen Cron).
@@ -301,6 +320,7 @@ Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, vers
 | Reihen-Übersicht | `/<reihen-adresse>` | Gäste |
 | Team-Ansicht | `/admin/events/<id>/team` | alle Konten mit Zugriff aufs Event |
 | QR-Code | `/admin/events/<id>/qr` | zum Ausdrucken (Tischkarten, Menükarte) |
+| Rückblick | `/admin/events/<id>/rueckblick` (CSV: `…/rueckblick/csv`) | alle Konten mit Zugriff aufs Event |
 
 * **Sichtbar** sind Gästeansicht und Tafel für veröffentlichte, laufende und beendete Events (Rückblick). Entwürfe und
   archivierte Events ergeben 404 – Konten mit Zugriff sehen stattdessen eine Vorschau mit Hinweis. Geschützte Events
@@ -326,7 +346,18 @@ Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, vers
   Abweichung, Team- und geheimen Punkten (Inhalt nur für eingetragene Konten), internen Notizen, Konflikten mit Ankern,
   „nicht bestätigt“, „überzogen“, „unklar“ und „läuft noch?“, zurückgestellten Punkten und der Zeit, die Gäste gerade
   sehen. Lädt sich alle 30 Sekunden neu.
+* **Durchsage:** steht über dem Ablauf in der Gästeansicht (mit Uhrzeit) und als gelbe Leiste unter dem Kopf der Tafel
+  – über denselben Polling-Endpunkt, also spätestens nach einer halben Minute. Auch die Team-Ansicht zeigt sie.
 * **QR-Code:** zur Gästeansicht, als SVG zum Drucken oder Herunterladen.
+* **Rückblick** (Plan gegen Ist): je Punkt Ursprungsplan (beim Live-Schalten eingefroren; ohne Live-Schalten der
+  aktuelle Plan) und tatsächliche Zeiten, Abweichung bei Beginn und Dauer, Ergebnis (stattgefunden, ausgefallen mit
+  Grund, zurückgestellt und nicht nachgeholt, nicht begonnen), Einschübe und verlegte Punkte, Protokollnotiz. Oben eine
+  Zusammenfassung (geplanter und tatsächlicher Zeitraum, Abweichung am Ende, wo am meisten überzogen wurde), unten der
+  vollständige Verlauf. Druckbar (Druckansicht ohne Formulare) und als CSV (Semikolon, für Excel; Text gegen
+  Formeln geschützt). **Für Sitzungen:** Tagesordnungspunkte als Programmpunkte anlegen, live „Weiter“ drücken und das
+  Ergebnis als Protokollnotiz eintragen – der Rückblick dokumentiert dann, wann welcher Punkt behandelt, vertagt
+  (zurückgestellt) oder abgesetzt (Ausfall) wurde. Geheime Punkte ohne Eintrag erscheinen auch hier nur als Platzhalter
+  ohne Notizen. Die Rechnung steht in `app/lib/review/review.ts`.
 * **Einbetten:** Die Gästeansicht (und die Reihen-Übersicht) lässt sich per iFrame in eine andere Website einbinden,
   z. B. `<iframe src="https://zeitplan.deine-domain.de/<adresse>" width="100%" height="800"></iframe>`. Impressum und
   Datenschutz öffnen dann in einem neuen Tab. Tafel und Verwaltung sind nicht einbettbar. Nur bestimmte Websites
@@ -410,9 +441,10 @@ Verwaltungsbereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im
   Tools stehen in `app/lib/slugs.ts`; ein Test schlägt fehl, sobald eine neue Route oder eine Datei unter `public/`
   dort fehlt.
 * **Geheime Punkte:** Alle Punkte für Konten laufen durch `redactItem` (`app/lib/planning/items.ts`, aufgerufen von
-  `loadPlan`) – eine Stelle für Planung, Team-Ansicht, Export und Duplizieren.
-* **Gäste** bekommen nur, was `toGuestView` freigibt (siehe „Ansichten“); interne Notizen liest die Gästeanfrage gar
-  nicht erst aus der Datenbank.
+  `loadPlan`) – eine Stelle für Planung, Team-Ansicht, Live-Steuerung, Rückblick, Export und Duplizieren. Die
+  Protokollnotiz eines geheimen Punkts gibt `loadReviewExtras` (`app/lib/review/store.ts`) nur bei `canSee` heraus.
+* **Gäste** bekommen nur, was `toGuestView` freigibt (siehe „Ansichten“), dazu die Durchsage aus
+  `currentAnnouncement`; interne Notizen und Protokollnotizen liest die Gästeanfrage gar nicht erst aus der Datenbank.
 * **Geschützte Events:** kein Inhalt ohne gültige Gast-Sitzung, Konto oder Tafel-Link – auch nicht über den
   Polling-Endpunkt (`403`). Zugangscode nur als HMAC, Gast-Sitzung nur als Hash, Tafel-Link per HMAC abgeleitet,
   Code-Eingabe gedrosselt (siehe „Zugang für Gäste“). Die Tafel sendet keinen Referer (`Referrer-Policy:
@@ -447,8 +479,10 @@ Was das Tool bewusst nicht kann oder wo es an Grenzen stößt – vor dem Einsat
   Sekunden.
 * **Zeitzone:** vorerst immer Europe/Berlin. Punkte liegen höchstens einen Tag vor und drei Tage nach dem Eventtag,
   Dauer höchstens 24 Stunden – längere Abläufe sind mehrere Events in einer Reihe.
-* **Nicht umgesetzt** (siehe Konzept „Später“, als Ideen L11–L13 in `suite-kit/docs/IDEEN.md`): kürzbare Punkte mit
-  Mindestdauer, Echtzeit per SSE, Push-Benachrichtigungen, Mails an Gäste.
+* **Durchsagen** erreichen nur, wer Gästeansicht oder Tafel offen hat – es gibt keine Push-Nachrichten.
+* **Nicht umgesetzt** (siehe Konzept „Später“ und die Ideen L11–L25 in `suite-kit/docs/IDEEN.md`): kürzbare Punkte mit
+  Mindestdauer, Echtzeit per SSE, Push-Benachrichtigungen, Mails an Gäste, Zuständigkeiten, Lesezugang für
+  Dienstleister, „Was wäre wenn“, Regieplan zum Drucken, Orte mit Karte, weitere Vorlagen, Kalender-Export.
 
 ## Automatische Löschung
 

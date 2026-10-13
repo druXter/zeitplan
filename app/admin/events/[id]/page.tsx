@@ -123,6 +123,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
           <div className="flex flex-wrap gap-2 text-sm">
             <Link href={`/admin/events/${event.id}/live`} className="bg-blue-600 text-white font-bold py-2 px-3 rounded hover:bg-blue-700">Live-Steuerung</Link>
             <Link href={`/admin/events/${event.id}/team`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Team-Ansicht</Link>
+            <Link href={`/admin/events/${event.id}/rueckblick`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Rückblick</Link>
             <Link href={`/${event.slug}`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Gästeansicht</Link>
             <Link href={`/${event.slug}/tafel`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Tafel</Link>
             <Link href={`/admin/events/${event.id}/qr`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">QR-Code zum Ausdrucken</Link>

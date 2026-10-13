@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildGuestPayload } from '../../../app/lib/guest/payload'
+import { announcementUntil, announcementVisible, currentAnnouncement } from '../../../app/lib/guest/announcement'
 import { project } from '../../../app/lib/schedule/project'
 import { toGuestView, DEFAULT_GUEST_SETTINGS, type GuestSourceItem, type GuestTrack } from '../../../app/lib/schedule/guest-view'
 import { DEFAULT_PROJECT_SETTINGS } from '../../../app/lib/schedule/types'
@@ -44,7 +45,8 @@ describe('buildGuestPayload', () => {
 
   it('enthält nur freigegebene Felder, Zeiten als ISO-Strings', () => {
     const payload = payloadFor(items)
-    expect(Object.keys(payload).sort()).toEqual(['event', 'items', 'showTracks'])
+    expect(Object.keys(payload).sort()).toEqual(['announcement', 'event', 'items', 'showTracks'])
+    expect(payload.announcement).toBeNull()
     expect(Object.keys(payload.event).sort()).toEqual(['date', 'description', 'series', 'status', 'timezone', 'title'])
     for (const entry of payload.items) {
       expect(Object.keys(entry).sort()).toEqual([
@@ -73,5 +75,38 @@ describe('buildGuestPayload', () => {
     expect(buildGuestPayload(EVENT, view, 1).showTracks).toBe(false)
     expect(buildGuestPayload(EVENT, view, 2).showTracks).toBe(true)
     expect(buildGuestPayload({ ...EVENT, series: null }, view, 1).event.series).toBeNull()
+  })
+})
+
+describe('Durchsage (Idee L15)', () => {
+  const base = { status: 'LIVE', announcementText: 'Bitte zum Gruppenfoto in den Garten', announcementAt: at('15:00'), announcementUntil: at('15:30') }
+
+  it('gilt bis zur Ablaufzeit, nur bei veröffentlichten und laufenden Events', () => {
+    expect(currentAnnouncement(base, at('15:29'))).toEqual({ text: base.announcementText, at: at('15:00'), until: at('15:30') })
+    expect(currentAnnouncement(base, at('15:30'))).toBeNull()
+    expect(currentAnnouncement({ ...base, announcementUntil: null }, at('23:00'))?.until).toBeNull()
+    expect(currentAnnouncement({ ...base, status: 'PUBLISHED' }, at('15:10'))).not.toBeNull()
+    for (const status of ['DRAFT', 'ENDED', 'ARCHIVED']) expect(currentAnnouncement({ ...base, status }, at('15:10'))).toBeNull()
+    expect(currentAnnouncement({ ...base, announcementText: null }, at('15:10'))).toBeNull()
+  })
+
+  it('landet mit Text und Zeiten im Payload - und nur das', () => {
+    const view = toGuestView({ items: [], tracks: TRACKS }, {}, at('15:10'), DEFAULT_GUEST_SETTINGS)
+    const payload = buildGuestPayload(EVENT, view, 1, currentAnnouncement(base, at('15:10')))
+    expect(payload.announcement).toEqual({ text: base.announcementText, at: at('15:00').toISOString(), until: at('15:30').toISOString() })
+  })
+
+  it('Ablaufzeit nur aus der erlaubten Auswahl, 0 = ohne Ablauf', () => {
+    expect(announcementUntil(at('15:00'), 30)).toEqual(at('15:30'))
+    expect(announcementUntil(at('15:00'), 0)).toBeNull()
+    expect(announcementUntil(at('15:00'), 45)).toBeUndefined()
+  })
+
+  it('ein gemerkter Stand zeigt eine abgelaufene Durchsage nicht mehr', () => {
+    const until = at('15:30').toISOString()
+    expect(announcementVisible({ until }, at('15:29').getTime())).toBe(true)
+    expect(announcementVisible({ until }, at('15:30').getTime())).toBe(false)
+    expect(announcementVisible({ until: null }, at('23:00').getTime())).toBe(true)
+    expect(announcementVisible(null, 0)).toBe(false)
   })
 })

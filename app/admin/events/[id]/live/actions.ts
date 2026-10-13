@@ -15,6 +15,7 @@ import { isUndoable, parseState, unchangedSince, type ActionMeta, type LiveActio
 import {
   applyPatches, endIfOver, freezeOriginalPlan, liveTransaction, LiveRefused, logAction, readRecords, restoreRecords
 } from '../../../../lib/live/store'
+import { ANNOUNCEMENT_LIMITS, announcementUntil } from '../../../../lib/guest/announcement'
 
 // Live-Steuerung (docs/KONZEPT.md Abschnitt 3). EINE Action für alle Knöpfe der Live-Seite, damit jede Aktion
 // dieselben Prüfungen durchläuft:
@@ -215,4 +216,56 @@ export async function liveCommand(formData: FormData) {
   if ('live' in outcome) back({ live: '1' })
   if ('ended' in outcome) back({ ended: '1' })
   back({ done: outcome.done })
+}
+
+/**
+ * Durchsage an Gäste und Tafel setzen oder entfernen (Idee L15). Wie die Knöpfe der Live-Steuerung für alle
+ * Konten mit Zugriff aufs Event, aber schon bei veröffentlichten Events (z. B. "Einlass verschiebt sich") - nicht
+ * bei Entwurf, Ende und Archiv. Eine neue Durchsage ersetzt die alte. Entfernen nennt die gemeinte Durchsage
+ * (announcementAt), damit eine inzwischen neuere nicht verschwindet. Beides steht im Verlauf, Rückgängig gibt es
+ * dafür nicht. Zeit ist die Serverzeit; liveTransaction zählt liveVersion hoch.
+ */
+export async function announce(formData: FormData) {
+  const user = await requireUser('/admin/events')
+  const event = await loadEventForUser(formString(formData, 'eventId', 50), user)
+  if (!event) redirect('/admin/events')
+  const track = formString(formData, 'track', 50)
+  const back: (params: Record<string, string>) => never = params => {
+    const query = new URLSearchParams({ ...(track ? { track } : {}), ...params }).toString()
+    return redirect(`/admin/events/${event.id}/live?${query}`)
+  }
+  const clear = formString(formData, 'command', 10) === 'clear'
+  const now = new Date()
+  if (await endIfOver(event, now)) back({ error: 'not-live' })
+
+  let text = ''
+  let until: Date | null = null
+  if (!clear) {
+    text = cleanText(formString(formData, 'text', ANNOUNCEMENT_LIMITS.textMax * 2))
+    const duration = formInt(formData, 'durationMin')
+    const parsed = announcementUntil(now, duration)
+    if (!text || text.length > ANNOUNCEMENT_LIMITS.textMax || parsed === undefined) back({ error: 'announcement' })
+    until = parsed ?? null
+  }
+
+  let outcome: string
+  try {
+    outcome = await liveTransaction(event.id, async tx => {
+      const current = await tx.event.findUniqueOrThrow({ where: { id: event.id }, select: { status: true, announcementAt: true } })
+      if (current.status !== 'PUBLISHED' && current.status !== 'LIVE') throw new LiveRefused('not-live')
+      if (clear) {
+        if (!current.announcementAt || current.announcementAt.toISOString() !== formString(formData, 'at', 40)) throw new LiveRefused('announcement-changed')
+        await tx.event.update({ where: { id: event.id }, data: { announcementText: null, announcementAt: null, announcementUntil: null } })
+        await logAction(tx, { eventId: event.id, actorId: user.id, type: 'unannounce', itemId: null, before: { items: {} }, after: { items: {}, meta: { ids: [] } } })
+        return 'cleared'
+      }
+      await tx.event.update({ where: { id: event.id }, data: { announcementText: text, announcementAt: now, announcementUntil: until } })
+      await logAction(tx, { eventId: event.id, actorId: user.id, type: 'announce', itemId: null, before: { items: {} }, after: { items: {}, meta: { ids: [], text } } })
+      return 'announced'
+    })
+  } catch (error) {
+    if (error instanceof LiveRefused) back({ error: error.reason })
+    throw error
+  }
+  back({ [outcome]: '1' })
 }

@@ -6,6 +6,7 @@ import { timelineSections } from '../../lib/timeline'
 import { formatClock, formatItemClock } from '../../lib/timezone'
 import { ConnectionNote, formatDelay } from '../guest-timeline'
 import { useGuestView } from '../use-guest-view'
+import AnnouncementBanner from '../announcement-banner'
 
 /**
  * Anzeigetafel für Beamer/TV (docs/KONZEPT.md Abschnitt 5): große Schrift, jetzt und die nächsten 3-4 Punkte,
@@ -36,6 +37,8 @@ export default function Board({ slug, initial, etag, remember, displayKey }: {
         <h1 className="text-[4.5vh] font-bold leading-tight truncate">{event.title}</h1>
         <Clock timezone={event.timezone} />
       </header>
+
+      {!connection.gone && <AnnouncementBanner announcement={payload.announcement} timezone={event.timezone} board />}
 
       {message ? (
         <p className="grow flex items-center justify-center text-center text-[6vh] font-bold">{message}</p>

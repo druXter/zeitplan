@@ -8,7 +8,8 @@ import Link from 'next/link'
 // Export/Import, Drosselung, Löschfristen, installierbare App mit Service Worker, Gästeansicht und Tafel mit
 // Offline-Stand im Browser, Phase 4: Live-Steuerung mit Verlauf, Phase 5: Zugangscode mit Gast-Sitzung und
 // Drosselung, Zugang per Konto, Tafel-Link, Phase 6: Anmeldung mit Konten anderer Tools der Suite, Phase 7:
-// Zugang über eine Zusage in rsvp-app; Abruf der Programmpunkte durch Schichten).
+// Zugang über eine Zusage in rsvp-app; Abruf der Programmpunkte durch Schichten; Durchsagen, Protokollnotizen und
+// Rückblick als CSV).
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -121,6 +122,15 @@ export default function DatenschutzPage() {
             und dem Stand vorher und nachher - damit das Team nachvollziehen und Meldungen rückgängig machen kann. Den
             Verlauf sehen nur Konten mit Zugriff auf die Veranstaltung; er wird mit ihr gelöscht. Wird ein Konto
             gelöscht, bleibt der Eintrag ohne Zuordnung zum Konto stehen.
+          </p>
+          <p className="mt-2">
+            Eine <strong>Durchsage</strong> an die Gäste (ein kurzer Text mit Zeitpunkt und Ablaufzeit) speichern wir an
+            der Veranstaltung, bis sie ersetzt oder entfernt wird; sie erscheint in der Ansicht für Gäste und steht
+            zusätzlich mit dem meldenden Konto im Verlauf. Zu jedem Programmpunkt kann das Team eine
+            <strong> Protokollnotiz</strong> festhalten (z. B. das Ergebnis eines Tagesordnungspunkts). Protokollnotizen
+            sehen wie interne Notizen nur Konten mit Zugriff auf die Veranstaltung, nie Gäste; sie sind nicht Teil des
+            Exports und werden mit der Veranstaltung gelöscht. Der <strong>Rückblick</strong> lässt sich als CSV-Datei
+            herunterladen - für deren Weitergabe ist verantwortlich, wer sie herunterlädt.
           </p>
           <p className="mt-2">
             Ein <strong>Export</strong> als Datei enthält den Ablauf mit internen Notizen, aber keine Konten, E-Mail-Adressen

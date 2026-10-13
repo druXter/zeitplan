@@ -1,0 +1,201 @@
+import Link from 'next/link'
+import { prisma } from '../../../../lib/prisma'
+import { requireUser } from '../../../../lib/auth'
+import { loadEventOr404 } from '../../../../lib/events/store'
+import { describeAction, historyTitle, parseState } from '../../../../lib/live/history'
+import { PLAN_LIMITS } from '../../../../lib/planning/rules'
+import { formatDeviation, OUTCOME_LABELS, type ReviewOutcome, type ReviewRow } from '../../../../lib/review/review'
+import { loadReview, type ReviewItem } from '../../../../lib/review/store'
+import { formatDate, formatDuration, formatItemClock } from '../../../../lib/timezone'
+import Badge from '../../../../ui/badge'
+import Notice from '../../../../ui/notice'
+import PrintButton from '../../../../ui/print-button'
+import StatusBadge from '../../../../ui/status-badge'
+import { saveResultNote } from '../../review-actions'
+
+export const dynamic = 'force-dynamic'
+
+const NOTE_ERRORS: Record<string, string> = {
+  long: `Protokollnotiz: höchstens ${PLAN_LIMITS.noteMax} Zeichen.`,
+  changed: 'Die Protokollnotiz wurde inzwischen von jemand anderem geändert. Hier ist der aktuelle Stand – bitte noch einmal eintragen.',
+  forbidden: 'Diese Notiz darfst du nicht ändern.'
+}
+
+const OUTCOME_TONES: Record<ReviewOutcome, 'green' | 'blue' | 'red' | 'amber' | undefined> = {
+  done: 'green', running: 'blue', cancelled: 'red', deferred: 'amber', skipped: undefined
+}
+
+/** Wie viele Aktionen der Verlauf höchstens zeigt - für einen Eventtag mehr als genug. */
+const HISTORY_LIMIT = 2000
+
+/**
+ * Rückblick (Idee L24): Plan gegen Ist je Punkt, Zusammenfassung, Protokollnotizen und der vollständige Verlauf -
+ * zum Auswerten nach dem Event und als Dokumentation einer Sitzung (Tagesordnungspunkte als Programmpunkte). Für
+ * alle Konten mit Zugriff; geheime Punkte ohne Eintrag nur mit Platzhalter, ohne Notizen (loadPlan). Druckbar,
+ * dazu CSV. Die Rechnung steht in app/lib/review/review.ts.
+ */
+export default async function ReviewPage({ params, searchParams }: {
+  params: Promise<{ id: string }>; searchParams: Promise<{ noted?: string; noteError?: string }>
+}) {
+  const { id } = await params
+  const user = await requireUser(`/admin/events/${id}/rueckblick`)
+  const event = await loadEventOr404(id, user)
+  const search = await searchParams
+  const [{ tracks, rows, summary }, actions] = await Promise.all([
+    loadReview(event.id, user.id),
+    prisma.liveAction.findMany({
+      where: { eventId: event.id },
+      orderBy: { createdAt: 'asc' },
+      take: HISTORY_LIMIT,
+      include: { actor: { select: { email: true, name: true } }, undoneBy: { select: { email: true, name: true } } }
+    })
+  ])
+
+  const clock = (date: Date) => formatItemClock(date, event.date, event.timezone)
+  const trackNames = new Map(tracks.map(track => [track.id, track.name]))
+  const titles = new Map(rows.map(row => [row.item.id, row.item.title]))
+  const history = actions.map(action => ({
+    id: action.id,
+    at: action.createdAt,
+    who: action.actor ? action.actor.name || action.actor.email : null,
+    undoneBy: action.undoneAt ? (action.undoneBy?.name || action.undoneBy?.email || 'jemand') : null,
+    text: describeAction(action.type, parseState(action.after), itemId => historyTitle(itemId, titles, [action.after, action.before], user.id))
+  }))
+  const { counts } = summary
+  const countText = [
+    `${counts.done} stattgefunden`,
+    counts.running > 0 && `${counts.running} läuft noch`,
+    counts.cancelled > 0 && `${counts.cancelled} ausgefallen`,
+    counts.deferred > 0 && `${counts.deferred} zurückgestellt, nicht nachgeholt`,
+    counts.skipped > 0 && `${counts.skipped} nicht begonnen`,
+    counts.inserted > 0 && `davon ${counts.inserted} ${counts.inserted === 1 ? 'Einschub' : 'Einschübe'}`
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <main className="bg-gray-50 dark:bg-gray-900 print:bg-white py-6 px-4">
+      <div className="max-w-4xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
+        <div className="space-y-1">
+          <p className="text-sm print:hidden"><Link href={`/admin/events/${event.id}`} className="text-blue-700 dark:text-blue-300 hover:underline">{event.title}</Link></p>
+          <h1 className="text-2xl font-bold">Rückblick: {event.title} <span className="print:hidden"><StatusBadge status={event.status} /></span></h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(event.date, event.timezone)}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-sm print:hidden">
+          <PrintButton />
+          <a href={`/admin/events/${event.id}/rueckblick/csv`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Als CSV herunterladen</a>
+        </div>
+
+        {search.noted === '1' && <div className="print:hidden"><Notice tone="success">Protokollnotiz gespeichert.</Notice></div>}
+        {search.noteError && <Notice tone="error">{NOTE_ERRORS[search.noteError] ?? 'Das hat nicht geklappt.'}</Notice>}
+        {!summary.frozen && (
+          <Notice tone="info">Das Event war noch nicht live – verglichen wird mit dem aktuellen Plan statt mit einem eingefrorenen Ursprungsplan.</Notice>
+        )}
+        {event.status === 'LIVE' && <Notice tone="info">Das Event läuft noch – der Rückblick zeigt den Stand von jetzt.</Notice>}
+
+        {rows.length === 0 ? (
+          <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-sm text-gray-600 dark:text-gray-400">Noch keine Programmpunkte.</p>
+        ) : (
+          <>
+            <section aria-labelledby="review-summary" className="bg-white dark:bg-gray-800 rounded-lg shadow print:shadow-none print:border p-4 space-y-2">
+              <h2 id="review-summary" className="font-bold">Zusammenfassung</h2>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                <dt className="text-gray-600 dark:text-gray-400">Geplant</dt>
+                <dd className="tabular-nums">{summary.plannedStart && summary.plannedEnd ? `${clock(summary.plannedStart)}–${clock(summary.plannedEnd)} Uhr` : '–'}</dd>
+                <dt className="text-gray-600 dark:text-gray-400">Tatsächlich</dt>
+                <dd className="tabular-nums">
+                  {summary.actualStart ? `${clock(summary.actualStart)}–${summary.actualEnd ? `${clock(summary.actualEnd)} Uhr` : '…'}` : 'noch nichts begonnen'}
+                  {summary.endDeviationMin !== null && ` (Ende ${formatDeviation(summary.endDeviationMin)} Min)`}
+                </dd>
+                <dt className="text-gray-600 dark:text-gray-400">Punkte</dt>
+                <dd>{countText}</dd>
+                {summary.overruns.length > 0 && (
+                  <>
+                    <dt className="text-gray-600 dark:text-gray-400">Überzogen</dt>
+                    <dd>{summary.overruns.map(overrun => `„${titles.get(overrun.id)}“ ${formatDeviation(overrun.minutes)} Min`).join(', ')}</dd>
+                  </>
+                )}
+              </dl>
+            </section>
+
+            <section aria-labelledby="review-items" className="space-y-2">
+              <h2 id="review-items" className="font-bold">Punkte</h2>
+              <ol className="bg-white dark:bg-gray-800 rounded-lg shadow print:shadow-none print:border divide-y divide-gray-200 dark:divide-gray-700">
+                {rows.map(row => (
+                  <ReviewEntry key={row.item.id} row={row} eventId={event.id} clock={clock} trackName={tracks.length > 1 ? trackNames.get(row.item.trackId) ?? null : null} />
+                ))}
+              </ol>
+            </section>
+          </>
+        )}
+
+        <section aria-labelledby="review-history" className="space-y-2 print:break-before-page">
+          <h2 id="review-history" className="font-bold">Verlauf</h2>
+          {history.length === 0 ? <p className="text-sm text-gray-600 dark:text-gray-400">Keine Meldungen.</p> : (
+            <ol className="bg-white dark:bg-gray-800 rounded-lg shadow print:shadow-none print:border divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              {history.map(entry => (
+                <li key={entry.id} data-history={entry.id} className="px-3 py-1.5 flex gap-3">
+                  <span className="w-16 shrink-0 tabular-nums text-gray-600 dark:text-gray-400">{clock(entry.at)}</span>
+                  <span className="grow min-w-0">
+                    <span className={entry.undoneBy ? 'line-through text-gray-500 dark:text-gray-400' : ''}>{entry.text}</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400"> · {entry.who ?? 'automatisch'}{entry.undoneBy ? ` · rückgängig gemacht von ${entry.undoneBy}` : ''}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      </div>
+    </main>
+  )
+}
+
+function ReviewEntry({ row, eventId, clock, trackName }: {
+  row: ReviewRow<ReviewItem>; eventId: string; clock: (date: Date) => string; trackName: string | null
+}) {
+  const { item } = row
+  const range = (start: Date | null, end: Date | null) => (start ? `${clock(start)}–${end ? clock(end) : '…'}` : '–')
+  const deviations = [
+    row.startDeviationMin !== null && `Beginn ${formatDeviation(row.startDeviationMin)} Min`,
+    row.durationDeviationMin !== null && `Dauer ${formatDeviation(row.durationDeviationMin)} Min`
+  ].filter(Boolean).join(' · ')
+  return (
+    <li id={`item-${item.id}`} data-review-item={item.id} className="p-3 flex gap-3 break-inside-avoid">
+      <dl className="w-32 shrink-0 text-sm tabular-nums">
+        <dt className="text-xs text-gray-600 dark:text-gray-400">Plan</dt>
+        <dd>{row.baseStart ? range(row.baseStart, row.baseEnd) : 'Einschub'}</dd>
+        <dt className="text-xs text-gray-600 dark:text-gray-400">Ist</dt>
+        <dd className="font-bold">{range(item.actualStart, item.actualEnd)}</dd>
+      </dl>
+      <div className="grow min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-1">
+          <span className={`font-medium ${row.outcome === 'cancelled' ? 'line-through' : ''}`}>{item.title}</span>
+          <Badge tone={OUTCOME_TONES[row.outcome]}>{OUTCOME_LABELS[row.outcome]}</Badge>
+          {item.visibility !== 'PUBLIC' && <Badge tone={item.visibility === 'SECRET' ? 'purple' : 'amber'}>{item.visibility === 'SECRET' ? 'Geheim' : 'Team'}</Badge>}
+          {row.baseStart === null && <Badge>Einschub</Badge>}
+          {row.moved && <Badge>verlegt</Badge>}
+          {trackName && <Badge>{trackName}</Badge>}
+        </div>
+        <p className="text-sm text-gray-700 dark:text-gray-300">
+          {row.baseDurationMin !== null && `geplant ${formatDuration(row.baseDurationMin)}`}
+          {row.actualDurationMin !== null && `${row.baseDurationMin !== null ? ', ' : ''}tatsächlich ${formatDuration(row.actualDurationMin)}`}
+          {deviations && <span className="text-gray-600 dark:text-gray-400"> · {deviations}</span>}
+        </p>
+        {row.outcome === 'cancelled' && item.cancelReason && <p className="text-sm text-gray-700 dark:text-gray-300">Grund: {item.cancelReason}</p>}
+        {item.resultNote && <p data-result-note className="text-sm bg-gray-50 dark:bg-gray-900 print:bg-white rounded px-2 py-1 whitespace-pre-line">{item.resultNote}</p>}
+        {item.canSee && (
+          <details className="print:hidden">
+            <summary className="cursor-pointer text-sm text-blue-700 dark:text-blue-300 min-h-9 flex items-center">Protokollnotiz {item.resultNote ? 'bearbeiten' : 'hinzufügen'}</summary>
+            <form action={saveResultNote} className="space-y-2 pt-1">
+              <input type="hidden" name="eventId" value={eventId} />
+              <input type="hidden" name="itemId" value={item.id} />
+              <input type="hidden" name="previous" value={item.resultNote ?? ''} />
+              <label htmlFor={`note-${item.id}`} className="sr-only">Protokollnotiz zu „{item.title}“</label>
+              <textarea id={`note-${item.id}`} name="note" defaultValue={item.resultNote ?? ''} maxLength={PLAN_LIMITS.noteMax} rows={3} placeholder="z. B. Ergebnis, Beschluss" className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded text-sm" />
+              <button type="submit" className="py-1.5 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900 text-sm">Notiz speichern</button>
+            </form>
+          </details>
+        )}
+      </div>
+    </li>
+  )
+}

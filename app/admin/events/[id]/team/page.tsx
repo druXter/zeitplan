@@ -12,6 +12,7 @@ import AutoRefresh from '../../../../ui/auto-refresh'
 import Badge from '../../../../ui/badge'
 import Notice from '../../../../ui/notice'
 import StatusBadge from '../../../../ui/status-badge'
+import { currentAnnouncement } from '../../../../lib/guest/announcement'
 
 export const dynamic = 'force-dynamic'
 
@@ -59,6 +60,7 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
     item => item.expectedStart.getTime()
   )
   const clock = (date: Date) => formatItemClock(date, event.date, event.timezone)
+  const announcement = currentAnnouncement(event, now)
   const row = (item: TeamItem, highlight = false) => (
     <TeamRow
       key={item.id}
@@ -85,10 +87,16 @@ export default async function TeamPage({ params }: { params: Promise<{ id: strin
             <Link href={`/admin/events/${event.id}/live`} className="text-blue-700 dark:text-blue-300 hover:underline">Live-Steuerung</Link>{' · '}
             <Link href={`/admin/events/${event.id}/plan`} className="text-blue-700 dark:text-blue-300 hover:underline">Planung</Link>{' · '}
             <Link href={`/${event.slug}`} className="text-blue-700 dark:text-blue-300 hover:underline">Gästeansicht</Link>{' · '}
-            <Link href={`/${event.slug}/tafel`} className="text-blue-700 dark:text-blue-300 hover:underline">Tafel</Link>
+            <Link href={`/${event.slug}/tafel`} className="text-blue-700 dark:text-blue-300 hover:underline">Tafel</Link>{' · '}
+            <Link href={`/admin/events/${event.id}/rueckblick`} className="text-blue-700 dark:text-blue-300 hover:underline">Rückblick</Link>
           </p>
         </div>
 
+        {announcement && (
+          <Notice tone="info">
+            <span className="font-bold">Durchsage {announcement.until ? `bis ${clock(announcement.until)} Uhr` : 'ohne Ablauf'}:</span> {announcement.text}
+          </Notice>
+        )}
         {loop && <Notice tone="error">„Wartet auf“ ergibt eine Schleife – die Prognose rechnet vorerst ohne Zusammenführungen.</Notice>}
         {conflicts.length > 0 && (
           <Notice tone="warning">

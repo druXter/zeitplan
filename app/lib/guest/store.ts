@@ -9,12 +9,14 @@ import { guestVisibility, isGuestVisibleStatus, needsAccountCheck, type GuestVis
 import { hasGuestSession } from './session'
 import { displayTokenValid } from './tokens'
 import { buildGuestPayload, type GuestPayload } from './payload'
+import { currentAnnouncement } from './announcement'
 
 const guestEventSelect = {
   id: true, slug: true, title: true, description: true, date: true, timezone: true, status: true, access: true,
   displayTokenVersion: true,
   autoCreep: true, creepNudgeMin: true, creepCapMin: true,
   guestRoundingMin: true, hysteresisMin: true, showDelayToGuests: true, guestHorizonMin: true,
+  announcementText: true, announcementAt: true, announcementUntil: true,
   series: { select: { slug: true, title: true } }
 } as const
 
@@ -113,7 +115,7 @@ export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<Gu
     await prisma.$transaction(changed.map(([id, shown]) => prisma.item.updateMany({ where: { id }, data: { guestShownStart: shown } })))
   }
 
-  return buildGuestPayload(event, view, tracks.filter(track => track.visibility === 'PUBLIC').length)
+  return buildGuestPayload(event, view, tracks.filter(track => track.visibility === 'PUBLIC').length, currentAnnouncement(event, now))
 }
 
 /**

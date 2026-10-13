@@ -14,7 +14,7 @@
 // Gästeansicht selbst im Browser (localStorage) - nicht dieser Worker. Wird sie ohne Verbindung neu geladen,
 // liest die Offline-Seite diesen Stand und zeigt ihn an.
 
-const VERSION = 'v2'
+const VERSION = 'v3'
 const CACHE = `zeitplan-offline-${VERSION}`
 const OFFLINE_URL = '/offline.html'
 

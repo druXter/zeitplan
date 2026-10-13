@@ -175,6 +175,7 @@ Einschub kommt.
 | Team-Ansicht | Moderator*innen, Creator | wie Gäste, plus Team-Punkte, geheime Punkte (je nach Eintrag), interne Notizen, Konflikte, minutengenau |
 | Reihen-Übersicht `/<reihen-slug>` | Gäste | Liste der Events einer Reihe mit Datum und Link |
 | Planung | Creator, Admin | Abschnitt 4 |
+| Rückblick `/admin/events/<id>/rueckblick` | alle Konten mit Zugriff | Plan gegen Ist, Protokollnotizen, Verlauf, CSV (Idee L24, siehe "Entschieden") |
 
 **Aktualisierung:** Polling alle ~20–30 s auf einen kleinen Endpunkt mit `ETag` (aus dem ausgelieferten Inhalt, weil
 sich die Prognose durch "Fortschreiben" auch ohne Aktion ändert – siehe "Entschieden"), sofort beim Zurückkehren in den
@@ -264,7 +265,9 @@ Event        id, slug (unique), title, description, date, timezone,
              guestHorizonMin (120), creepNudgeMin (5), creepCapMin (30), seriesId?,
              modsMayInsert (bool), modsMayEditPlan (bool),
              displayTokenVersion, liveVersion (int, steigt mit jeder Änderung),
-             rsvpLink (JSON?), ownerId, createdAt, updatedAt
+             rsvpLink (JSON?), shiftsLink (JSON?),
+             announcementText?, announcementAt?, announcementUntil?,   -- Durchsage (L15)
+             ownerId, createdAt, updatedAt
 
 Series       id, slug (unique), title, ownerId
 
@@ -278,6 +281,7 @@ Item         id, eventId, trackId, sortOrder,
              status (PLANNED|RUNNING|DONE|DEFERRED|CANCELLED), insertedLive (bool),
              actualStart?, actualEnd?, reportedDelayMin?, reportedAt?, cancelReason?,
              guestShownStart?,                                  -- für die Hysterese
+             resultNote?,                                       -- Protokollnotiz (L24)
              version (int)
 
 ItemDependency  itemId, waitsForItemId                         -- Zusammenführung, keine Zyklen
@@ -323,7 +327,8 @@ Anbindungen zuletzt. Jede Phase ist erst fertig, wenn ihre **Definition of Done*
 | 8 | Abschluss: README, Eintrag im suite-kit-README, Test auf echtem Handy und Fernseher, Lasttest (200 Gäste pollen) | README beschreibt alle Funktionen und Grenzen (SECRET vs. Betreiber) |
 
 Später, nicht für die Hochzeit nötig: kürzbare Punkte (Mindestdauer), SSE, Push-Benachrichtigungen. Weiter verfolgt als
-Ideen L11–L13 in `suite-kit/docs/IDEEN.md`.
+Ideen L11–L13 in `suite-kit/docs/IDEEN.md`, dort auch die späteren Zeitplan-Ideen L15–L25. Umgesetzt (2026-10-13):
+Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24) - Regeln unter "Entschieden".
 
 ## 12. Offene Entscheidungen
 
@@ -546,3 +551,32 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   Betreiber (Checkliste im README unter „Vor dem Einsatz“). (Annahme)
 * Eintrag im suite-kit-README: Das Repo wird hier nicht geändert (nur lesen); der Text war als Vorschlag übergeben und
   steht inzwischen dort (Tool-Liste und Abschnitt zum Vertrag rsvp-app ↔ Zeitplan).
+* **Durchsagen (Idee L15):** höchstens eine zur Zeit als Felder am Event (`announcementText`, `announcementAt`,
+  `announcementUntil`), keine eigene Tabelle - eine neue ersetzt die alte, der Verlauf (`LiveAction` `announce` /
+  `unannounce` mit dem Text in `meta.text`) hält alle fest. Setzen und Entfernen dürfen alle Konten mit Zugriff, wie die
+  Live-Knöpfe, aber schon bei `PUBLISHED` ("Einlass verschiebt sich"); nicht bei Entwurf, `ENDED` und Archiv. Text
+  höchstens 280 Zeichen, Dauer 15/30/60/120 Minuten oder ohne Ablauf. Gäste sehen sie nur bei `PUBLISHED` und `LIVE`
+  (`currentAnnouncement`) - im Rückblick eines beendeten Events ist sie vorbei. Sie kommt als eigenes Feld
+  `announcement` in den `GuestPayload` (Event-Ebene, nicht über `toGuestView`) und ändert damit den ETag; ein gemerkter
+  Stand blendet sie zur Ablaufzeit aus (auch die Offline-Seite). Nicht rückgängig zu machen (Event-Ebene wie Live
+  schalten); "Entfernen" nennt `announcementAt`, damit eine inzwischen neuere bleibt. (Annahme)
+* **Block verschieben (Idee L20):** reine Funktion `shiftBlock` im Kern (`plan-changes.ts`), in der Planung auf der
+  Seite eines Punkts. Standard "bis vor den nächsten aktiven Anker" - verhält sich wie eine Verspätung, die am Anker
+  endet; wahlweise "bis zum Ende der Spur" mit Ankern. Ändert nur `plannedStart` (Reihenfolge, Dauern und
+  Abhängigkeiten bleiben, Kreise entstehen nicht). Abgelehnt bei begonnenen Punkten im Block, wenn der Block vor dem
+  vorherigen aktiven Punkt begänne (Reihenfolge und Zeiten passten nicht mehr) und außerhalb von `startRange`. Wie
+  Bearbeiten: Recht "Plan bearbeiten", Version des gewählten Punkts, jeder Punkt im Block bearbeitbar - ein geheimer
+  Punkt ohne Eintrag im Block lehnt ab, statt ihn unbemerkt mitzunehmen. Auch während des Events möglich (Planänderung,
+  keine Verspätung; der Ursprungsplan bleibt). Nicht im Verlauf, wie alle Planänderungen. (Annahme)
+* **Rückblick (Idee L24):** Vergleichsgrundlage ist der Ursprungsplan, ohne Live-Schalten der aktuelle Plan.
+  Einschübe (`insertedLive` ohne Ursprung) haben keinen Plan und keine Abweichung. Ergebnis je Punkt aus den Meldungen:
+  stattgefunden (Beginn und Ende), läuft noch, ausgefallen, zurückgestellt und nicht nachgeholt, nicht begonnen.
+  "Verlegt", wenn Beginn oder Dauer vom Ursprungsplan abweichen. Die Abweichung am Ende gibt es erst, wenn nichts mehr
+  läuft. Rechnung als reine Funktion `buildReview` (`app/lib/review/review.ts`), CSV wie in Schichten (Semikolon,
+  BOM, Text gegen Formeln geschützt, Zahlen bleiben Zahlen). Für alle Konten mit Zugriff, SECRET-Regel über `loadPlan`.
+  Verlauf vollständig (bis 2000 Einträge), chronologisch. (Annahme)
+* **Protokollnotiz (Idee L24, für Sitzungen):** Feld `Item.resultNote`, Sichtbarkeit wie die interne Notiz (nur Konten,
+  bei SECRET nur Eingetragene). Schreiben dürfen alle Konten mit Zugriff - im Rückblick jederzeit, live beim laufenden
+  Punkt. Kein Teil des Plans: ändert weder `Item.version` noch `liveVersion`, nicht im Export, nicht beim Duplizieren
+  und Import. Gleichzeitiges Schreiben: Das Formular schickt die angezeigte Fassung mit; weicht sie ab, wird abgelehnt.
+  Tagesordnung einer Sitzung = Programmpunkte; vertagt = zurückgestellt, abgesetzt = Ausfall mit Grund. (Annahme)

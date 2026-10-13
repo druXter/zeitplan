@@ -6,10 +6,10 @@ import { requireUser } from '../../lib/auth'
 import { formString } from '../../lib/form'
 import { canAddRemoveItems, canEditItem, canEditPlan, canManageEvent } from '../../lib/permissions'
 import { loadEventForUser, type LoadedEvent } from '../../lib/events/store'
-import { checkDependencies, swapAdjacent, type DependencyProblem, type ScheduleItem } from '../../lib/schedule'
+import { checkDependencies, shiftBlock, swapAdjacent, type DependencyProblem, type ScheduleItem, type ShiftScope } from '../../lib/schedule'
 import { parseItemForm } from '../../lib/planning/items'
 import { nextSortOrder, placeInTrack } from '../../lib/planning/order'
-import { cleanText, isValidTrackVisibility, PLAN_LIMITS } from '../../lib/planning/rules'
+import { cleanText, isValidTrackVisibility, PLAN_LIMITS, startRange } from '../../lib/planning/rules'
 import { bumpLiveVersion, eventAccounts, loadPlan } from '../../lib/planning/store'
 
 // Planung (docs/KONZEPT.md Abschnitt 4). JEDE Aktion prüft selbst: Zugriff aufs Event (loadEventForUser), das
@@ -185,6 +185,39 @@ export async function moveItem(formData: FormData) {
     return 'ok'
   })
   redirect(`${planUrl(event.id, result === 'ok' ? { ...back, moved: '1' } : { ...back, moveError: result })}#item-${itemId}`)
+}
+
+/**
+ * Block verschieben (Idee L20): der Punkt und die folgenden seiner Spur um N Minuten später oder früher - bis vor
+ * den nächsten Anker oder bis zum Ende der Spur (shiftBlock aus dem Kern). Wie Bearbeiten: Plan bearbeiten, die
+ * Version des gewählten Punkts muss stimmen, und jeder Punkt im Block muss für das Konto bearbeitbar sein (ein
+ * geheimer Punkt ohne Eintrag im Block lehnt ab, statt ihn heimlich mitzunehmen).
+ */
+export async function shiftItems(formData: FormData) {
+  const { user, event } = await loadEvent(formData)
+  if (!canEditPlan(event.level, event)) redirect(`/admin/events/${event.id}`)
+  const itemId = formString(formData, 'itemId', 50)
+  const raw = formString(formData, 'minutes', 10)
+  const minutes = /^\d{1,4}$/.test(raw) ? Number(raw) * (formString(formData, 'direction', 10) === 'earlier' ? -1 : 1) : NaN
+  const scope: ShiftScope = formString(formData, 'scope', 20) === 'track-end' ? 'track-end' : 'until-anchor'
+
+  const result = await prisma.$transaction(async tx => {
+    const { items } = await loadPlan(event.id, user.id, tx)
+    const item = items.find(i => i.id === itemId)
+    if (!item || !canEditItem(event.level, event, item, item.canSee)) return { error: 'forbidden' }
+    if (formString(formData, 'version', 10) !== String(item.version)) return { error: 'stale' }
+    const shift = shiftBlock(items, item.id, minutes, scope, startRange(event.date))
+    if (!shift.ok) return { error: shift.reason }
+    const byId = new Map(items.map(i => [i.id, i]))
+    if (shift.changes.some(change => { const other = byId.get(change.id)!; return !canEditItem(event.level, event, other, other.canSee) })) return { error: 'secret' }
+    for (const change of shift.changes) {
+      await tx.item.update({ where: { id: change.id }, data: { plannedStart: change.plannedStart, version: { increment: 1 } } })
+    }
+    await bumpLiveVersion(event.id, tx)
+    return { count: shift.changes.length, trackId: item.trackId }
+  })
+  if ('error' in result) redirect(`/admin/events/${event.id}/items/${itemId}?shiftError=${result.error}#block`)
+  redirect(`${planUrl(event.id, { track: result.trackId, shifted: String(result.count) })}#item-${itemId}`)
 }
 
 // Spuren: nur owner (Abschnitt 7 - der Schalter "Plan bearbeiten" betrifft Punkte, nicht die Spuren).

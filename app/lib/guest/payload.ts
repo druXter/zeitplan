@@ -1,4 +1,5 @@
 import type { GuestStatus, GuestView } from '../schedule'
+import type { Announcement } from './announcement'
 
 /**
  * Was Gästeansicht, Tafel und Polling-Endpunkt ausliefern - als JSON (Zeiten als ISO-Strings), identisch für
@@ -32,6 +33,8 @@ export type GuestPayload = {
   }
   /** Mehr als eine öffentliche Spur: Spur je Punkt anzeigen. */
   showTracks: boolean
+  /** Durchsage (Idee L15), nur aus currentAnnouncement. until: ab dann blendet auch ein gemerkter Stand sie aus. */
+  announcement: { text: string; at: string; until: string | null } | null
   items: GuestPayloadItem[]
 }
 
@@ -44,7 +47,7 @@ export type GuestEventSource = {
   series: { slug: string; title: string } | null
 }
 
-export function buildGuestPayload(event: GuestEventSource, view: GuestView, publicTrackCount: number): GuestPayload {
+export function buildGuestPayload(event: GuestEventSource, view: GuestView, publicTrackCount: number, announcement: Announcement | null = null): GuestPayload {
   return {
     event: {
       title: event.title,
@@ -55,6 +58,9 @@ export function buildGuestPayload(event: GuestEventSource, view: GuestView, publ
       series: event.series ? { slug: event.series.slug, title: event.series.title } : null
     },
     showTracks: publicTrackCount > 1,
+    announcement: announcement
+      ? { text: announcement.text, at: announcement.at.toISOString(), until: announcement.until?.toISOString() ?? null }
+      : null,
     items: view.items.map(item => ({
       id: item.id,
       title: item.title,

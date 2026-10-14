@@ -43,3 +43,6 @@ data/
 
 # Erlaube explizit die .env.example (wird sonst von ".env*" oben blockiert!)
 !.env.example
+
+# Log des minütlichen Cron-Aufrufs (/home/alex/scripts/zeitplan-cron.sh)
+/cron.log

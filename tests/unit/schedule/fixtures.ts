@@ -28,6 +28,7 @@ export function item(overrides: Partial<ScheduleItem> & { start: string; min: nu
     sortOrder: counter,
     plannedStart: at(start, day),
     plannedDurationMin: min,
+    minDurationMin: null,
     isAnchor: false,
     mayStartEarly: false,
     status: 'PLANNED',

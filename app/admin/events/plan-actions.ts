@@ -87,6 +87,7 @@ export async function saveItem(_previous: ItemFormState, formData: FormData): Pr
         sortOrder,
         plannedStart: fields.plannedStart,
         plannedDurationMin: fields.plannedDurationMin,
+        minDurationMin: fields.minDurationMin,
         isAnchor: fields.isAnchor,
         mayStartEarly: fields.mayStartEarly,
         status: existing?.status ?? 'PLANNED',
@@ -109,6 +110,7 @@ export async function saveItem(_previous: ItemFormState, formData: FormData): Pr
         mayStartEarly: fields.mayStartEarly,
         plannedStart: fields.plannedStart,
         plannedDurationMin: fields.plannedDurationMin,
+        minDurationMin: fields.minDurationMin,
         trackId: fields.trackId,
         sortOrder
       }

@@ -80,6 +80,10 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
           <p className="text-sm"><Link href={`/admin/events/${event.id}`} className="text-blue-700 dark:text-blue-300 hover:underline">{event.title}</Link></p>
           <h1 className="text-2xl font-bold">Ablauf <StatusBadge status={event.status} /></h1>
           {!mayEdit && <p className="text-sm text-gray-600 dark:text-gray-400">Du kannst den Plan ansehen, aber nicht bearbeiten.</p>}
+          <p className="text-sm">
+            <Link href={`/admin/events/${event.id}/was-waere-wenn`} className="text-blue-700 dark:text-blue-300 hover:underline">Was wäre wenn?</Link>{' '}
+            <span className="text-gray-600 dark:text-gray-400">– eine Verspätung durchspielen, ohne etwas zu speichern.</span>
+          </p>
         </div>
 
         {search.saved === '1' && <Notice tone="success">Punkt gespeichert.</Notice>}
@@ -322,6 +326,7 @@ function Row({ row, eventId, track, showTrack, showGap, clock, waitsFor, editabl
             <span className={`font-medium ${inactive ? 'line-through' : ''}`}>{item.title}</span>
             {item.isAnchor && <Badge tone="blue">Anker</Badge>}
             {item.mayStartEarly && <Badge>darf früher beginnen</Badge>}
+            {item.minDurationMin !== null && <Badge>kürzbar bis {minutes(item.minDurationMin)}</Badge>}
             {item.visibility !== 'PUBLIC' && <Badge tone={item.visibility === 'SECRET' ? 'purple' : 'amber'}>{ITEM_VISIBILITY_LABELS[item.visibility]}</Badge>}
             {track?.visibility === 'TEAM' && item.visibility === 'PUBLIC' && <Badge tone="amber">Team-Spur</Badge>}
             {item.status === 'DEFERRED' && <Badge>zurückgestellt</Badge>}

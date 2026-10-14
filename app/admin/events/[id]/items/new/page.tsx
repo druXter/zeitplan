@@ -40,7 +40,7 @@ export default async function NewItemPage({ params, searchParams }: { params: Pr
           maxStart={maxStart}
           values={{
             title: '', location: '', description: '', internalNote: '', trackId,
-            start: utcToZonedInput(start, event.timezone), durationMin: '30', visibility: 'PUBLIC',
+            start: utcToZonedInput(start, event.timezone), durationMin: '30', minDurationMin: '', visibility: 'PUBLIC',
             isAnchor: false, mayStartEarly: false, waitsFor: [], secretViewers: [user.id], assignees: []
           }}
         />

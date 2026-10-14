@@ -22,6 +22,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 7 | Anbindung an rsvp-app (Zugang `RSVP`): 7a Anbindungen in rsvp-app verallgemeinern, 7b Link, Gast-Sitzung, Webhook | ✅ umgesetzt (beide Seiten; rsvp-app ab Commit `c6fa5d3`) |
 | 8 | Abschluss: README, Lasttest (200 Gäste), Handy-Layout-Test, Vorschlag für das suite-kit-README | ✅ umgesetzt – Test auf echtem Handy und Fernseher steht noch aus (Checkliste unter „Vor dem Einsatz“) |
 | – | Ergänzungen aus der Ideensammlung der Suite (`suite-kit/docs/IDEEN.md`): Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24), Orte mit Adresse (L22), Team-Link für Dienstleister (L18), Regieplan und Programmheft (L21), Zuständige und „Meine Punkte“ (L16) | ✅ umgesetzt (2026-10-13) |
+| – | Kürzbare Programmpunkte mit Mindestdauer (L11), „Was wäre wenn“-Vorschau (L19), Vorwarnung fürs Team per Push (L17) | ✅ umgesetzt (2026-10-14) |
 
 **Im Überblick:** Planende legen Events an (leer oder mit der Vorlage „Hochzeit“), planen Programmpunkte in Spuren mit
 Ankern, Puffern, Team- und geheimen Punkten und bündeln mehrere Events zu einer Reihe. Am Tag selbst melden
@@ -33,7 +34,9 @@ Suite (Föderation) und die Anbindung an rsvp-app (dort Button „Zeitplan“, W
 **Durchsagen** erscheinen oben in Gästeansicht und Tafel; nach dem Event (oder einer Sitzung) zeigt der **Rückblick** Plan
 gegen Ist mit Protokollnotizen, zum Drucken und als CSV. **Orte mit Adresse** bringen Gästen „Route öffnen“, **Zuständige**
 finden ihre Punkte unter „Meine Punkte“, Dienstleister lesen über einen **Team-Link** ohne Konto mit, und der
-**Regieplan** (fürs Team) bzw. das **Programmheft** (für Gäste) lassen sich ausdrucken.
+**Regieplan** (fürs Team) bzw. das **Programmheft** (für Gäste) lassen sich ausdrucken. **Kürzbare Punkte** (Kaffee,
+Reden) fangen Verspätungen auf, bevor sie weiterwandern; **„Was wäre wenn?“** spielt eine Verspätung durch, ohne etwas zu
+speichern; die **Vorwarnung** schickt Zuständigen kurz vor ihrem Punkt eine Push-Mitteilung nach der erwarteten Zeit.
 
 **Darkmode:** folgt der Systemeinstellung des Geräts (wie rsvp-app), für Verwaltung, Live-Steuerung und Gästeansicht.
 Die Anzeigetafel ist unabhängig davon immer dunkel; Ausdrucke bleiben hell.
@@ -159,8 +162,20 @@ Unter `/admin/events/<id>/plan` (für alle Konten mit Zugriff; bearbeiten nur mi
   „Alle“ zeigt alles chronologisch mit Spur-Kennzeichnung. Spuren anlegen, umbenennen, umsortieren und (leer) löschen
   darf nur Besitzer\*in oder Admin.
 * **Programmpunkte:** Titel, Ort, Beschreibung für Gäste, **interne Notiz** (nur Team), Beginn, Dauer (das Ende wird
-  angezeigt), Spur, Anker, „darf früher beginnen“, Sichtbarkeit, **Zuständige** und „wartet auf“ (Zusammenführung,
-  auch über Spuren). Neue und zeitlich geänderte Punkte werden nach ihrem Beginn einsortiert.
+  angezeigt), Spur, Anker, „darf früher beginnen“, **kürzbar bis**, Sichtbarkeit, **Zuständige** und „wartet auf“
+  (Zusammenführung, auch über Spuren). Neue und zeitlich geänderte Punkte werden nach ihrem Beginn einsortiert.
+* **Kürzbare Punkte** („kürzbar bis“, eine Mindestdauer kürzer als die Dauer): Beginnt ein solcher Punkt zu spät, kürzt
+  die Prognose ihn, damit der nächste Punkt (und Punkte, die auf ihn warten) pünktlich beginnen können – höchstens um
+  seine Verspätung und nie unter die Mindestdauer. Reicht ein Puffer ohnehin, wird nichts gekürzt; meldet die
+  Moderation am laufenden Punkt „+5“ (läuft länger), auch nicht. Team-Ansicht und Live-Steuerung zeigen „gekürzt um …“,
+  Gäste sehen nur die Zeiten. Geht mit in Export, Import und Duplizieren; die Vorlage „Hochzeit“ macht Kaffee und
+  Reden kürzbar.
+* **Was wäre wenn?** (`/admin/events/<id>/was-waere-wenn`, verlinkt in Eventseite, Planung und Live-Steuerung, für
+  alle Konten mit Zugriff): einen Punkt wählen und „+20“ – die Seite zeigt, welche Punkte sich verschieben, wo Puffer
+  die Verspätung schlucken, wo kürzbare Punkte gekürzt werden, welche Konflikte mit Ankern entstehen und um wie viel
+  sich das Ende jeder Spur verschiebt. Gerechnet wird vom aktuellen Stand aus, genau wie der Knopf „+X“ in der
+  Live-Steuerung (bei einem laufenden Punkt: dauert X länger). **Nichts wird gespeichert**; Gäste und Team sehen
+  weiter die echte Prognose. Rein im Kern: `whatIf` in `app/lib/schedule/what-if.ts`.
 * **Orte mit Adresse** (Abschnitt „Orte“ unter dem Ablauf, bearbeiten mit Planrecht): Name, Adresse und optional ein
   eigener Kartenlink (https), z. B. für Kirche und Feier-Location. Ein Punkt gehört zu einem Ort, wenn im Feld „Ort“
   derselbe Name steht (Groß-/Kleinschreibung egal; das Formular schlägt die Namen vor). Gäste sehen dann die Adresse und
@@ -359,7 +374,8 @@ Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, vers
   „letzte Meldung vor X Min“, Ursprungsplan bei verlegten Punkten,
   Abweichung, Team- und geheimen Punkten (Inhalt nur für eingetragene Konten), internen Notizen, Konflikten mit Ankern,
   „nicht bestätigt“, „überzogen“, „unklar“ und „läuft noch?“, zurückgestellten Punkten, Orten mit Adresse,
-  Zuständigen und der Zeit, die Gäste gerade sehen. Oben „Meine Punkte“ (siehe „Planung“). Lädt sich alle 30 Sekunden neu.
+  Zuständigen, gekürzten Punkten und der Zeit, die Gäste gerade sehen. Oben „Meine Punkte“ (siehe „Planung“) und die
+  **Vorwarnung aufs Handy** (siehe unten). Lädt sich alle 30 Sekunden neu.
 * **Team-Link für Dienstleister** (Eventseite, Abschnitt „Team-Link für Dienstleister“): dieselbe Team-Ansicht nur zum
   Lesen, ohne Konto und ohne Links in die Verwaltung – mit Team-Punkten und internen Notizen, geheime Punkte nur als
   „Geheimer Punkt“ mit Zeit und Dauer, Zuständige nur mit Namen (nie mit E-Mail-Adresse). Standardmäßig aus;
@@ -408,11 +424,13 @@ Ergebnis; Regeln stehen nie in Actions oder Komponenten.
 | `insertAfter(items, afterId, neu, now, settings)` | Einschub direkt nach einem Punkt; die folgenden rutschen über die normale Kette. |
 | `toGuestView(projection, previouslyShown, now, settings)` | Die **einzige** Stelle, an der Daten für Gäste entstehen: nur öffentliche Punkte öffentlicher Spuren, ohne interne Notizen, Zeiten mit Horizont, Rundung, „ca.“ und Hysterese; liefert zusätzlich den gezeigten Beginn je Punkt zum Speichern. |
 | `checkDependencies(items)` | Zyklen (auch über die Reihenfolge der Spuren) und unbekannte „wartet auf“ – für Planung und Import. |
+| `whatIf(items, { itemId, delayMin }, now, settings)` | „Was wäre wenn“: Prognose jetzt gegen Prognose mit X Minuten mehr Verspätung (wie „+X“ live) – Verschiebung je Punkt, geschluckt von Puffern und Kürzungen, neue Konflikte, Ende je Spur. Speichert nichts. |
 
 Kurz die Regeln: Verspätung wandert weiter, bis ein Puffer sie schluckt; kein Vorziehen (außer „darf früher
 beginnen“); zurückgestellte und ausgefallene Punkte verbrauchen keine Zeit; Anker rutschen nicht, Überschneidungen sind
 Konflikte fürs Team; ein überzogener laufender Punkt schiebt die Prognose live weiter („Fortschreiben“), bis zum Deckel;
-ein Punkt kann auf Punkte anderer Spuren warten. Alle Zeiten sind absolute Zeitpunkte, Dauern echte Minuten – auch über
+ein Punkt kann auf Punkte anderer Spuren warten; kürzbare Punkte werden bei Verspätung bis zur Mindestdauer gekürzt,
+soweit ihr Nachfolger sonst rutschen würde. Alle Zeiten sind absolute Zeitpunkte, Dauern echte Minuten – auch über
 Mitternacht und die Zeitumstellung.
 
 ## Als App installieren (PWA)
@@ -435,7 +453,34 @@ Verwaltungsbereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im
   Offline-Seite liest ihn, wenn eine Gästeansicht ohne Verbindung neu geladen wird.
 * `sw.js` wird nie zwischengespeichert (Header in `next.config.ts`). Registriert wird der Worker nur in der Produktion
   (`app/ui/pwa-register.tsx`).
-* Bewusst **keine Push-Benachrichtigungen**.
+* **Push nur fürs Team** (Vorwarnung, siehe „Vorwarnung fürs Team“) – Gäste bekommen keine Mitteilungen.
+
+## Vorwarnung fürs Team
+
+Wer einen Punkt verantwortet, muss die Prognose im Trubel nicht selbst nachrechnen: Kurz vor dem **erwarteten** Beginn
+(Prognose mit allen Verspätungen, nicht die Planzeit) kommt eine Push-Mitteilung aufs Handy – „In 10 Min:
+Eröffnungstanz“, darunter Uhrzeit (mit Planzeit, falls abweichend), Ort und interne Notiz („Song: …“). Antippen öffnet
+„Meine Punkte“ beim Punkt.
+
+* **Einstellen:** in der Team-Ansicht unter „Vorwarnung aufs Handy“, je Event und Konto: für **meine Punkte** (Zuständige,
+  siehe „Planung“) oder **alle Punkte**, 5/10/15/20/30 Minuten vorher. Darunter „Mitteilungen auf diesem Gerät
+  einschalten“ – die Erlaubnis gilt je Gerät (auch unter „Konto“ an- und auszuschalten).
+* **Wann:** nur bei veröffentlichten und laufenden Events, nur für Punkte, die noch nicht begonnen haben, jede
+  Vorwarnung einmal je Punkt und Konto. Rutscht ein Punkt nach der Mitteilung um mehr als den Vorlauf nach hinten, kommt
+  eine neue (sie ersetzt die alte auf dem Gerät). Geheime Punkte nur für eingetragene Konten; Konten ohne Zugriff aufs
+  Event bekommen nichts.
+* **Technik:** Web Push ohne Zusatzpaket wie im Abstimmungstool (`app/lib/push.ts`): VAPID (RFC 8292), Inhalt
+  Ende-zu-Ende verschlüsselt (RFC 8291, `aes128gcm`) – der Push-Dienst des Browser-Herstellers sieht nur Empfänger und
+  Größe. Abos hängen an der Sitzung (Abmelden beendet sie auf dem Gerät), gespeichert werden nur Endpoints bekannter
+  Push-Dienste (Google, Mozilla, Apple, Microsoft – `app/push-actions.ts`). Die Mitteilung gilt nur bis zum erwarteten
+  Beginn (TTL), ein später eingeschaltetes Handy bekommt keine veraltete. Auswahl als reine Funktion `dueAlerts`
+  (`app/lib/alerts/due.ts`), Versand `app/lib/alerts/send.ts`.
+* **Zeitgeber:** Ein externer Scheduler ruft **jede Minute** `GET /api/cron/alerts?secret=<CRON_SECRET>` auf (z. B.
+  crontab mit `curl`, siehe „Deployment“). Zwei Aufrufe gleichzeitig schicken nichts doppelt.
+* **Einrichten:** `node scripts/generate-vapid-keys.mjs` und die drei Zeilen (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`,
+  `VAPID_SUBJECT`) in die `.env`. Ohne sie gibt es keine Vorwarnung (die Team-Ansicht zeigt den Kasten dann nicht).
+  Ein Schlüsselwechsel macht alle Abos ungültig – danach muss jedes Gerät Mitteilungen neu einschalten.
+* **iPhone/iPad:** Push nur, wenn Zeitplan als App installiert ist (iOS 16.4+, Safari → Teilen → „Zum Home-Bildschirm“).
 
 ## Sicherheit
 
@@ -499,7 +544,8 @@ Was das Tool bewusst nicht kann oder wo es an Grenzen stößt – vor dem Einsat
 * **Gast-Sitzung pro Browser:** Wer den Ablauf auf einem zweiten Gerät öffnet, gibt den Code dort erneut ein (bzw. öffnet
   ihn erneut über rsvp-app). Eingebettet (iFrame) funktionieren geschützte Events nur über „in neuem Tab öffnen“.
 * **Aktualisierung per Abfrage, nicht in Echtzeit:** Gäste und Tafel fragen alle 20–30 Sekunden; eine Meldung ist also
-  bis zu einer halben Minute später überall zu sehen (sofort beim Zurückkehren in den Tab). Keine Push-Nachrichten.
+  bis zu einer halben Minute später überall zu sehen (sofort beim Zurückkehren in den Tab). Push gibt es nur als
+  Vorwarnung fürs Team, höchstens minütlich (Takt des Cron-Aufrufs).
 * **Uhren:** Live-Aktionen nutzen immer die Serverzeit. Die Uhr auf der Tafel ist die des Geräts – am Fernseher die
   Zeit einstellen lassen (automatisch).
 * **Eine Instanz, SQLite:** Das Tool läuft als ein Prozess mit einer SQLite-Datei; horizontal skalieren geht nicht.
@@ -508,12 +554,15 @@ Was das Tool bewusst nicht kann oder wo es an Grenzen stößt – vor dem Einsat
   Sekunden.
 * **Zeitzone:** vorerst immer Europe/Berlin. Punkte liegen höchstens einen Tag vor und drei Tage nach dem Eventtag,
   Dauer höchstens 24 Stunden – längere Abläufe sind mehrere Events in einer Reihe.
-* **Durchsagen** erreichen nur, wer Gästeansicht oder Tafel offen hat – es gibt keine Push-Nachrichten.
+* **Durchsagen** erreichen nur, wer Gästeansicht oder Tafel offen hat – Gäste bekommen keine Push-Nachrichten.
+* **Kürzen ist eine Annahme der Prognose:** Ob ein Punkt wirklich kürzer wird, entscheidet das Team vor Ort. Läuft ein
+  gekürzter Punkt länger, greifen die üblichen Regeln (Fortschreiben, „läuft noch?“ fünf Minuten nach dem gekürzten Ende).
+* **Vorwarnung ist best-effort:** Push-Dienste stellen meist in Sekunden zu, garantieren aber nichts; ohne Netz,
+  im Energiesparmodus oder ohne Erlaubnis kommt nichts an. Fällt der minütliche Aufruf aus, fällt die Vorwarnung aus.
 * **Orte:** Die Zuordnung läuft über den Namen im Feld „Ort“ – ein Tippfehler dort bedeutet „keine Adresse“. Die Route
   führt standardmäßig zu Google Maps (ein eigener Kartenlink pro Ort ersetzt das, z. B. OpenStreetMap).
-* **Nicht umgesetzt** (siehe Konzept „Später“ und die Ideen in `suite-kit/docs/IDEEN.md`): kürzbare Punkte mit
-  Mindestdauer, Echtzeit per SSE, Push-Benachrichtigungen (auch keine Vorwarnung für Zuständige), Mails an Gäste,
-  „Was wäre wenn“, weitere Vorlagen, Kalender-Export.
+* **Nicht umgesetzt** (siehe Konzept „Später“ und die Ideen in `suite-kit/docs/IDEEN.md`): Echtzeit per SSE,
+  Push-Benachrichtigungen und Mails an Gäste, weitere Vorlagen, Kalender-Export.
 
 ## Automatische Löschung
 
@@ -524,7 +573,11 @@ Ein externer Scheduler (z. B. Uptime Kuma) ruft **einmal täglich** auf:
 Ein leeres oder fehlendes `CRON_SECRET` lässt niemanden durch. Gelöscht werden (suite-weit gleiche Fristen): Events
 18 Monate nach ihrem Ende (samt Ablauf, Verlauf, Freigaben und Gast-Sitzungen; als Ende gilt der Eventtag plus zwei
 Tage Spielraum für Feiern über Mitternacht), Konten nach 2 Jahren ohne Anmeldung (Konten mit Admin-Rolle und Konten, denen noch Events gehören, ausgenommen),
-abgelaufene Sitzungen und Gast-Sitzungen, Einladungs-/Reset-Links und Drossel-Zähler.
+abgelaufene Sitzungen (samt ihrer Push-Abos) und Gast-Sitzungen, Einladungs-/Reset-Links, Drossel-Zähler und
+gesendete Vorwarnungen nach 7 Tagen.
+
+Für die Vorwarnung fürs Team kommt ein zweiter Aufruf **jede Minute** dazu: `GET …/api/cron/alerts?secret=<CRON_SECRET>`
+(siehe „Vorwarnung fürs Team“).
 
 ## Setup
 
@@ -549,7 +602,9 @@ npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, For
                     # Live-Steuerung (tests/unit/schedule/live.test.ts, tests/unit/live: Verlauf und Rückgängig),
                     # Zugang (tests/unit/guest: Sichtbarkeit mit Sitzung/Konto/Tafel-Link, Zugangscode, Tafel-Link),
                     # Föderation (tests/unit/suite.test.ts: Rollen, Zwischenseite, state-Cookie, Konfiguration),
-                    # Vertrag mit rsvp-app (tests/unit/rsvp: Signatur, Art, Empfänger, Frist, Verknüpfung)
+                    # Vertrag mit rsvp-app (tests/unit/rsvp: Signatur, Art, Empfänger, Frist, Verknüpfung),
+                    # kürzbare Punkte und „Was wäre wenn“ (tests/unit/schedule), Vorwarnung (tests/unit/alerts.test.ts:
+                    # Fenster, Prognose statt Plan, MINE/ALL, SECRET, einmalig und neu nach Verschiebung, Text)
 npm run test:e2e    # Playwright gegen eine frisch gebaute Instanz auf http://127.0.0.1:3801
 npm run test:load   # Lasttest: 200 pollende Gäste gegen eine eigene Instanz (vorher npm run build, siehe unten)
 npm run build
@@ -631,6 +686,15 @@ Zugang, zu großer Body `413`, echte Absage beendet genau diese Zusage (die ande
 frischem Link; Verwaltung: Termin-id und Zeitplan-Link, ungültige id abgelehnt, neuer Termin beendet alte Sitzungen und
 alte Links, Moderator\*in ändert nichts. Installierbare App: Manifest,
 Icons, `sw.js`-Header, Worker speichert nur die Offline-Seite.
+Kürzbare Punkte und „Was wäre wenn“ (`tests/e2e/what-if.spec.ts`): „kürzbar bis“ im Formular (ungültig ab der Dauer),
+Planung zeigt es, Vorschau mit Puffer, Konflikt am Anker und Kürzung, nichts gespeichert (`liveVersion` unverändert),
+geheime Punkte nur als Platzhalter, Konto ohne Zugriff 404; Team-Ansicht zeigt „gekürzt um“, Gästeansicht und JSON
+nicht, Export enthält die Mindestdauer. Vorwarnung fürs Team (`tests/e2e/alerts.spec.ts`, gegen den Test-Push-Dienst
+`tests/e2e/push-server.ts` auf Port 2651, wie im Abstimmungstool): Einstellung in der Team-Ansicht, VAPID-Signatur
+geprüft und Inhalt mit einer unabhängigen Implementierung entschlüsselt (Paket `http_ece`), nur eigene Punkte bzw.
+alle, kein Duplikat beim zweiten Lauf, neue Mitteilung nach Verschiebung, geheime Punkte nur für Eingetragene, nichts
+ohne Gerät, ohne Freigabe oder im Entwurf (Positivkontrolle live), Abmelden löscht das Abo; nachgespielte Formulare
+mit ungültigen Werten oder von einem Konto ohne Zugriff ohne Wirkung; Cron ohne Secret `401`.
 
 Mails fängt ein Test-SMTP ab (`tests/e2e/mail-server.ts`, Port 2527, Pakete `smtp-server` und `mailparser`, nur für die
 Tests), der sie als `.eml` in `data/test-mails` ablegt; Empfänger unter `@nomail.test` lehnt er ab (gescheiterter
@@ -700,6 +764,9 @@ docker compose run --rm zeitplan node create-user.js deine-email@domain.de ADMIN
 * Beim Start synchronisiert `prisma db push` das Schema, dann startet `next start` auf Port 3000 im Container.
   Voreingestellt ist Host-Port 3008 (3005–3007 sind von rsvp-app, Abstimmungstool und Seating belegt).
 * **Vor jedem Update die Daten sichern** (`data/prod.db` kopieren).
+* **Vorwarnung fürs Team:** VAPID-Schlüssel in die `.env` (siehe „Vorwarnung fürs Team“) und den minütlichen Aufruf
+  einrichten, z. B. in der crontab des Hosts (das Secret aus der `.env` lesen, nicht in die crontab schreiben):
+  `* * * * * curl -fsS -m 50 "http://127.0.0.1:3008/api/cron/alerts?secret=$(grep -E '^CRON_SECRET=' /pfad/zu/zeitplan/.env | cut -d= -f2-)" > /dev/null`
 
 ## Umgebungsvariablen
 
@@ -710,7 +777,8 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | `DATABASE_URL` | SQLite-Datei (in Docker per Compose gesetzt) |
 | `BASE_URL` | öffentliche Adresse ohne Slash – für Links in Mails, Gästelink, QR-Code und später die Kennung in der Suite |
 | `TRUST_PROXY_HOPS` | Anzahl eigener Reverse Proxys (für die IP der Drosselung) |
-| `CRON_SECRET` | Schutz des Aufräum-Endpunkts |
+| `CRON_SECRET` | Schutz der Cron-Endpunkte (Aufräumen, Vorwarnung) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | optional: Push für die Vorwarnung fürs Team (`node scripts/generate-vapid-keys.mjs`); leer = keine Vorwarnung |
 | `ACCESS_CODE_SECRET` | Schlüssel für Zugangscodes (HMAC), mindestens 32 Zeichen; leer = kein Zugang per Code |
 | `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events und Team-Links für Dienstleister; der vorherige hält alte Links beim Wechsel gültig; leer = kein Tafel- und kein Team-Link |
 | `SHIFTS_SECRET`, `SHIFTS_BASE_URL` | optional: Anbindung an Schichten (eigenes Secret, dort `TIMELINE_SHIFTS_SECRET`), mindestens 32 Zeichen |
@@ -728,4 +796,5 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | Test-SMTP der E2E-Tests | 2527 |
 | Test-Doppel anderer Tools der Suite (E2E) | 2530, 2531 (`localhost`) |
 | Test-Doppel von rsvp-app (E2E) | 2532 (`localhost`) |
+| Test-Push-Dienst (E2E, Vorwarnung) | 2651 (`127.0.0.1`) |
 | Docker (Host) | 3008 |

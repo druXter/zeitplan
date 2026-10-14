@@ -59,6 +59,9 @@ model User {
   liveActions   LiveAction[]       @relation("LiveActionActor")
   undoneActions LiveAction[]       @relation("LiveActionUndoneBy")
   identities    ExternalIdentity[]
+  pushSubscriptions PushSubscription[]
+  alertSettings     AlertSetting[]
+  alertsSent        AlertSent[]
 }
 
 // Server-seitige Session: das Cookie trägt nur den zufälligen Token, in der Datenbank
@@ -70,6 +73,27 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  pushSubscriptions PushSubscription[]
+
+  @@index([userId])
+}
+
+// Web-Push-Abo eines Geräts für die Vorwarnung fürs Team (Idee L17, app/lib/push.ts), Aufbau wie im
+// Abstimmungstool. Hängt an der SITZUNG, nicht nur am Konto: Wer sich auf einem Gerät abmeldet (oder dessen Sitzung
+// abläuft), bekommt dort keine Mitteilungen mehr - wichtig auf geteilten Geräten. endpoint ist die Adresse beim
+// Push-Dienst des Browsers (Google, Mozilla, Apple), p256dh/auth die Schlüssel, mit denen jede Nachricht
+// Ende-zu-Ende verschlüsselt wird - der Push-Dienst sieht den Inhalt nicht.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
   createdAt DateTime @default(now())
 
   @@index([userId])
@@ -190,6 +214,7 @@ model Event {
   liveActions   LiveAction[]
   guestSessions GuestSession[]
   places        Place[]
+  alertSettings AlertSetting[]
 
   @@index([ownerId])
   @@index([date])
@@ -288,6 +313,9 @@ model Item {
   mayStartEarly      Boolean        @default(false)
   plannedStart       DateTime
   plannedDurationMin Int
+  // Kürzbar (Idee L11): Mindestdauer in Minuten (kleiner als plannedDurationMin), null = nicht kürzbar. Die Prognose
+  // kürzt den Punkt bei Verspätung bis hierhin, bevor sie folgende Punkte verschiebt (app/lib/schedule/project.ts).
+  minDurationMin     Int?
 
   originalStart       DateTime?
   originalDurationMin Int?
@@ -314,6 +342,7 @@ model Item {
   secretViewers ItemSecretViewer[]
   assignees     ItemAssignee[]
   liveActions   LiveAction[]
+  alertsSent    AlertSent[]
 
   @@index([eventId])
   @@index([trackId, sortOrder])
@@ -407,4 +436,42 @@ model GuestSession {
 
   @@index([eventId])
   @@index([expiresAt])
+}
+
+enum AlertScope {
+  MINE
+  ALL
+}
+
+// Vorwarnung fürs Team (Idee L17, app/lib/alerts): Ein Konto will per Push leadMin Minuten vor dem ERWARTETEN Beginn
+// (Prognose, nicht Planzeit) erinnert werden - an die eigenen Punkte (MINE, Zuständige aus Idee L16) oder an alle
+// (ALL). Jedes Konto stellt das für sich ein; ohne Zugriff aufs Event bleibt der Eintrag wirkungslos.
+model AlertSetting {
+  eventId   String
+  event     Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope     AlertScope @default(MINE)
+  leadMin   Int        @default(10)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@id([eventId, userId])
+  @@index([userId])
+}
+
+// Gesendete Vorwarnung je Punkt und Konto - damit jede nur einmal kommt. expectedStart: der angekündigte Beginn;
+// rutscht der Punkt danach um mehr als leadMin, kommt eine neue (app/lib/alerts/due.ts). Gelöscht nach einer Woche
+// (Cron cleanup) bzw. mit Punkt oder Konto.
+model AlertSent {
+  itemId        String
+  item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expectedStart DateTime
+  sentAt        DateTime @default(now())
+
+  @@id([itemId, userId])
+  @@index([userId])
+  @@index([sentAt])
 }

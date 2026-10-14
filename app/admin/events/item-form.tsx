@@ -15,6 +15,7 @@ export type ItemFormValues = {
   trackId: string
   start: string
   durationMin: string
+  minDurationMin: string
   visibility: ItemVisibility
   isAnchor: boolean
   mayStartEarly: boolean
@@ -68,6 +69,11 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
           <label htmlFor="item-duration" className={labelClass}>Dauer in Minuten</label>
           <input id="item-duration" name="durationMin" type="number" inputMode="numeric" required min={0} max={PLAN_LIMITS.durationMaxMin} step={1} defaultValue={values.durationMin} className={input} />
         </div>
+      </div>
+      <div>
+        <label htmlFor="item-min-duration" className={labelClass}>Kürzbar bis (Minuten, optional)</label>
+        <input id="item-min-duration" name="minDurationMin" type="number" inputMode="numeric" min={0} max={PLAN_LIMITS.durationMaxMin} step={1} defaultValue={values.minDurationMin} className={`${input} sm:max-w-48`} />
+        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Mindestdauer für Punkte, die sich kürzen lassen (Kaffee, Reden). Bei Verspätung kürzt die Prognose den Punkt bis hierhin, bevor sie die folgenden Punkte verschiebt. Leer = nicht kürzbar.</p>
       </div>
       <div>
         <label htmlFor="item-track" className={labelClass}>Spur</label>

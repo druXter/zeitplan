@@ -56,6 +56,7 @@ export default async function EditItemPage({ params, searchParams }: {
             values={{
               title: item.title, location: item.location ?? '', description: item.description ?? '', internalNote: item.internalNote ?? '',
               trackId: item.trackId, start: utcToZonedInput(item.plannedStart, event.timezone), durationMin: String(item.plannedDurationMin),
+              minDurationMin: item.minDurationMin === null ? '' : String(item.minDurationMin),
               visibility: item.visibility, isAnchor: item.isAnchor, mayStartEarly: item.mayStartEarly, waitsFor: item.waitsFor,
               secretViewers: item.visibility === 'SECRET' ? item.secretViewerIds : [user.id],
               assignees: item.assigneeIds

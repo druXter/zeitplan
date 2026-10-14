@@ -78,7 +78,7 @@ export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<Gu
       where: { eventId: event.id },
       select: {
         id: true, trackId: true, sortOrder: true, title: true, location: true, description: true, visibility: true,
-        isAnchor: true, mayStartEarly: true, plannedStart: true, plannedDurationMin: true, status: true,
+        isAnchor: true, mayStartEarly: true, plannedStart: true, plannedDurationMin: true, minDurationMin: true, status: true,
         actualStart: true, actualEnd: true, reportedDelayMin: true, cancelReason: true, guestShownStart: true,
         waitsFor: { select: { waitsForItemId: true } }
       }
@@ -99,6 +99,7 @@ export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<Gu
     mayStartEarly: row.mayStartEarly,
     plannedStart: row.plannedStart,
     plannedDurationMin: row.plannedDurationMin,
+    minDurationMin: row.minDurationMin,
     status: row.status,
     actualStart: row.actualStart,
     actualEnd: row.actualEnd,

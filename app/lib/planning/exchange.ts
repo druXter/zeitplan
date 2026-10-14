@@ -44,6 +44,8 @@ export type ExportItem = {
   mayStartEarly: boolean
   start: string
   durationMin: number
+  /** Kürzbar bis (Idee L11) - fehlt bei nicht kürzbaren Punkten und in älteren Dateien. */
+  minDurationMin?: number
   waitsFor: string[]
 }
 
@@ -110,6 +112,7 @@ export function buildExport(
       mayStartEarly: item.mayStartEarly,
       start: toZonedIso(item.plannedStart, event.timezone),
       durationMin: item.plannedDurationMin,
+      ...(item.minDurationMin !== null ? { minDurationMin: item.minDurationMin } : {}),
       // Nur Punkte, die mit exportiert werden (alle Punkte des Events, siehe filter oben).
       waitsFor: item.waitsFor.filter(id => itemKey.has(id)).map(id => itemKey.get(id)!)
     })),
@@ -158,6 +161,7 @@ const exportSchema = z.object({
     mayStartEarly: z.boolean().default(false),
     start: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})$/),
     durationMin: z.int().min(0).max(PLAN_LIMITS.durationMaxMin),
+    minDurationMin: z.int().min(0).max(PLAN_LIMITS.durationMaxMin).optional(),
     waitsFor: z.array(key).max(PLAN_LIMITS.maxWaitsFor).default([])
   })).max(PLAN_LIMITS.maxItems),
   places: z.array(z.strictObject({
@@ -174,8 +178,9 @@ export type ParsedPlan = {
   date: Date
   settings: EventOptions
   tracks: ExportTrack[]
-  items: (Omit<ExportItem, 'start' | 'location' | 'description' | 'internalNote'> & {
+  items: (Omit<ExportItem, 'start' | 'location' | 'description' | 'internalNote' | 'minDurationMin'> & {
     start: Date
+    minDurationMin: number | null
     location: string | null
     description: string | null
     internalNote: string | null
@@ -229,6 +234,7 @@ export function parseExport(input: unknown): ParsedExport {
     const missing = item.waitsFor.find(other => !itemKeys.has(other))
     if (missing) errors.push(`${label}: wartet auf „${missing}“, den es nicht gibt.`)
     if (item.waitsFor.includes(item.key)) errors.push(`${label}: wartet auf sich selbst.`)
+    if (item.minDurationMin !== undefined && item.minDurationMin >= item.durationMin) errors.push(`${label}: „kürzbar bis“ muss kürzer als die Dauer sein.`)
     const start = new Date(item.start)
     if (Number.isNaN(start.getTime())) errors.push(`${label}: ungültiger Beginn.`)
     else if (start < range.from || start >= range.until) {
@@ -240,6 +246,7 @@ export function parseExport(input: unknown): ParsedExport {
       location: item.location || null,
       description: item.description || null,
       internalNote: item.internalNote || null,
+      minDurationMin: item.minDurationMin ?? null,
       waitsFor: [...new Set(item.waitsFor)]
     })
   }

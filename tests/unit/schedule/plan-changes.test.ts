@@ -89,7 +89,7 @@ describe('swapAdjacent (docs/KONZEPT.md Abschnitt 3, Tauschen)', () => {
 
 describe('insertAfter (docs/KONZEPT.md Abschnitt 3, Einschub)', () => {
   const settings = DEFAULT_PROJECT_SETTINGS
-  const rede = { id: 'rede', plannedDurationMin: 10, isAnchor: false, mayStartEarly: false, status: 'PLANNED' as const, actualStart: null, actualEnd: null, reportedDelayMin: null, waitsFor: [] }
+  const rede = { id: 'rede', plannedDurationMin: 10, minDurationMin: null, isAnchor: false, mayStartEarly: false, status: 'PLANNED' as const, actualStart: null, actualEnd: null, reportedDelayMin: null, waitsFor: [] }
 
   it('kommt direkt nach dem laufenden Punkt; die folgenden rutschen über die normale Kette', () => {
     const items = patch(weddingPlan(), { trauung: { status: 'RUNNING', actualStart: at('14:00') } })

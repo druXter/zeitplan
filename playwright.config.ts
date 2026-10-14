@@ -1,3 +1,4 @@
+import { createECDH, createHash } from 'node:crypto'
 import { defineConfig, devices } from '@playwright/test'
 import { SMTP_PORT } from './tests/e2e/mail-server'
 import { SUITE_TOOLS, TEST_SUITE_IDPS, TEST_SUITE_TRUSTED_APPS, TEST_ZEITPLAN_SIGNING_KEY } from './tests/e2e/suite-server'
@@ -33,6 +34,13 @@ process.env.BASE_URL = BASE_URL
 process.env.ACCESS_CODE_SECRET = TEST_ACCESS_CODE_SECRET
 process.env.DISPLAY_LINK_SECRET = TEST_DISPLAY_LINK_SECRET
 
+// Feste VAPID-Schlüssel für Push (Vorwarnung fürs Team, app/lib/push.ts) - aus einem Namen abgeleitet, damit Server und
+// Testprozesse (die diese Datei jeweils selbst laden) dieselben haben. Nur für Tests, wie im Abstimmungstool.
+const vapid = createECDH('prime256v1')
+vapid.setPrivateKey(createHash('sha256').update('e2e-zeitplan-vapid').digest())
+export const TEST_VAPID_PUBLIC_KEY = vapid.getPublicKey().toString('base64url')
+const TEST_VAPID_PRIVATE_KEY = vapid.getPrivateKey().toString('base64url')
+
 const SERVER_ENV: Record<string, string> = {
   DATABASE_URL: 'file:./test.db',
   BASE_URL,
@@ -52,6 +60,10 @@ const SERVER_ENV: Record<string, string> = {
   RSVP_TIMELINE_SECRET: TEST_RSVP_TIMELINE_SECRET,
   SHIFTS_SECRET: TEST_SHIFTS_SECRET,
   SHIFTS_BASE_URL: TEST_SHIFTS_BASE_URL,
+  // Push (Vorwarnung fürs Team): Die Tests legen Abos mit Endpunkten beim Test-Push-Dienst (tests/e2e/push-server.ts) an.
+  VAPID_PUBLIC_KEY: TEST_VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY: TEST_VAPID_PRIVATE_KEY,
+  VAPID_SUBJECT: 'mailto:test@example.test',
   // Test-SMTP aus tests/e2e/mail-server.ts (in global-setup gestartet). Empfänger @nomail.test
   // lehnt er ab - dann greift der angezeigte Einladungslink.
   SMTP_HOST: '127.0.0.1',

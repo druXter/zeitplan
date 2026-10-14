@@ -393,3 +393,110 @@ describe('Mitternacht und Zeitumstellung', () => {
     expect(result.get('tanz')).toMatchObject({ expectedEnd: new Date('2026-10-25T01:00:00.000Z'), capped: true })
   })
 })
+
+describe('Kürzbare Punkte (Idee L11)', () => {
+  // Gruppenfoto (15:30–16:00, kürzbar bis 15) vor Kaffee (16:30); Kaffee (90, kürzbar bis 60) vor dem Anker 18:30.
+  const plan = () => patch(weddingPlan(), { foto: { minDurationMin: 15 }, kaffee: { minDurationMin: 60 } })
+
+  it('ohne Verspätung wird nichts gekürzt', () => {
+    const result = byId(plan(), at('12:00'))
+    expect(result.items.every(i => i.shortenedMin === 0)).toBe(true)
+    expect(times(plan(), at('12:00'))).toEqual(times(weddingPlan(), at('12:00')))
+  })
+
+  it('der Puffer schluckt zuerst - gekürzt wird nur, was sonst den Nachfolger verschiebt', () => {
+    // Trauung +10: Foto 15:40, ohne Kürzen bis 16:10 - der Puffer bis 16:30 reicht, also kein Kürzen.
+    const result = byId(patch(plan(), { trauung: { reportedDelayMin: 10 } }), at('13:55'))
+    expect(result.get('foto')).toMatchObject({ shortenedMin: 0, delayMin: 10 })
+    expect(hhmm(result.get('kaffee').expectedStart)).toBe('16:30')
+  })
+
+  it('kürzt bis zum Beginn des Nachfolgers, damit er pünktlich bleibt', () => {
+    // Trauung +45: Foto beginnt 16:15, ohne Kürzen bis 16:45. Gekürzt um 15 auf 16:30, Kaffee pünktlich.
+    const result = byId(patch(plan(), { trauung: { reportedDelayMin: 45 } }), at('13:55'))
+    expect(result.get('foto')).toMatchObject({ shortenedMin: 15 })
+    expect(`${hhmm(result.get('foto').expectedStart)}–${hhmm(result.get('foto').expectedEnd)}`).toBe('16:15–16:30')
+    expect(result.get('kaffee')).toMatchObject({ delayMin: 0, shortenedMin: 0 })
+  })
+
+  it('nie unter die Mindestdauer und nie mehr als die eigene Verspätung', () => {
+    // Trauung +70: Foto beginnt 16:40 (70 zu spät), höchstens 15 Min kürzbar -> 16:40–16:55; Kaffee 16:55 (+25),
+    // gekürzt um 25 (Verspätung) - nicht um die 30, die bis zum Anker möglich wären.
+    const result = byId(patch(plan(), { trauung: { reportedDelayMin: 70 } }), at('13:55'))
+    expect(result.get('foto').shortenedMin).toBe(15)
+    expect(hhmm(result.get('foto').expectedEnd)).toBe('16:55')
+    const kaffee = result.get('kaffee')
+    expect(kaffee).toMatchObject({ delayMin: 25 })
+    // Ohne Kürzen endete der Kaffee 18:25 - vor dem Anker, also bleibt er ungekürzt.
+    expect(kaffee.shortenedMin).toBe(0)
+    expect(result.conflicts).toEqual([])
+  })
+
+  it('verhindert einen Konflikt mit dem Anker, soweit die Mindestdauer reicht', () => {
+    // Foto 17:00–17:15 (um 15 gekürzt), Kaffee beginnt 17:15, ohne Kürzen bis 18:45 - 15 Min über dem Anker.
+    const items = patch(plan(), {
+      trauung: { status: 'DONE', actualStart: at('14:00'), actualEnd: at('14:45') },
+      sekt: { status: 'DONE', actualStart: at('14:45'), actualEnd: at('17:00') }
+    })
+    const result = byId(items, at('17:00'))
+    const kaffee = result.get('kaffee')
+    expect(result.get('foto').shortenedMin).toBe(15)
+    expect(hhmm(kaffee.expectedStart)).toBe('17:15')
+    expect(kaffee.shortenedMin).toBe(15)
+    expect(hhmm(kaffee.expectedEnd)).toBe('18:30')
+    expect(result.conflicts).toEqual([])
+
+    // Noch später: Mindestdauer erreicht, der Rest wird ein Konflikt.
+    const later = byId(patch(items, { sekt: { actualEnd: at('17:30') } }), at('17:30'))
+    expect(later.get('kaffee').shortenedMin).toBe(30)
+    expect(later.conflicts).toEqual([{ anchorId: 'essen', itemId: 'kaffee', overlapMin: 15 }])
+  })
+
+  it('der letzte Punkt einer Spur ohne Nachfolger wird nicht gekürzt', () => {
+    const items = [item({ id: 'party', start: '22:00', min: 120, minDurationMin: 60, reportedDelayMin: 30 })]
+    expect(byId(items, at('21:00')).get('party').shortenedMin).toBe(0)
+  })
+
+  it('zählt auch Punkte anderer Spuren, die auf ihn warten', () => {
+    const items = [
+      item({ id: 'shooting', trackId: 'paar', start: '16:00', min: 30, minDurationMin: 15, reportedDelayMin: 10 }),
+      item({ id: 'torte', trackId: 'gaeste', start: '16:30', min: 15, waitsFor: ['shooting'] })
+    ]
+    const result = byId(items, at('15:00'))
+    expect(result.get('shooting').shortenedMin).toBe(10)
+    expect(hhmm(result.get('torte').expectedStart)).toBe('16:30')
+  })
+
+  it('laufender Punkt: gekürzt nach seinem tatsächlichen Beginn, eine Meldung „läuft länger“ hebt das auf', () => {
+    const items = patch(plan(), {
+      trauung: { status: 'DONE', actualStart: at('14:00'), actualEnd: at('14:45') },
+      sekt: { status: 'DONE', actualStart: at('14:45'), actualEnd: at('15:45') },
+      foto: { status: 'RUNNING', actualStart: at('15:45') }
+    })
+    const running = byId(items, at('15:50')).get('foto')
+    expect(running).toMatchObject({ shortenedMin: 0, delayMin: 15 }) // 15:45–16:15, Puffer bis 16:30 reicht
+    const late = byId(patch(items, { foto: { actualStart: at('16:10') } }), at('16:15')).get('foto')
+    expect(late.shortenedMin).toBe(10)
+    expect(hhmm(late.expectedEnd)).toBe('16:30')
+    // Seit 16:35 überzogen: die Nachfrage kommt 5 Min nach dem gekürzten Ende.
+    expect(byId(patch(items, { foto: { actualStart: at('16:10') } }), at('16:35')).get('foto').needsCheck).toBe(true)
+
+    const reported = byId(patch(items, { foto: { actualStart: at('16:10'), reportedDelayMin: 40 } }), at('16:15')).get('foto')
+    expect(reported.shortenedMin).toBe(0)
+    expect(hhmm(reported.expectedEnd)).toBe('16:40')
+  })
+
+  it('beendete, zurückgestellte und ausgefallene Punkte werden nicht gekürzt', () => {
+    const items = patch(plan(), {
+      trauung: { reportedDelayMin: 45 },
+      foto: { status: 'DONE', actualStart: at('16:15'), actualEnd: at('16:45') }
+    })
+    expect(byId(items, at('16:45')).get('foto').shortenedMin).toBe(0)
+    expect(byId(patch(plan(), { trauung: { reportedDelayMin: 45 }, foto: { status: 'CANCELLED' } }), at('13:55')).get('foto').shortenedMin).toBe(0)
+  })
+
+  it('eine Mindestdauer ab der Dauer zählt nicht', () => {
+    const items = patch(weddingPlan(), { trauung: { reportedDelayMin: 45 }, foto: { minDurationMin: 30 } })
+    expect(byId(items, at('13:55')).get('foto').shortenedMin).toBe(0)
+  })
+})

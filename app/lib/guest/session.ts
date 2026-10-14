@@ -47,7 +47,7 @@ export async function issueGuestSession(event: { id: string; date: Date }, now: 
 
   const items = await prisma.item.findMany({
     where: { eventId: event.id },
-    select: { id: true, trackId: true, sortOrder: true, plannedStart: true, plannedDurationMin: true, isAnchor: true, mayStartEarly: true, status: true, actualStart: true, actualEnd: true, reportedDelayMin: true }
+    select: { id: true, trackId: true, sortOrder: true, plannedStart: true, plannedDurationMin: true, minDurationMin: true, isAnchor: true, mayStartEarly: true, status: true, actualStart: true, actualEnd: true, reportedDelayMin: true }
   })
   const expiresAt = guestSessionExpiresAt(autoEndAt(items.map(item => ({ ...item, waitsFor: [] })), event.date), now)
 

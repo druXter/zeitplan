@@ -12,7 +12,7 @@ export const PASSWORD = 'ein sicheres Testpasswort'
 
 let counter = 0
 /** Eindeutige Kennung pro Aufruf, damit sich Tests nicht über Konten oder Drossel-Zähler beeinflussen. */
-function unique(): string {
+export function unique(): string {
   return `${Date.now().toString(36)}${(counter++).toString(36)}`
 }
 

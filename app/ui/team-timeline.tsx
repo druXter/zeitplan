@@ -162,6 +162,7 @@ function TeamRow({ item, track, guest, original, place, assignees, mine, waitsFo
           {item.unconfirmed && item.phase !== 'past' && <Badge tone="amber">nicht bestätigt</Badge>}
           {item.capped ? <Badge tone="red">unklar</Badge> : item.overrun && <Badge tone="amber">überzogen</Badge>}
           {item.needsCheck && !item.capped && <Badge tone="amber">läuft noch?</Badge>}
+          {item.shortenedMin > 0 && <Badge tone="amber">gekürzt um {formatDuration(item.shortenedMin)}</Badge>}
           {item.status === 'DEFERRED' && <Badge>zurückgestellt</Badge>}
           {item.status === 'CANCELLED' && <Badge tone="red">fällt aus</Badge>}
         </div>

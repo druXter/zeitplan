@@ -27,7 +27,7 @@ describe('parseItemForm', () => {
       ok: true,
       fields: {
         title: 'Trauung', location: 'Kirche', description: null, internalNote: null, trackId: 't1',
-        plannedStart: zonedInputToUtc('2026-06-20T14:00')!, plannedDurationMin: 45, visibility: 'PUBLIC',
+        plannedStart: zonedInputToUtc('2026-06-20T14:00')!, plannedDurationMin: 45, minDurationMin: null, visibility: 'PUBLIC',
         isAnchor: true, mayStartEarly: false, waitsFor: ['a', 'b'], secretViewerIds: [], assigneeIds: []
       }
     })
@@ -43,6 +43,17 @@ describe('parseItemForm', () => {
     expect(!secret.ok && secret.errors[0]).toMatch(/^Zuständig: Bei geheimen Punkten/)
     const secretOk = parseItemForm(form({ ...valid, visibility: 'SECRET', secretViewers: ['u1', 'u2'], assignees: ['u2'] }), ctx)
     expect(secretOk.ok && secretOk.fields.assigneeIds).toEqual(['u2'])
+  })
+
+  it('kürzbar bis (Idee L11): leer = nicht kürzbar, sonst kürzer als die Dauer', () => {
+    const ok = parseItemForm(form({ ...valid, minDurationMin: '30' }), ctx)
+    expect(ok.ok && ok.fields.minDurationMin).toBe(30)
+    const empty = parseItemForm(form({ ...valid, minDurationMin: '' }), ctx)
+    expect(empty.ok && empty.fields.minDurationMin).toBeNull()
+    for (const value of ['45', '60', '-1', '1,5']) {
+      const parsed = parseItemForm(form({ ...valid, minDurationMin: value }), ctx)
+      expect(!parsed.ok && parsed.errors[0]).toMatch(/^Kürzbar bis/)
+    }
   })
 
   it('nach Mitternacht und in der doppelten Stunde der Zeitumstellung', () => {
@@ -93,7 +104,7 @@ describe('redactItem', () => {
   const secret: StoredItem = {
     id: 'x', trackId: 't1', sortOrder: 1, title: 'Überraschung', location: 'Garten', description: 'Feuerwerk',
     internalNote: 'Zünder bei Tom', visibility: 'SECRET', isAnchor: false, mayStartEarly: false,
-    plannedStart: new Date('2026-06-20T20:00:00Z'), plannedDurationMin: 10, status: 'CANCELLED', insertedLive: false,
+    plannedStart: new Date('2026-06-20T20:00:00Z'), plannedDurationMin: 10, minDurationMin: null, status: 'CANCELLED', insertedLive: false,
     actualStart: null, actualEnd: null, reportedDelayMin: null, cancelReason: 'Regen', version: 3, waitsFor: ['a'],
     secretViewerIds: ['u1'], assigneeIds: ['u1']
   }

@@ -13,6 +13,10 @@
 // Den letzten Stand der Gästeansicht bei schlechtem Empfang (docs/KONZEPT.md Abschnitt 5) merkt sich die
 // Gästeansicht selbst im Browser (localStorage) - nicht dieser Worker. Wird sie ohne Verbindung neu geladen,
 // liest die Offline-Seite diesen Stand und zeigt ihn an.
+//
+// Push-Mitteilungen (Vorwarnung fürs Team, Idee L17, app/lib/push.ts): Der Worker zeigt sie nur an und öffnet beim
+// Antippen die mitgeschickte Adresse - ausschließlich auf dieser Herkunft, fremde Adressen werden ignoriert. Gleiche
+// Tags (ein Punkt) ersetzen eine ältere Mitteilung, statt sich zu stapeln.
 
 const VERSION = 'v3'
 const CACHE = `zeitplan-offline-${VERSION}`
@@ -50,5 +54,36 @@ self.addEventListener('fetch', (event) => {
     } catch {
       return (await caches.match(OFFLINE_URL)) || Response.error()
     }
+  })())
+})
+
+self.addEventListener('push', (event) => {
+  let message = {}
+  try {
+    message = event.data ? event.data.json() : {}
+  } catch {
+    // Unlesbarer Inhalt: trotzdem eine (neutrale) Mitteilung zeigen - Browser verlangen das bei userVisibleOnly.
+  }
+  const options = {
+    body: message.body || '',
+    icon: '/icons/icon-192.png',
+    data: { url: typeof message.url === 'string' ? message.url : '/admin' }
+  }
+  if (typeof message.tag === 'string') {
+    options.tag = message.tag
+    options.renotify = true
+  }
+  event.waitUntil(self.registration.showNotification(message.title || 'Zeitplan', options))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = new URL(event.notification.data && event.notification.data.url || '/admin', self.location.origin)
+  if (target.origin !== self.location.origin) return
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    const open = windows.find((client) => client.url === target.href)
+    if (open) return open.focus()
+    return self.clients.openWindow(target.href)
   })())
 })

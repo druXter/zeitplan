@@ -32,6 +32,8 @@ export type ItemContent = {
   isAnchor: boolean
   mayStartEarly: boolean
   plannedDurationMin: number
+  /** Mindestdauer (Idee L11) - fehlt in Einträgen von vorher. */
+  minDurationMin?: number | null
   insertedLive: boolean
   originalStart: string | null
   originalDurationMin: number | null

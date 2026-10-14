@@ -22,7 +22,8 @@ function at(key: string, track: string, time: string, durationMin: number, title
  * Mitgelieferte Vorlage "Hochzeit" (docs/KONZEPT.md Abschnitt 4) im Export-Format - sie läuft beim Anlegen durch
  * dieselbe Prüfung wie jeder Import (tests/unit/planning/template.test.ts) und landet auf dem gewählten Eventtag.
  * Zeigt nebenbei die Möglichkeiten: Puffer, Anker, Team-Spur, interne Notizen, Zusammenführung zweier Spuren
- * (Torte wartet auf das Fotoshooting) und einen geheimen Punkt, den nur das anlegende Konto sieht.
+ * (Torte wartet auf das Fotoshooting), kürzbare Punkte (Kaffee, Reden) und einen geheimen Punkt, den nur das anlegende
+ * Konto sieht.
  */
 export const WEDDING_TEMPLATE: PlanExport = {
   format: EXPORT_FORMAT,
@@ -43,9 +44,9 @@ export const WEDDING_TEMPLATE: PlanExport = {
     at('sekt', 'ablauf', '14:45', 45, 'Sektempfang & Gratulation'),
     at('gruppenfoto', 'ablauf', '15:30', 30, 'Gruppenfoto'),
     at('torte', 'ablauf', '16:30', 15, 'Anschnitt der Hochzeitstorte', { waitsFor: ['shooting'] }),
-    at('kaffee', 'ablauf', '16:45', 75, 'Kaffee & Kuchen'),
+    at('kaffee', 'ablauf', '16:45', 75, 'Kaffee & Kuchen', { minDurationMin: 45 }),
     at('essen', 'ablauf', '18:30', 120, 'Abendessen', { isAnchor: true, internalNote: 'Beginn mit dem Catering vereinbart' }),
-    at('reden', 'ablauf', '20:45', 30, 'Reden', { internalNote: 'Reihenfolge der Reden, Mikrofon 2' }),
+    at('reden', 'ablauf', '20:45', 30, 'Reden', { internalNote: 'Reihenfolge der Reden, Mikrofon 2', minDurationMin: 20 }),
     at('tanz', 'ablauf', '21:15', 15, 'Eröffnungstanz', { internalNote: 'Song: …' }),
     at('ueberraschung', 'ablauf', '21:30', 15, 'Überraschung der Trauzeug*innen', { visibility: 'SECRET' }),
     at('party', 'ablauf', '21:45', 180, 'Party'),

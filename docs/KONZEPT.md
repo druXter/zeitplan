@@ -65,6 +65,11 @@ Daraus folgt, ohne Sonderlogik:
   den gedeckelten Stand.
 * **Zusammenführung:** Ein Punkt kann auf Punkte anderer Spuren warten (Torte wartet auf Ende Fotoshooting und Ende
   Sektempfang) und beginnt frühestens nach dem spätesten davon.
+* **Kürzbare Punkte** (Idee L11, optionale Mindestdauer): Beginnt ein Punkt zu spät, rechnet die Prognose ihn kürzer,
+  damit seine Nachfolger (nächster Punkt der Spur, Punkte mit „wartet auf“) zur Planzeit beginnen können – höchstens um
+  seine Verspätung, nie unter die Mindestdauer. Ohne Verspätung, ohne Nachfolger, wenn ein Puffer ohnehin reicht, bei
+  beendeten Punkten und bei einer Meldung am laufenden Punkt („läuft länger“) wird nichts gekürzt. Das Team sieht
+  „gekürzt um X Min“; Gäste sehen nur die Zeiten.
 
 ### Beispiel
 
@@ -307,8 +312,8 @@ GuestSession id, eventId, tokenHash, rsvpId?, createdAt, expiresAt
 * Cron täglich: abgelaufene Gast-Sitzungen, Löschfristen (suite-weit: Inhalte 18 Monate nach Eventende, Konten nach
   2 Jahren ohne Anmeldung, Admins ausgenommen).
 * Nach Eventende automatisch `ENDED` (Live-Steuerung gesperrt, Ansicht bleibt als Rückblick).
-* PWA wie Seating (installierbar für Moderator*innen, Gästeansicht funktioniert ohne Installation). Keine
-  Push-Benachrichtigungen im ersten Wurf.
+* PWA wie Seating (installierbar für Moderator*innen, Gästeansicht funktioniert ohne Installation). Push nur als
+  Vorwarnung fürs Team (Idee L17, siehe „Entschieden“), nie an Gäste.
 
 ---
 
@@ -334,8 +339,8 @@ Anbindungen zuletzt. Jede Phase ist erst fertig, wenn ihre **Definition of Done*
 Später, nicht für die Hochzeit nötig: kürzbare Punkte (Mindestdauer), SSE, Push-Benachrichtigungen. Weiter verfolgt als
 Ideen L11–L13 in `suite-kit/docs/IDEEN.md`, dort auch die späteren Zeitplan-Ideen L15–L25. Umgesetzt (2026-10-13):
 Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24), Orte mit Adresse (L22), Team-Link
-für Dienstleister (L18), Regieplan und Programmheft (L21), Zuständige und "Meine Punkte" (L16) - Regeln unter
-"Entschieden".
+für Dienstleister (L18), Regieplan und Programmheft (L21), Zuständige und "Meine Punkte" (L16); (2026-10-14): kürzbare
+Punkte (L11), "Was wäre wenn" (L19), Vorwarnung fürs Team per Push (L17) - Regeln unter "Entschieden".
 
 ## 12. Offene Entscheidungen
 
@@ -618,3 +623,36 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   zurück. "Meine Punkte" oben in der Team-Ansicht: kommende und laufende eigene Punkte nach erwartetem Beginn, "in X
   Min" bis 12 Stunden vorher; `?meine=1` zeigt nur die eigenen. Keine Anzeige in der Live-Steuerung (dort zählt der
   Ablauf, nicht die Person). Vorwarnung per Push folgt mit L17. (Annahme)
+* **Kürzbare Punkte (Idee L11):** Feld `Item.minDurationMin` (null = nicht kürzbar, sonst kleiner als die Dauer), im
+  Punkt-Formular als "kürzbar bis". Regel in `project` (Abschnitt 2): Kürzung = min(Verspätung des Beginns, Überhang des
+  Endes über den frühesten geplanten Beginn der Nachfolger, Dauer − Mindestdauer), nie negativ. Nachfolger sind der
+  nächste aktive Punkt der Spur und aktive Punkte mit "wartet auf"; einer, der schon begonnen hat, zählt nicht, bei einem
+  mit gemeldeter Verspätung zählt sein verschobener Beginn. Also: nicht kürzen, was ein Puffer schluckt; nicht den
+  letzten Punkt einer Spur; nicht beendete Punkte; nicht laufende mit Meldung (eine Meldung am laufenden Punkt heißt
+  "läuft länger" und gewinnt). Laufende Punkte ohne Meldung werden nach ihrem tatsächlichen Beginn gekürzt - "läuft
+  noch?" kommt dann fünf Minuten nach dem gekürzten Ende. Die Kürzung steht als `shortenedMin` an jedem Punkt der
+  Prognose; Team-Ansicht und Live-Steuerung zeigen sie, `toGuestView` gibt sie nicht weiter. Geht in Export
+  (`minDurationMin`, optional, `schemaVersion` bleibt 1), Import und Duplizieren; der Rückblick vergleicht weiter mit der
+  geplanten Dauer. Keine Live-Aktion "kürzen" - das Team entscheidet vor Ort, die Prognose nimmt es nur an. (Annahme)
+* **"Was wäre wenn" (Idee L19):** reine Funktion `whatIf` (`app/lib/schedule/what-if.ts`). Simuliert wird genau der
+  Live-Knopf "+X": gemeldete Verspätung = bisherige Abweichung (`currentDelayMin`) + X, bei laufenden Punkten also
+  "dauert X länger". Gerechnet vom aktuellen Stand (Serverzeit, alle Meldungen) - vor dem Event ist das der Plan, am Tag
+  der Live-Stand. Ergebnis je Punkt: Verschiebung von Beginn und Ende, vom Puffer davor geschluckt, zusätzlich gekürzt,
+  Anker hält (Konflikt wächst); dazu neue bzw. größere Konflikte und die Verschiebung des Endes je Spur. Eine Seite
+  `/admin/events/<id>/was-waere-wenn` mit GET-Formular (Punkt, Minuten, Schnellwahl +10/+20/+30/+45), nichts wird
+  gespeichert, kein Verlauf. Für alle Konten mit Zugriff aufs Event, Punkte über `loadPlan` (SECRET als Platzhalter).
+  1 bis 600 Minuten wie live; abgelehnt bei beendeten, zurückgestellten und ausgefallenen Punkten. Eine Verspätung pro
+  Durchlauf. (Annahme)
+* **Vorwarnung fürs Team (Idee L17):** Push wie im Abstimmungstool (`app/lib/push.ts` übernommen: VAPID, RFC 8291, Abo
+  `PushSubscription` an der Sitzung, nur bekannte Push-Dienste). Einstellung je Konto und Event (`AlertSetting`: MINE =
+  Punkte mit Eintrag als Zuständige*r, ALL = alle; Vorlauf 5/10/15/20/30 Minuten), in der Team-Ansicht - jedes Konto mit
+  Zugriff für sich, die Besitzer*in stellt nichts für andere ein (Push braucht ohnehin die Erlaubnis auf dem Gerät).
+  Auswahl als reine Funktion `dueAlerts` (`app/lib/alerts/due.ts`): aktive, nicht begonnene Punkte mit erwartetem Beginn
+  in (now, now + Vorlauf]; SECRET nur für eingetragene Konten (auch Zuständige ohne Eintrag nicht); nur Events
+  `PUBLISHED`/`LIVE`; nur Konten mit Zugriff und mindestens einem Gerät. Einmal je Punkt und Konto (`AlertSent` mit
+  angekündigtem Beginn, vor dem Senden beansprucht, damit parallele Läufe nicht doppelt schicken); rutscht der Punkt
+  um mehr als den Vorlauf nach hinten, kommt eine neue mit demselben Tag (ersetzt die alte auf dem Gerät). Text: "In X
+  Min: Titel", Uhrzeit (mit Planzeit bei Abweichung), Ort, interne Notiz gekürzt auf 140 Zeichen - Ende-zu-Ende
+  verschlüsselt; Link zu "Meine Punkte" bzw. zur Team-Ansicht am Punkt. TTL bis zum erwarteten Beginn, Dringlichkeit
+  hoch. Zeitgeber: `GET /api/cron/alerts?secret=CRON_SECRET` jede Minute von außen (wie die anderen Cron-Endpunkte,
+  kein Timer im Prozess). `AlertSent` wird nach 7 Tagen gelöscht. Push an Gäste (L12) bleibt offen. (Annahme)

@@ -20,6 +20,7 @@ export type PlanItem = {
   mayStartEarly: boolean
   plannedStart: Date
   plannedDurationMin: number
+  minDurationMin: number | null
   status: ItemStatus
   insertedLive: boolean
   actualStart: Date | null
@@ -68,6 +69,7 @@ export type ItemFields = {
   trackId: string
   plannedStart: Date
   plannedDurationMin: number
+  minDurationMin: number | null
   visibility: ItemVisibility
   isAnchor: boolean
   mayStartEarly: boolean
@@ -117,6 +119,7 @@ export function parseItemForm(formData: FormData, ctx: ItemFormContext): ParsedI
   const visibility = raw('visibility', 10)
   const startInput = raw('start', 20).trim()
   const durationInput = raw('durationMin', 10).trim()
+  const minDurationInput = raw('minDurationMin', 10).trim()
   const waitsFor = strings(formData, 'waitsFor', PLAN_LIMITS.maxWaitsFor)
   const viewers = strings(formData, 'secretViewers', PLAN_LIMITS.maxSecretViewers)
   const assignees = strings(formData, 'assignees', PLAN_LIMITS.maxAssignees)
@@ -139,6 +142,14 @@ export function parseItemForm(formData: FormData, ctx: ItemFormContext): ParsedI
   const duration = /^\d{1,4}$/.test(durationInput) ? Number(durationInput) : NaN
   if (!Number.isInteger(duration) || duration < 0 || duration > PLAN_LIMITS.durationMaxMin) {
     errors.push(`Dauer: ganze Minuten von 0 bis ${PLAN_LIMITS.durationMaxMin}.`)
+  }
+
+  // Kürzbar (Idee L11): leer = nicht kürzbar, sonst kürzer als die Dauer.
+  let minDurationMin: number | null = null
+  if (minDurationInput !== '') {
+    const value = /^\d{1,4}$/.test(minDurationInput) ? Number(minDurationInput) : NaN
+    if (!Number.isInteger(value) || (Number.isInteger(duration) && value >= duration)) errors.push('Kürzbar bis: ganze Minuten, kürzer als die Dauer – oder leer lassen.')
+    else minDurationMin = value
   }
 
   if (waitsFor.length > PLAN_LIMITS.maxWaitsFor) errors.push(`Wartet auf: höchstens ${PLAN_LIMITS.maxWaitsFor} Punkte.`)
@@ -169,6 +180,7 @@ export function parseItemForm(formData: FormData, ctx: ItemFormContext): ParsedI
       trackId,
       plannedStart,
       plannedDurationMin: duration,
+      minDurationMin,
       visibility,
       isAnchor: formData.get('isAnchor') === 'on',
       mayStartEarly: formData.get('mayStartEarly') === 'on',

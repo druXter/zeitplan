@@ -92,6 +92,7 @@ export default async function EventPage({ params, searchParams }: { params: Prom
           </p>
           <div className="flex flex-wrap gap-2 text-sm">
             <Link href={`/admin/events/${event.id}/plan`} className="bg-blue-600 text-white font-bold py-2 px-3 rounded hover:bg-blue-700">Ablauf planen</Link>
+            <Link href={`/admin/events/${event.id}/was-waere-wenn`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Was wäre wenn?</Link>
             <a href={`/admin/events/${event.id}/export`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Export (JSON)</a>
             {canCreateEvents(user) && (
               <Link href={`/admin/events/${event.id}/duplicate`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Duplizieren</Link>

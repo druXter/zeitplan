@@ -20,8 +20,8 @@ const EVENT_END_GRACE_MS = 2 * 24 * 60 * 60 * 1000
  * 2. Löscht Konten, die seit ACCOUNT_INACTIVITY_YEARS nicht mehr eingeloggt waren - bewusst
  *    NICHT Admin-Konten (sie sind eine fortlaufende Identität) und nicht Konten, denen noch
  *    Events gehören.
- * 3. Räumt Technisches auf: abgelaufene Sitzungen und Gast-Sitzungen, abgelaufene Einladungs-/Reset-Links,
- *    veraltete Drossel-Zähler (auch die des Zugangscodes).
+ * 3. Räumt Technisches auf: abgelaufene Sitzungen (samt ihrer Push-Abos) und Gast-Sitzungen, abgelaufene
+ *    Einladungs-/Reset-Links, veraltete Drossel-Zähler (auch die des Zugangscodes) und Vorwarnungen älter als 7 Tage.
  * 4. Setzt veröffentlichte und laufende Events nach ihrem Ende auf ENDED (endIfOver, Phase 4) - falls
  *    niemand mehr die Live-Steuerung geöffnet hat.
  */
@@ -60,6 +60,8 @@ export async function GET(request: Request) {
     data: { resetTokenHash: null, resetTokenExpiresAt: null }
   })
   await prisma.loginThrottle.deleteMany({ where: { windowStart: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } })
+  // Gesendete Vorwarnungen (Idee L17) braucht es nur, solange der Punkt noch kommen kann.
+  await prisma.alertSent.deleteMany({ where: { sentAt: { lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } } })
 
   return NextResponse.json({
     deletedEvents: deletedEvents.count,

@@ -22,6 +22,11 @@ export type ScheduleItem = {
   /** Beginn laut aktuellem Plan (Ursprungsplan plus bewusste Änderungen, Abschnitt 1). */
   plannedStart: Date
   plannedDurationMin: number
+  /**
+   * Kürzbar (Idee L11): Mindestdauer in Minuten, null = nicht kürzbar. Bei Verspätung kürzt die Prognose den Punkt
+   * bis hierhin, bevor sie folgende Punkte verschiebt.
+   */
+  minDurationMin: number | null
   isAnchor: boolean
   mayStartEarly: boolean
   status: ItemStatus
@@ -56,6 +61,8 @@ export type Phase = 'upcoming' | 'now' | 'past' | 'deferred' | 'cancelled'
 export type ProjectedFields = {
   expectedStart: Date
   expectedEnd: Date
+  /** Um so viele Minuten kürzt die Prognose den Punkt (Idee L11), 0 = nicht gekürzt. */
+  shortenedMin: number
   /** Abweichung des erwarteten Beginns vom geplanten in Minuten (negativ nur mit "darf früher beginnen"). */
   delayMin: number
   phase: Phase

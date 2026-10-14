@@ -9,7 +9,7 @@ function stored(overrides: Partial<StoredItem> & { id: string }): StoredItem {
   return {
     trackId: 't1', sortOrder: 1, title: 'Punkt', location: null, description: null, internalNote: null,
     visibility: 'PUBLIC', isAnchor: false, mayStartEarly: false, plannedStart: new Date('2026-06-20T12:00:00Z'),
-    plannedDurationMin: 30, status: 'PLANNED', insertedLive: false, actualStart: null, actualEnd: null,
+    plannedDurationMin: 30, minDurationMin: null, status: 'PLANNED', insertedLive: false, actualStart: null, actualEnd: null,
     reportedDelayMin: null, cancelReason: null, version: 1, waitsFor: [], secretViewerIds: [], ...overrides
   }
 }
@@ -182,5 +182,22 @@ describe('Orte mit Adresse (Idee L22)', () => {
     const file = clone(buildExport(event, tracks, [], places))
     file.places = [{ name: 'Kirche', address: 'A' }, { name: 'KIRCHE', address: 'B', mapUrl: 'javascript:alert(1)' }]
     expect(parseExport(file)).toEqual({ ok: false, errors: ['Ort „KIRCHE“: Der Kartenlink ist kein https-Link.', 'Ort „KIRCHE“ kommt doppelt vor.'] })
+  })
+})
+
+describe('Kürzbare Punkte (Idee L11)', () => {
+  it('„kürzbar bis“ geht mit in die Datei und kommt beim Import zurück, sonst fehlt das Feld', () => {
+    const file = buildExport(event, tracks, [stored({ id: 'k', title: 'Kaffee', minDurationMin: 20 }), stored({ id: 'r', sortOrder: 2, title: 'Rede' })].map(i => redactItem(i, 'u1')))
+    expect(file.items[0].minDurationMin).toBe(20)
+    expect('minDurationMin' in file.items[1]).toBe(false)
+    const parsed = parseExport(clone(file))
+    expect(parsed.ok && parsed.plan.items.map(i => i.minDurationMin)).toEqual([20, null])
+    expect(parsed.ok && materializePlan(parsed.plan, event.date).items[0].minDurationMin).toBe(20)
+  })
+
+  it('lehnt „kürzbar bis“ ab der Dauer ab', () => {
+    const file = clone(buildExport(event, tracks, [redactItem(stored({ id: 'k', title: 'Kaffee' }), 'u1')]))
+    file.items[0].minDurationMin = 30
+    expect(parseExport(file)).toEqual({ ok: false, errors: ['Punkt „Kaffee“: „kürzbar bis“ muss kürzer als die Dauer sein.'] })
   })
 })

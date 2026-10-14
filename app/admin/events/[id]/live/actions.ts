@@ -138,7 +138,7 @@ export async function liveCommand(formData: FormData) {
         if (!reference) throw new LiveRefused('nothing-started')
         visible(reference.id)
         const fresh: Omit<ScheduleItem, 'trackId' | 'sortOrder' | 'plannedStart'> = {
-          id: '__new__', plannedDurationMin: durationMin, isAnchor: false, mayStartEarly: false, status: 'PLANNED',
+          id: '__new__', plannedDurationMin: durationMin, minDurationMin: null, isAnchor: false, mayStartEarly: false, status: 'PLANNED',
           actualStart: null, actualEnd: null, reportedDelayMin: null, waitsFor: []
         }
         const insert = insertAfter<ScheduleItem>(items, reference.id, fresh, now, event)

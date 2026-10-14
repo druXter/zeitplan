@@ -170,6 +170,7 @@ export default async function LivePage({ params, searchParams }: { params: Promi
           <p className="text-sm text-gray-600 dark:text-gray-400">
             {clock(now)} Uhr{lastAction ? ` · letzte Meldung vor ${formatDuration(Math.max(0, Math.round((now.getTime() - lastAction.at.getTime()) / 60_000)))}` : ''}
             {' · '}<Link href={`/admin/events/${event.id}/team`} className="text-blue-700 dark:text-blue-300 hover:underline">Team-Ansicht</Link>
+            {' · '}<Link href={`/admin/events/${event.id}/was-waere-wenn`} className="text-blue-700 dark:text-blue-300 hover:underline">Was wäre wenn?</Link>
             {' · '}<Link href={`/admin/events/${event.id}/rueckblick`} className="text-blue-700 dark:text-blue-300 hover:underline">Rückblick</Link>
           </p>
         </div>
@@ -479,7 +480,9 @@ function ItemHeading({ item, clock, compact = false }: { item: LiveItem; clock: 
           {item.isAnchor && <Badge tone="blue">Anker {clock(item.plannedStart)}</Badge>}
           {item.visibility !== 'PUBLIC' && <Badge tone={item.visibility === 'SECRET' ? 'purple' : 'amber'}>{item.visibility === 'SECRET' ? 'Geheim' : 'Team'}</Badge>}
           {item.insertedLive && <Badge>Einschub</Badge>}
-          <Badge>{formatDuration(item.plannedDurationMin)}</Badge>
+          {item.shortenedMin > 0
+            ? <Badge tone="amber">gekürzt auf {formatDuration(item.plannedDurationMin - item.shortenedMin)} (Plan {formatDuration(item.plannedDurationMin)})</Badge>
+            : <Badge>{formatDuration(item.plannedDurationMin)}</Badge>}
         </div>
         {item.internalNote && !compact && <p className="text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 rounded px-2 py-1 mt-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}
       </div>

@@ -14,6 +14,24 @@ function addMinutes(date: Date | number, minutes: number): number {
 }
 
 /**
+ * Kürzung eines kürzbaren Punkts in Millisekunden (Idee L11, Regel bei project): höchstens seine Verspätung, höchstens
+ * bis zur Mindestdauer und nur so viel, wie sein Ende den frühesten geplanten Beginn seiner Nachfolger überschreitet.
+ * Ein Nachfolger, der schon begonnen hat, zählt nicht; einer mit gemeldeter Verspätung beginnt ohnehin später.
+ */
+function shortening(item: ScheduleItem, expectedStart: number, running: boolean, successors: ScheduleItem[]): number {
+  const min = item.minDurationMin
+  if (min === null || min >= item.plannedDurationMin || item.actualEnd) return 0
+  if (running && item.reportedDelayMin !== null) return 0
+  const lateMs = expectedStart - item.plannedStart.getTime()
+  const targets = successors
+    .filter(other => !other.actualStart)
+    .map(other => addMinutes(other.plannedStart, Math.max(0, other.reportedDelayMin ?? 0)))
+  if (lateMs <= 0 || targets.length === 0) return 0
+  const overshootMs = addMinutes(expectedStart, item.plannedDurationMin) - Math.min(...targets)
+  return Math.max(0, Math.min(lateMs, overshootMs, (item.plannedDurationMin - min) * MINUTE))
+}
+
+/**
  * Die Prognose (docs/KONZEPT.md Abschnitt 2) als reine Funktion: keine Datenbank, keine Uhr - `now` kommt
  * immer von außen. Server (Gästeansicht, Live-Steuerung) und Browser (Vorschau im Editor) rechnen damit
  * dasselbe.
@@ -30,6 +48,12 @@ function addMinutes(date: Date | number, minutes: number): number {
  *                 Meldung am laufenden Punkt verlängert ihn also, ohne die Verspätung vom Start doppelt zu
  *                 zählen. Überzogen und mit Fortschreiben: max(Grundlage, min(now, Grundlage + Deckel)).
  *   - sonst:      Beginn + Dauer
+ *
+ * Kürzbare Punkte (Idee L11, minDurationMin): Beginnt ein Punkt später als geplant, wird er um bis zu so viele
+ * Minuten gekürzt, wie er zu spät ist - aber nur so weit, dass seine Nachfolger (nächster Punkt der Spur und Punkte,
+ * die auf ihn warten) zu ihrer Planzeit beginnen können, und nie unter die Mindestdauer. Ohne Verspätung, ohne
+ * Nachfolger oder bei schon beendeten Punkten wird nichts gekürzt; eine Meldung am laufenden Punkt ("läuft länger")
+ * auch nicht. Die gekürzte Dauer ersetzt "Dauer" in den Formeln oben.
  *
  * Zurückgestellte und ausgefallene Punkte zählen nicht in der Kette; sie behalten ihre Planzeit. Anker
  * rutschen nie - überschneidet sich ein Punkt, auf den der Anker in der Kette oder per waitsFor folgt, mit
@@ -49,7 +73,11 @@ export function project<T extends ScheduleItem>(items: T[], now: Date, settings:
 
   const byId = new Map(active.map(item => [item.id, item]))
   const previous = new Map<string, T>()
-  for (const list of byTrack(active).values()) list.forEach((item, index) => { if (index > 0) previous.set(item.id, list[index - 1]) })
+  // Nachfolger je Punkt (nächster der Spur, Punkte mit waitsFor auf ihn) - Grundlage fürs Kürzen.
+  const successors = new Map<string, T[]>()
+  const addSuccessor = (of: string, item: T) => successors.set(of, [...(successors.get(of) ?? []), item])
+  for (const list of byTrack(active).values()) list.forEach((item, index) => { if (index > 0) { previous.set(item.id, list[index - 1]); addSuccessor(list[index - 1].id, item) } })
+  for (const item of active) for (const other of item.waitsFor) if (byId.has(other)) addSuccessor(other, item)
 
   const start = new Map<string, number>()
   const end = new Map<string, number>()
@@ -80,7 +108,8 @@ export function project<T extends ScheduleItem>(items: T[], now: Date, settings:
 
     // Ende
     const running = item.actualStart !== null && item.actualEnd === null
-    let expectedEnd = addMinutes(expectedStart, item.plannedDurationMin)
+    const shortenMs = shortening(item, expectedStart, running, successors.get(id) ?? [])
+    let expectedEnd = addMinutes(expectedStart, item.plannedDurationMin) - shortenMs
     let overrun = false
     let capped = false
     let needsCheck = false
@@ -119,6 +148,7 @@ export function project<T extends ScheduleItem>(items: T[], now: Date, settings:
     fields.set(id, {
       expectedStart: new Date(expectedStart),
       expectedEnd: new Date(expectedEnd),
+      shortenedMin: Math.round(shortenMs / MINUTE),
       delayMin: Math.round((expectedStart - planned) / MINUTE),
       phase,
       confirmed,
@@ -137,6 +167,7 @@ export function project<T extends ScheduleItem>(items: T[], now: Date, settings:
       ...item,
       expectedStart: item.plannedStart,
       expectedEnd: new Date(addMinutes(item.plannedStart, item.plannedDurationMin)),
+      shortenedMin: 0,
       delayMin: 0,
       phase: item.status === 'DEFERRED' ? 'deferred' : 'cancelled',
       confirmed: false,

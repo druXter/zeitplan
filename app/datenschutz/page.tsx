@@ -9,7 +9,8 @@ import Link from 'next/link'
 // Offline-Stand im Browser, Phase 4: Live-Steuerung mit Verlauf, Phase 5: Zugangscode mit Gast-Sitzung und
 // Drosselung, Zugang per Konto, Tafel-Link, Phase 6: Anmeldung mit Konten anderer Tools der Suite, Phase 7:
 // Zugang über eine Zusage in rsvp-app; Abruf der Programmpunkte durch Schichten; Durchsagen, Protokollnotizen und
-// Rückblick als CSV; Orte mit Adresse und Routen-Link, Zuständige je Punkt, Team-Link für Dienstleister, Druckansichten).
+// Rückblick als CSV; Orte mit Adresse und Routen-Link, Zuständige je Punkt, Team-Link für Dienstleister, Druckansichten;
+// Vorwarnung fürs Team per Push mit Push-Abo, Einstellung und Versandprotokoll).
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -126,6 +127,13 @@ export default function DatenschutzPage() {
             nicht mehr. Über den Team-Link speichern wir nichts über die Person, die ihn öffnet.
           </p>
           <p className="mt-2">
+            <strong>Vorwarnung fürs Team (freiwillig):</strong> Wer mit Konto eine Vorwarnung für eine Veranstaltung
+            einschaltet, für den speichern wir, wofür (eigene oder alle Punkte) und wie viele Minuten vorher. Damit jede
+            Vorwarnung nur einmal kommt, speichern wir je Programmpunkt und Konto, wann sie verschickt wurde und für welchen
+            Beginn; diese Einträge löschen wir nach 7 Tagen. Die Einstellung wird mit der Veranstaltung oder dem Konto
+            gelöscht oder wenn du sie ausschaltest.
+          </p>
+          <p className="mt-2">
             Während der Veranstaltung melden Moderator*innen den Ablauf (Beginn, Ende, Verspätungen, Änderungen). Jede
             solche Meldung speichern wir im <strong>Verlauf</strong> mit dem Konto, das sie gemacht hat, dem Zeitpunkt
             und dem Stand vorher und nachher - damit das Team nachvollziehen und Meldungen rückgängig machen kann. Den
@@ -232,6 +240,17 @@ export default function DatenschutzPage() {
             personenbezogenen Daten. Ist die Verbindung weg, zeigt diese Seite den im Browser gemerkten Ablauf (Punkt 5) an. Er schickt nichts an uns und ist über die Website-Einstellungen deines Browsers
             jederzeit entfernbar.
           </p>
+          <p className="mt-2">
+            <strong>Push-Mitteilungen (nur mit Konto, freiwillig):</strong> Schaltest du in der Team-Ansicht oder unter
+            &quot;Mein Konto&quot; Mitteilungen auf einem Gerät ein, speichern wir das Push-Abo deines Browsers (eine Adresse
+            beim Push-Dienst des Browser-Herstellers und zwei Schlüssel) verknüpft mit deinem Konto und deiner aktuellen
+            Anmeldung. Meldest du dich ab, läuft die Anmeldung ab oder schaltest du Mitteilungen aus, wird das Abo gelöscht.
+            Mitteilungen (die Vorwarnung aus Punkt 4: Titel, Zeit, Ort und interne Notiz eines Programmpunkts) werden über
+            den Push-Dienst deines Browsers zugestellt (z.B. Google, Mozilla oder Apple, ggf. auch außerhalb der EU). Ihr
+            Inhalt ist Ende-zu-Ende verschlüsselt - der Push-Dienst sieht nur, dass eine Nachricht an dein Gerät geht,
+            nicht was darin steht. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit
+            durch Ausschalten widerrufen kannst. Gäste bekommen keine Mitteilungen.
+          </p>
         </div>
 
         <div>
@@ -257,6 +276,10 @@ export default function DatenschutzPage() {
             der Betreiber freigegeben hat.
           </p>
           <p className="mt-2">
+            <strong>Push-Dienste:</strong> Nur wenn du Mitteilungen einschaltest, geht eine verschlüsselte Nachricht an
+            den Push-Dienst deines Browser-Herstellers (siehe Punkt 8). Welcher das ist, bestimmt dein Browser.
+          </p>
+          <p className="mt-2">
             <strong>Hosting:</strong> Diese Anwendung wird auf einem vom Verantwortlichen selbst betriebenen und
             administrierten Server gehostet. Es findet keine Weitergabe der Daten an einen externen Hosting-Anbieter
             statt.
@@ -273,12 +296,13 @@ export default function DatenschutzPage() {
             Adresse um frühere Löschung deines Kontos bitten.
           </p>
           <p className="mt-2">
-            Sitzungen laufen nach 30 Tagen ab, Einladungs- und Reset-Links nach 7 Tagen bzw. 1 Stunde, Gast-Zugänge einen
-            Tag nach der Veranstaltung; sie werden dann entfernt. Drossel-Zähler siehe Punkt 6.
+            Sitzungen laufen nach 30 Tagen ab (mit ihnen die Push-Abos des Geräts), Einladungs- und Reset-Links nach 7 Tagen
+            bzw. 1 Stunde, Gast-Zugänge einen Tag nach der Veranstaltung; sie werden dann entfernt. Drossel-Zähler siehe
+            Punkt 6, verschickte Vorwarnungen nach 7 Tagen.
           </p>
           <p className="mt-2">
             Veranstaltungen werden <strong>18 Monate nach ihrem Ende</strong> automatisch gelöscht, samt Ablauf,
-            internen Notizen, Freigaben und Verlauf.
+            internen Notizen, Freigaben, Einstellungen zur Vorwarnung und Verlauf.
           </p>
         </div>
 

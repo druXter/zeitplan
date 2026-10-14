@@ -8,6 +8,8 @@ import { changePassword, unlinkIdentity } from '../auth-actions'
 import SubmitButton from '../ui/submit-button'
 import Notice from '../ui/notice'
 import ConfirmForm from '../ui/confirm-form'
+import PushToggle from '../ui/push-toggle'
+import { vapidPublicKey } from '../lib/push'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +38,7 @@ export default async function AccountPage({
 
   const identities = await prisma.externalIdentity.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'asc' } })
   const linkable = getIdps().filter(idp => !identities.some(i => i.issuer === idp.issuer))
+  const pushKey = vapidPublicKey()
 
   return (
     <main className="bg-gray-50 dark:bg-gray-900 py-8 px-4">
@@ -83,6 +86,17 @@ export default async function AccountPage({
               </div>
               <SubmitButton>Passwort ändern</SubmitButton>
             </form>
+          </div>
+        )}
+
+        {pushKey && (
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-3">
+            <h2 className="font-bold">Mitteilungen auf diesem Gerät</h2>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Für die Vorwarnung kurz vor deinen Punkten. Wofür und wie lange vorher, stellst du je Event in der Team-Ansicht ein.
+              Abmelden beendet die Mitteilungen auf diesem Gerät.
+            </p>
+            <PushToggle publicKey={pushKey} />
           </div>
         )}
 

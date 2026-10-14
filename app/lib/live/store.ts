@@ -43,7 +43,7 @@ const recordSelect = {
   id: true, trackId: true, sortOrder: true, plannedStart: true, status: true, actualStart: true, actualEnd: true,
   reportedDelayMin: true, reportedAt: true, cancelReason: true,
   title: true, location: true, description: true, internalNote: true, visibility: true, isAnchor: true, mayStartEarly: true,
-  plannedDurationMin: true, insertedLive: true, originalStart: true, originalDurationMin: true, originalSortOrder: true, createdAt: true,
+  plannedDurationMin: true, minDurationMin: true, insertedLive: true, originalStart: true, originalDurationMin: true, originalSortOrder: true, createdAt: true,
   waitsFor: { select: { waitsForItemId: true } },
   waitedOnBy: { select: { itemId: true } },
   secretViewers: { select: { userId: true } },
@@ -70,6 +70,7 @@ export async function readRecords(tx: Tx, eventId: string, ids: string[], withCo
           isAnchor: row.isAnchor,
           mayStartEarly: row.mayStartEarly,
           plannedDurationMin: row.plannedDurationMin,
+          minDurationMin: row.minDurationMin,
           insertedLive: row.insertedLive,
           originalStart: row.originalStart?.toISOString() ?? null,
           originalDurationMin: row.originalDurationMin,
@@ -160,6 +161,7 @@ export async function restoreRecords(tx: Tx, eventId: string, target: Record<str
         isAnchor: content.isAnchor,
         mayStartEarly: content.mayStartEarly,
         plannedDurationMin: content.plannedDurationMin,
+        minDurationMin: content.minDurationMin ?? null,
         insertedLive: content.insertedLive,
         originalStart: toDate(content.originalStart),
         originalDurationMin: content.originalDurationMin,
@@ -200,7 +202,7 @@ export async function endIfOver(event: { id: string; date: Date; status: EventSt
   if (!ENDABLE.includes(event.status)) return event.status === 'ENDED'
   const items = await prisma.item.findMany({
     where: { eventId: event.id },
-    select: { id: true, trackId: true, sortOrder: true, plannedStart: true, plannedDurationMin: true, isAnchor: true, mayStartEarly: true, status: true, actualStart: true, actualEnd: true, reportedDelayMin: true }
+    select: { id: true, trackId: true, sortOrder: true, plannedStart: true, plannedDurationMin: true, minDurationMin: true, isAnchor: true, mayStartEarly: true, status: true, actualStart: true, actualEnd: true, reportedDelayMin: true }
   })
   if (now < autoEndAt(items.map(item => ({ ...item, waitsFor: [] })), event.date)) return false
   return prisma.$transaction(async tx => {

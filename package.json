@@ -33,6 +33,7 @@
     "@types/smtp-server": "^3.5.13",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "http_ece": "^1.2.1",
     "mailparser": "^3.9.28",
     "postcss": "^8.5.23",
     "prisma": "^6.19.3",

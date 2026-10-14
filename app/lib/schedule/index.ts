@@ -14,3 +14,4 @@ export {
   applyLiveCommand, applyLivePatches, autoEndAt, currentDelayMin, isRunning, isStarted, liveReference, nextInTrack, LIVE_LIMITS,
   type LiveCommand, type LivePatch, type LiveRefusal, type LiveResult
 } from './live'
+export { whatIf, type WhatIfConflict, type WhatIfRefusal, type WhatIfResult, type WhatIfRow, type WhatIfScenario } from './what-if'

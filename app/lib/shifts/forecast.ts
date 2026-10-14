@@ -15,7 +15,7 @@ export async function forecastForShifts(event: { id: string; autoCreep: boolean;
       where: { eventId: event.id },
       select: {
         id: true, trackId: true, sortOrder: true, title: true, visibility: true, isAnchor: true, mayStartEarly: true,
-        plannedStart: true, plannedDurationMin: true, status: true, actualStart: true, actualEnd: true, reportedDelayMin: true,
+        plannedStart: true, plannedDurationMin: true, minDurationMin: true, status: true, actualStart: true, actualEnd: true, reportedDelayMin: true,
         waitsFor: { select: { waitsForItemId: true } }
       }
     })

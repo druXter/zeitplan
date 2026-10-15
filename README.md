@@ -317,6 +317,18 @@ Eigener Vertrag nach dem Muster von Seating (`app/lib/rsvp/token.ts`), mit **eig
   Button „Zeitplan“ auf Gästeseite, Erfolgsseite und in der Bestätigungsmail (Weiterleitung
   `/api/timeline-link/<Termin-id>`, Link 10 Minuten gültig) und der Webhook `rsvp-change` bei jeder Änderung einer
   Zusage.
+* **Protokoll im Rückblick (Idee L7, `app/lib/rsvp/protocol.ts`):** Die einzige Nachricht, die Zeitplan selbst schickt.
+  Beim Anzeigen des Rückblicks (Seite und CSV) fragt Zeitplan signiert bei rsvp-app an (`typ: "protocol-request"` an
+  `<RSVP_APP_BASE_URL>/api/timeline/protocol`, 5 Sekunden Zeitlimit) und bekommt signiert zurück, was der Termin dort
+  **einzeln** freigibt: Kommen und Gehen mit Namen und Uhrzeit (Häkchen „Kommen und Gehen im Zeitplan-Rückblick zeigen“)
+  und die Beschlüsse der verknüpften Sitzung im Abstimmungstool (Häkchen „Beschlüsse der Sitzung im Zeitplan-Rückblick
+  zeigen“; Ergebnis, Abstimmende, Anwesende, beschlussfähig, Namen nur bei namentlichen Abstimmungen). Der Rückblick
+  zeigt jeden Eintrag beim Punkt, der zu der Zeit lief (Beschlüsse zum Zeitpunkt des Schließens), den Rest unter
+  „Außerhalb der Punkte“; die CSV bekommt eine Spalte „Anwesenheit und Beschlüsse“. **Gespeichert wird davon nichts** –
+  Namen von Gästen stehen weiterhin nie in der Datenbank. Dafür braucht es die Verknüpfung (Termin-id hier, Zeitplan-Link
+  dort) – bei anderen Zugängen als „nur mit Zusage“ ist die Termin-id optional – und `RSVP_APP_BASE_URL`. Ist nichts
+  freigegeben, sieht der Rückblick aus wie bisher; ist rsvp-app nicht erreichbar oder die Antwort ungültig, steht dort ein
+  Hinweis.
 
 Regeln und Tokens stehen in `app/lib/guest/access.ts` (Sichtbarkeit, rein) und `app/lib/guest/tokens.ts` (Code und
 Tafel-Link), Sitzungen in `app/lib/guest/session.ts`, die Code-Eingabe in `app/[slug]/actions.ts`.
@@ -399,7 +411,8 @@ Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, vers
   Formeln geschützt). **Für Sitzungen:** Tagesordnungspunkte als Programmpunkte anlegen, live „Weiter“ drücken und das
   Ergebnis als Protokollnotiz eintragen – der Rückblick dokumentiert dann, wann welcher Punkt behandelt, vertagt
   (zurückgestellt) oder abgesetzt (Ausfall) wurde. Geheime Punkte ohne Eintrag erscheinen auch hier nur als Platzhalter
-  ohne Notizen. Die Rechnung steht in `app/lib/review/review.ts`.
+  ohne Notizen. Die Rechnung steht in `app/lib/review/review.ts`. Mit rsvp-app verknüpft, zeigt er auf Wunsch auch, wer
+  wann kam und ging, und die Beschlüsse der Sitzung beim jeweiligen Punkt (siehe „Anbindung an rsvp-app“).
 * **Einbetten:** Die Gästeansicht (und die Reihen-Übersicht) lässt sich per iFrame in eine andere Website einbinden,
   z. B. `<iframe src="https://zeitplan.deine-domain.de/<adresse>" width="100%" height="800"></iframe>`. Impressum und
   Datenschutz öffnen dann in einem neuen Tab. Tafel und Verwaltung sind nicht einbettbar. Nur bestimmte Websites
@@ -783,6 +796,7 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events und Team-Links für Dienstleister; der vorherige hält alte Links beim Wechsel gültig; leer = kein Tafel- und kein Team-Link |
 | `SHIFTS_SECRET`, `SHIFTS_BASE_URL` | optional: Anbindung an Schichten (eigenes Secret, dort `TIMELINE_SHIFTS_SECRET`), mindestens 32 Zeichen |
 | `RSVP_TIMELINE_SECRET` | optional: eigenes Secret der Anbindung an rsvp-app (dort `TIMELINE_SECRET`), mindestens 32 Zeichen; leer = kein Zugang „nur mit Zusage“ |
+| `RSVP_APP_BASE_URL` | optional: Adresse von rsvp-app – nur dorthin fragt der Rückblick nach Anwesenheit und Beschlüssen; leer = kein Protokoll aus rsvp-app |
 | `SUITE_IDPS`, `SUITE_SIGNING_KEY`, `SUITE_SIGNING_KEY_PREVIOUS`, `SUITE_TRUSTED_APPS`, `SUITE_APP_NAME`, `SUITE_LOGIN_REDIRECT` | optional: Konto-Föderation (siehe „Anmelden mit einem Konto aus einem anderen Tool“) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mailversand für Einladungen und Passwort-Reset (optional) |
 | `IMPRESSUM_*` | Angaben für Impressum und Datenschutzerklärung |

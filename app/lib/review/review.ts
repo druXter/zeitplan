@@ -181,3 +181,21 @@ export function reviewTable<T extends ReviewCsvItem>(
     ])
   }
 }
+
+/**
+ * Ordnet zeitgestempelte Einträge (Kommen und Gehen, Beschlüsse aus rsvp-app) dem Punkt zu, der zu dem Zeitpunkt lief:
+ * tatsächlich begonnen und noch nicht beendet (Ende inklusive); laufen mehrere, gewinnt der zuletzt begonnene. Alles
+ * andere (vor dem ersten Punkt, in Pausen, danach) landet in `outside`. Reihenfolge der Einträge bleibt erhalten.
+ */
+export function placeByTime<E extends { at: Date }>(rows: ReviewRow<ReviewSource>[], entries: readonly E[]): { byItem: Map<string, E[]>; outside: E[] } {
+  const started = rows.filter(row => row.item.actualStart).sort((a, b) => b.item.actualStart!.getTime() - a.item.actualStart!.getTime())
+  const byItem = new Map<string, E[]>()
+  const outside: E[] = []
+  for (const entry of entries) {
+    const t = entry.at.getTime()
+    const row = started.find(r => r.item.actualStart!.getTime() <= t && (!r.item.actualEnd || t <= r.item.actualEnd.getTime()))
+    if (row) byItem.set(row.item.id, [...(byItem.get(row.item.id) ?? []), entry])
+    else outside.push(entry)
+  }
+  return { byItem, outside }
+}

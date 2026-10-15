@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test'
+import { Prisma } from '@prisma/client'
 import {
   cookieOf, createAccount, createEventRecord, createItemRecord, createTrackRecord, locationOf, login, prisma, readForm, submitForm, SUMMER_DAY
 } from './helpers'
 import { zonedDateToUtc } from '../../app/lib/timezone'
+import { setProtocol } from './rsvp-server'
 
 // Rückblick (Idee L24): Plan gegen Ist, Protokollnotizen (Rückblick und live), CSV, Verlauf - auch als
 // Dokumentation einer Sitzung. SECRET-Regel wie überall: ohne Eintrag nur Platzhalter, keine Notiz.
@@ -142,4 +144,67 @@ test('Protokollnotiz live beim laufenden Punkt - landet im Rückblick', async ({
   await page.getByRole('link', { name: 'Rückblick' }).click()
   await expect(page.locator(`#item-${top.id} [data-result-note]`)).toHaveText('Bericht ohne Rückfragen angenommen')
   await expect(page.getByText('Das Event läuft noch')).toBeVisible()
+})
+
+test('Anwesenheit und Beschlüsse aus rsvp-app beim Punkt, der lief - geheime Abstimmungen ohne Namen, nichts gespeichert; CSV', async ({ page }) => {
+  const { owner, event, begruessung, haushalt } = await meeting()
+  await prisma.event.update({ where: { id: event.id }, data: { rsvpLink: { rsvpEventId: 'cmrsvp0123456789' } } })
+  const decision = { secret: false, openedAt: t('18:40').toISOString(), voters: 3, present: 4, quorumMet: true }
+  setProtocol(event.id, {
+    presence: [
+      { at: t('17:55').toISOString(), name: 'Anna Abgeordnete', change: 'IN' },
+      { at: t('18:05').toISOString(), name: 'Ben Beisitzer', change: 'IN' },
+      { at: t('18:30').toISOString(), name: 'Ben Beisitzer', change: 'OUT' },
+      { at: t('19:20').toISOString(), name: 'Ben Beisitzer', change: 'BACK' }
+    ],
+    decisions: [
+      { ...decision, title: 'Haushalt 2027', closedAt: t('18:50').toISOString(), options: [{ label: 'Ja', votes: 2, names: ['Anna Abgeordnete', 'Cem'] }, { label: 'Nein', votes: 1, names: ['Dora'] }] },
+      { ...decision, title: 'Dringlichkeit', secret: true, quorumMet: false, closedAt: t('18:58').toISOString(), options: [{ label: 'Ja', votes: 1, names: ['GEHEIMER NAME'] }] }
+    ]
+  })
+  await login(page, owner.email)
+  await page.goto(`/admin/events/${event.id}/rueckblick`)
+
+  await expect(page.locator('[data-protocol-summary]')).toHaveText('4× Kommen oder Gehen · 2 Beschlüsse')
+  await expect(page.locator(`#item-${begruessung.id} [data-testid="protocol-item"]`)).toHaveText(/18:05.*Ben Beisitzer kommt/)
+  const top2 = page.locator(`#item-${haushalt.id} [data-testid="protocol-item"]`)
+  await expect(top2).toContainText('18:30← Ben Beisitzer geht')
+  await expect(top2).toContainText('Beschluss „Haushalt 2027“: Ja 2 · Nein 1 (3 abgestimmt · 4 anwesend · beschlussfähig · namentlich)')
+  await expect(top2).toContainText('Ja: Anna Abgeordnete, Cem; Nein: Dora')
+  await expect(page.locator('[data-review-item]', { hasText: 'Dringlichkeitsantrag' }).getByTestId('protocol-item')).toContainText('Beschluss „Dringlichkeit“: Ja 1 (3 abgestimmt · 4 anwesend · nicht beschlussfähig · geheim)')
+  const outside = page.getByTestId('protocol-outside')
+  await expect(outside).toContainText('17:55→ Anna Abgeordnete kommt')
+  await expect(outside).toContainText('19:20→ Ben Beisitzer kommt wieder')
+  expect(await page.content()).not.toContain('GEHEIMER NAME')
+
+  const csv = await (await page.request.get(`/admin/events/${event.id}/rueckblick/csv`, { headers: { cookie: await cookieOf(page) } })).text()
+  expect(csv).toContain(';Anwesenheit und Beschlüsse\r\n')
+  expect(csv).toContain('"18:30 Ben Beisitzer geht\n18:50 Beschluss „Haushalt 2027“: Ja 2 · Nein 1 (3 abgestimmt · 4 anwesend · beschlussfähig · namentlich) - Ja: Anna Abgeordnete, Cem; Nein: Dora"')
+  expect(csv).toContain('(außerhalb der Punkte)')
+  expect(csv).not.toContain('GEHEIMER NAME')
+
+  // Nichts davon landet in der Datenbank des Zeitplans
+  const stored = JSON.stringify(await prisma.event.findUniqueOrThrow({ where: { id: event.id }, include: { items: true, liveActions: true } }))
+  expect(stored).not.toContain('Ben Beisitzer')
+
+  // Beschlüsse nicht ladbar, falsch signierte oder gar keine Antwort von rsvp-app: Hinweis, keine Einträge
+  setProtocol(event.id, { presence: [], decisionsState: 'unreachable' })
+  await page.reload()
+  await expect(page.getByText('Die Beschlüsse ließen sich gerade nicht aus dem Abstimmungstool laden')).toBeVisible()
+  for (const scenario of [{ badSignature: true, presence: [] }, { status: 500 }]) {
+    setProtocol(event.id, scenario)
+    await page.reload()
+    await expect(page.getByText('Anwesenheit und Beschlüsse ließen sich gerade nicht aus rsvp-app laden')).toBeVisible()
+    await expect(page.locator('[data-protocol-summary]')).toHaveCount(0)
+  }
+
+  // In rsvp-app nichts freigegeben oder nicht verknüpft: der Rückblick wie bisher, ohne Hinweis
+  setProtocol(event.id, { presence: null, decisions: null })
+  await page.reload()
+  await expect(page.locator('[data-protocol-summary]')).toHaveCount(0)
+  await expect(page.getByText('ließen sich gerade nicht')).toHaveCount(0)
+  await prisma.event.update({ where: { id: event.id }, data: { rsvpLink: Prisma.DbNull } })
+  await page.reload()
+  await expect(page.locator('[data-review-item]').first()).toBeVisible()
+  await expect(page.getByText('ließen sich gerade nicht')).toHaveCount(0)
 })

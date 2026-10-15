@@ -185,7 +185,8 @@ const SELECTABLE_ACCESS: GuestAccess[] = ['PUBLIC', 'CODE', 'ACCOUNT', 'RSVP']
 /**
  * Zugang der Gäste (docs/KONZEPT.md Abschnitt 6). Nur owner. Der Zugangscode wird nur als HMAC gespeichert und
  * danach nie wieder angezeigt; ein leeres Feld behält den bisherigen. RSVP braucht die id des Termins in rsvp-app
- * (Event.rsvpLink) - dort trägt die Besitzer*in umgekehrt den Zeitplan-Link ein. Ändern sich Zugang, Code oder
+ * (Event.rsvpLink) - dort trägt die Besitzer*in umgekehrt den Zeitplan-Link ein. Bei anderen Zugängen ist die id
+ * optional (Protokoll im Rückblick, Idee L7); leer löst die Verknüpfung. Ändern sich Zugang, Code oder
  * verknüpfter Termin, enden alle Gast-Sitzungen des Events - wer den alten Zugang hatte, braucht den neuen.
  */
 export async function updateGuestAccess(_previous: FormState, formData: FormData): Promise<FormState> {
@@ -217,13 +218,18 @@ export async function updateGuestAccess(_previous: FormState, formData: FormData
     if (!rsvpConfigured()) return { errors: ['rsvp-app: Auf dem Server fehlt RSVP_TIMELINE_SECRET (siehe .env.example).'] }
     rsvpEventId = formString(formData, 'rsvpEventId', 60)
     if (!REMOTE_ID.test(rsvpEventId)) return { errors: ['Termin in rsvp-app: Bitte gib die id des Termins ein (steht dort in den Einstellungen des Termins).'] }
+  } else if (formData.has('rsvpEventId')) {
+    // Ohne Zugang "nur mit Zusage" optional - für Anwesenheit und Beschlüsse im Rückblick (app/lib/rsvp/protocol.ts)
+    const value = formString(formData, 'rsvpEventId', 60)
+    if (value && !REMOTE_ID.test(value)) return { errors: ['Termin in rsvp-app: Die id hat nicht das erwartete Format (steht dort in den Einstellungen des Termins).'] }
+    rsvpEventId = value || null
   }
 
   const changed = access !== event.access || codeHmac !== event.accessCodeHmac || rsvpEventId !== previousRsvpEventId
   await prisma.$transaction(async tx => {
     await tx.event.update({
       where: { id: event.id },
-      data: { access, accessCodeHmac: codeHmac, ...(rsvpEventId !== previousRsvpEventId ? { rsvpLink: { rsvpEventId } } : {}) }
+      data: { access, accessCodeHmac: codeHmac, ...(rsvpEventId !== previousRsvpEventId ? { rsvpLink: rsvpEventId ? { rsvpEventId } : Prisma.DbNull } : {}) }
     })
     if (changed) await tx.guestSession.deleteMany({ where: { eventId: event.id } })
   })

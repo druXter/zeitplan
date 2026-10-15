@@ -2,7 +2,7 @@ import { createECDH, createHash } from 'node:crypto'
 import { defineConfig, devices } from '@playwright/test'
 import { SMTP_PORT } from './tests/e2e/mail-server'
 import { SUITE_TOOLS, TEST_SUITE_IDPS, TEST_SUITE_TRUSTED_APPS, TEST_ZEITPLAN_SIGNING_KEY } from './tests/e2e/suite-server'
-import { TEST_RSVP_TIMELINE_SECRET } from './tests/e2e/rsvp-server'
+import { RSVP_ORIGIN, TEST_RSVP_TIMELINE_SECRET } from './tests/e2e/rsvp-server'
 
 // Anbindung an Schichten (app/lib/shifts/token.ts): eigenes Secret; unter dem Origin läuft nichts - Schichten ruft
 // Zeitplan ab, nicht umgekehrt (tests/e2e/shifts.spec.ts spielt die Anfragen selbst).
@@ -58,6 +58,7 @@ const SERVER_ENV: Record<string, string> = {
   SUITE_APP_NAME: 'Zeitplan Test',
   // Anbindung an rsvp-app (Phase 7b): Test-Doppel aus tests/e2e/rsvp-server.ts.
   RSVP_TIMELINE_SECRET: TEST_RSVP_TIMELINE_SECRET,
+  RSVP_APP_BASE_URL: RSVP_ORIGIN,
   SHIFTS_SECRET: TEST_SHIFTS_SECRET,
   SHIFTS_BASE_URL: TEST_SHIFTS_BASE_URL,
   // Push (Vorwarnung fürs Team): Die Tests legen Abos mit Endpunkten beim Test-Push-Dienst (tests/e2e/push-server.ts) an.

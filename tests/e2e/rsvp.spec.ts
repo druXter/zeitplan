@@ -206,3 +206,29 @@ test('Verwaltung: Zugang RSVP mit Termin-id, Zeitplan-Link zum Eintragen; neuer 
   await submitForm(modPage, form, { access: 'RSVP', rsvpEventId: cuid('mod') })
   expect((await prisma.event.findUniqueOrThrow({ where: { id: event.id } })).rsvpLink).toEqual({ rsvpEventId: next })
 })
+
+test('Verwaltung: Termin in rsvp-app auch ohne Zugang "nur mit Zusage" (Protokoll im Rückblick) - optional, leer löst', async ({ page }) => {
+  const owner = await createAccount('CREATOR')
+  const event = await createEventRecord(owner.id, { status: 'PUBLISHED', access: 'PUBLIC', date: SUMMER_DAY, title: 'Sitzung öffentlich' })
+  await login(page, owner.email)
+  await page.goto(`/admin/events/${event.id}`)
+  await expect(page.getByLabel('Öffentlich')).toBeChecked()
+  const field = page.getByLabel('Termin in rsvp-app (id, optional)')
+  await expect(field).toHaveValue('')
+
+  const id = cuid('sitzung')
+  await field.fill(id)
+  await page.getByRole('button', { name: 'Zugang speichern' }).click()
+  await expect(page.getByText('Zugang gespeichert.')).toBeVisible()
+  expect(await prisma.event.findUniqueOrThrow({ where: { id: event.id } })).toMatchObject({ access: 'PUBLIC', rsvpLink: { rsvpEventId: id } })
+
+  const form = await readForm(page, 'form:has(input[name="access"])')
+  expect(await (await submitForm(page, form, { access: 'PUBLIC', rsvpEventId: 'Nicht Gültig!' })).text()).toContain('Termin in rsvp-app: Die id hat nicht das erwartete Format')
+  expect((await prisma.event.findUniqueOrThrow({ where: { id: event.id } })).rsvpLink).toEqual({ rsvpEventId: id })
+
+  await page.reload()
+  await page.getByLabel('Termin in rsvp-app (id, optional)').fill('')
+  await page.getByRole('button', { name: 'Zugang speichern' }).click()
+  await expect(page.getByText('Zugang gespeichert.')).toBeVisible()
+  expect((await prisma.event.findUniqueOrThrow({ where: { id: event.id } })).rsvpLink).toBeNull()
+})

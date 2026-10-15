@@ -10,7 +10,8 @@ import Link from 'next/link'
 // Drosselung, Zugang per Konto, Tafel-Link, Phase 6: Anmeldung mit Konten anderer Tools der Suite, Phase 7:
 // Zugang über eine Zusage in rsvp-app; Abruf der Programmpunkte durch Schichten; Durchsagen, Protokollnotizen und
 // Rückblick als CSV; Orte mit Adresse und Routen-Link, Zuständige je Punkt, Team-Link für Dienstleister, Druckansichten;
-// Vorwarnung fürs Team per Push mit Push-Abo, Einstellung und Versandprotokoll).
+// Vorwarnung fürs Team per Push mit Push-Abo, Einstellung und Versandprotokoll; Protokoll von Sitzungen aus rsvp-app im
+// Rückblick, nur angezeigt).
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -178,6 +179,15 @@ export default function DatenschutzPage() {
             uns das mit derselben Kennung, und wir beenden deinen Zugang.
           </p>
           <p className="mt-2">
+            <strong>Protokoll von Sitzungen:</strong> Geben die Veranstalter*innen es in rsvp-app frei, zeigt der
+            Rückblick einer verknüpften Veranstaltung, wer wann gekommen und gegangen ist (Name und Uhrzeit aus dem
+            Einlass), und die Ergebnisse der Abstimmungen einer Sitzung im Abstimmungstool – bei namentlichen
+            Abstimmungen mit den Namen, bei geheimen ohne. Sehen können das nur angemeldete Konten mit Zugriff auf die
+            Veranstaltung. Wir rufen diese Angaben bei jedem Öffnen des Rückblicks frisch bei rsvp-app ab und speichern
+            sie nicht. Rechtsgrundlage ist das berechtigte Interesse der Veranstalter*innen an einem vollständigen
+            Protokoll (Art. 6 Abs. 1 lit. f DSGVO).
+          </p>
+          <p className="mt-2">
             Steht an einem Programmpunkt eine Adresse, öffnet <strong>„Route öffnen“</strong> einen Kartendienst (Google
             Maps oder einen von den Veranstalter*innen hinterlegten Link) in einem neuen Tab. Erst mit diesem Klick
             verbindet sich dein Browser mit dem Kartendienst, und es gilt dessen Datenschutzerklärung; vorher wird nichts
@@ -263,7 +273,9 @@ export default function DatenschutzPage() {
           <p className="mt-2">
             <strong>rsvp-app:</strong> Bei Abläufen, die mit einer Veranstaltung in rsvp-app verknüpft sind, schickt
             rsvp-app uns die unter Punkt 5 genannten Kennungen und ob deine Zusage noch gilt (signiert, über eine
-            verschlüsselte Verbindung). Wir schicken rsvp-app nichts.
+            verschlüsselte Verbindung). Wir schicken rsvp-app nur eine signierte Anfrage mit den Kennungen der
+            Veranstaltung, wenn jemand den Rückblick öffnet, und erhalten das Protokoll von Sitzungen (siehe Punkt 5),
+            sofern es dort freigegeben ist.
           </p>
           <p className="mt-2">
             <strong>Schichten:</strong> Ist ein Ablauf mit einem Event in der Anwendung „Schichten“ (Dienste für

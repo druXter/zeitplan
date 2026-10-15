@@ -259,19 +259,27 @@ export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConf
           )
         })}
       </fieldset>
-      {selected === 'RSVP' && (
+      {(selected === 'RSVP' || rsvp.configured) && (
         <div className="space-y-3">
           <div>
-            <label htmlFor="rsvp-event-id" className={labelClass}>Termin in rsvp-app (id)</label>
+            <label htmlFor="rsvp-event-id" className={labelClass}>Termin in rsvp-app (id{selected === 'RSVP' ? '' : ', optional'})</label>
             <input
-              id="rsvp-event-id" name="rsvpEventId" required defaultValue={rsvp.rsvpEventId} maxLength={40} pattern="[a-z0-9]{10,40}"
+              id="rsvp-event-id" name="rsvpEventId" required={selected === 'RSVP'} defaultValue={rsvp.rsvpEventId} maxLength={40} pattern="[a-z0-9]{10,40}"
               autoComplete="off" spellCheck={false} className={`${input} font-mono text-sm`} placeholder="z. B. cm1a2b3c4d5e6f7g8h9"
+              aria-describedby="rsvp-event-hint"
             />
+            {selected !== 'RSVP' && (
+              <p id="rsvp-event-hint" className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                Auch ohne Zugang „nur mit Zusage“: Gibt der Termin in rsvp-app Kommen und Gehen oder die Beschlüsse einer
+                Sitzung frei, zeigt der Rückblick sie beim jeweiligen Punkt. Leer = nicht verknüpft.
+              </p>
+            )}
           </div>
           <CopyableField label="Zeitplan-Link – in rsvp-app beim Termin eintragen" value={rsvp.timelineLink} />
           <p className="text-xs text-gray-600 dark:text-gray-400">
             Die Verknüpfung gilt erst, wenn beide Seiten die jeweils andere eingetragen haben. rsvp-app erfährt dabei nichts
-            über den Ablauf, und Zeitplan bekommt keine Namen oder Adressen – nur „diese Zusage gilt“.
+            über den Ablauf. Zeitplan bekommt keine Namen oder Adressen – nur „diese Zusage gilt“ und, wenn der Termin es dort
+            freigibt, Kommen und Gehen und Beschlüsse für den Rückblick (nur angezeigt, nicht gespeichert).
           </p>
         </div>
       )}

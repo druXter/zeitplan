@@ -1,5 +1,7 @@
 import { createServer, type Server } from 'node:http'
-import { createMessage, type Message } from '../../app/lib/rsvp/token'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { createMessage, openMessage, signMessage, type Message } from '../../app/lib/rsvp/token'
 
 // Test-Doppel für rsvp-app (Phase 7b), damit die E2E-Tests ohne echte rsvp-app laufen. Es tut, was rsvp-app nach
 // Konzept Abschnitt 8 tun soll: Beim Klick auf "Zeitplan" (hier GET /zeitplan/<timelineEventId>?rsvpEvent=&rsvp=)
@@ -36,10 +38,58 @@ export async function sendRsvpChange(
   return fetch(`${zeitplanOrigin}/api/rsvp-webhook`, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body })
 }
 
+// Protokoll für den Rückblick (Idee L7, POST /api/timeline/protocol): pro Zeitplan-Event, was rsvp-app freigibt. Die
+// Tests laufen in einem anderen Prozess als das Doppel (global-setup) - deshalb über eine Datei.
+const PROTOCOLS = join('.e2e', 'rsvp-protocols.json')
+
+export type ProtocolScenario = {
+  presence?: { at: string; name: string; change: 'IN' | 'OUT' | 'BACK' }[] | null
+  decisions?: object[] | null
+  decisionsState?: 'ok' | 'off' | 'unreachable'
+  status?: number
+  /** Antwort mit falschem Secret signieren */
+  badSignature?: boolean
+}
+
+export function setProtocol(timelineEventId: string, scenario: ProtocolScenario) {
+  mkdirSync('.e2e', { recursive: true })
+  let all: Record<string, ProtocolScenario> = {}
+  try { all = JSON.parse(readFileSync(PROTOCOLS, 'utf8')) } catch { /* noch keine Datei */ }
+  all[timelineEventId] = scenario
+  writeFileSync(PROTOCOLS, JSON.stringify(all))
+}
+
+/** Prüft die Anfrage wie rsvp-app (Secret, Art, Empfänger) und antwortet mit dem festgelegten Protokoll. */
+function protocolResponse(body: string, zeitplanOrigin: string): { status: number; body: string } {
+  const request = openMessage(body, TEST_RSVP_TIMELINE_SECRET) as Record<string, unknown> | null
+  const now = Math.floor(Date.now() / 1000)
+  if (!request || request.typ !== 'protocol-request' || request.aud !== RSVP_ORIGIN || typeof request.exp !== 'number' || request.exp <= now) return { status: 401, body: '' }
+  let all: Record<string, ProtocolScenario> = {}
+  try { all = JSON.parse(readFileSync(PROTOCOLS, 'utf8')) } catch { /* keine Szenarien */ }
+  const scenario = all[String(request.timelineEventId)]
+  if (!scenario) return { status: 404, body: '' }
+  if (scenario.status && scenario.status !== 200) return { status: scenario.status, body: '' }
+  const reply = signMessage({
+    typ: 'protocol', aud: zeitplanOrigin, timelineEventId: request.timelineEventId, rsvpEventId: request.rsvpEventId,
+    presence: scenario.presence ?? null, decisions: scenario.decisions ?? null, decisionsState: scenario.decisionsState ?? (scenario.decisions ? 'ok' : 'off'),
+    iat: now, exp: now + 300
+  }, scenario.badSignature ? 'falsch-falsch-falsch-falsch-falsch-falsch' : TEST_RSVP_TIMELINE_SECRET)
+  return { status: 200, body: reply }
+}
+
 /** `localhost` löst zu ::1 oder 127.0.0.1 auf - auf beiden Loopback-Adressen lauschen, nie nach außen. */
 export async function startRsvpServer(zeitplanOrigin: string): Promise<Server[]> {
   const handler = (request: import('node:http').IncomingMessage, response: import('node:http').ServerResponse) => {
     const url = new URL(request.url ?? '/', RSVP_ORIGIN)
+    if (request.method === 'POST' && url.pathname === '/api/timeline/protocol') {
+      let body = ''
+      request.on('data', chunk => { body += chunk })
+      request.on('end', () => {
+        const answer = protocolResponse(body, zeitplanOrigin)
+        response.writeHead(answer.status, { 'Content-Type': 'text/plain' }).end(answer.body)
+      })
+      return
+    }
     const match = /^\/zeitplan\/([a-z0-9]+)$/.exec(url.pathname)
     const rsvpEventId = url.searchParams.get('rsvpEvent')
     const rsvpId = url.searchParams.get('rsvp')

@@ -4,7 +4,8 @@ import { requireUser } from '../../../../lib/auth'
 import { loadEventOr404 } from '../../../../lib/events/store'
 import { describeAction, historyTitle, parseState } from '../../../../lib/live/history'
 import { PLAN_LIMITS } from '../../../../lib/planning/rules'
-import { formatDeviation, OUTCOME_LABELS, type ReviewOutcome, type ReviewRow } from '../../../../lib/review/review'
+import { formatDeviation, OUTCOME_LABELS, placeByTime, type ReviewOutcome, type ReviewRow } from '../../../../lib/review/review'
+import { decisionNames, describeProtocolEntry, loadProtocol, type ProtocolEntry } from '../../../../lib/rsvp/protocol'
 import { loadReview, type ReviewItem } from '../../../../lib/review/store'
 import { formatDate, formatDuration, formatItemClock } from '../../../../lib/timezone'
 import Badge from '../../../../ui/badge'
@@ -32,7 +33,8 @@ const HISTORY_LIMIT = 2000
  * Rückblick (Idee L24): Plan gegen Ist je Punkt, Zusammenfassung, Protokollnotizen und der vollständige Verlauf -
  * zum Auswerten nach dem Event und als Dokumentation einer Sitzung (Tagesordnungspunkte als Programmpunkte). Für
  * alle Konten mit Zugriff; geheime Punkte ohne Eintrag nur mit Platzhalter, ohne Notizen (loadPlan). Druckbar,
- * dazu CSV. Die Rechnung steht in app/lib/review/review.ts.
+ * dazu CSV. Die Rechnung steht in app/lib/review/review.ts. Gibt der verknüpfte Termin in rsvp-app es frei (Idee L7),
+ * stehen Kommen und Gehen und die Beschlüsse der Sitzung beim Punkt, der gerade lief (loadProtocol, nur angezeigt).
  */
 export default async function ReviewPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ noted?: string; noteError?: string }>
@@ -41,15 +43,17 @@ export default async function ReviewPage({ params, searchParams }: {
   const user = await requireUser(`/admin/events/${id}/rueckblick`)
   const event = await loadEventOr404(id, user)
   const search = await searchParams
-  const [{ tracks, rows, summary }, actions] = await Promise.all([
+  const [{ tracks, rows, summary }, actions, protocol] = await Promise.all([
     loadReview(event.id, user.id),
     prisma.liveAction.findMany({
       where: { eventId: event.id },
       orderBy: { createdAt: 'asc' },
       take: HISTORY_LIMIT,
       include: { actor: { select: { email: true, name: true } }, undoneBy: { select: { email: true, name: true } } }
-    })
+    }),
+    loadProtocol(event)
   ])
+  const placed = protocol.state === 'ok' ? placeByTime(rows, protocol.entries) : null
 
   const clock = (date: Date) => formatItemClock(date, event.date, event.timezone)
   const trackNames = new Map(tracks.map(track => [track.id, track.name]))
@@ -91,6 +95,8 @@ export default async function ReviewPage({ params, searchParams }: {
           <Notice tone="info">Das Event war noch nicht live – verglichen wird mit dem aktuellen Plan statt mit einem eingefrorenen Ursprungsplan.</Notice>
         )}
         {event.status === 'LIVE' && <Notice tone="info">Das Event läuft noch – der Rückblick zeigt den Stand von jetzt.</Notice>}
+        {protocol.state === 'unreachable' && <Notice tone="warning">Anwesenheit und Beschlüsse ließen sich gerade nicht aus rsvp-app laden – bitte später neu laden.</Notice>}
+        {protocol.state === 'ok' && protocol.decisions === 'unreachable' && <Notice tone="warning">Die Beschlüsse ließen sich gerade nicht aus dem Abstimmungstool laden – bitte später neu laden.</Notice>}
 
         {rows.length === 0 ? (
           <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-sm text-gray-600 dark:text-gray-400">Noch keine Programmpunkte.</p>
@@ -108,6 +114,12 @@ export default async function ReviewPage({ params, searchParams }: {
                 </dd>
                 <dt className="text-gray-600 dark:text-gray-400">Punkte</dt>
                 <dd>{countText}</dd>
+                {protocol.state === 'ok' && (
+                  <>
+                    <dt className="text-gray-600 dark:text-gray-400">Protokoll</dt>
+                    <dd data-protocol-summary>{protocolSummary(protocol.entries, protocol.presence, protocol.decisions === 'ok')}</dd>
+                  </>
+                )}
                 {summary.overruns.length > 0 && (
                   <>
                     <dt className="text-gray-600 dark:text-gray-400">Überzogen</dt>
@@ -121,11 +133,22 @@ export default async function ReviewPage({ params, searchParams }: {
               <h2 id="review-items" className="font-bold">Punkte</h2>
               <ol className="bg-white dark:bg-gray-800 rounded-lg shadow print:shadow-none print:border divide-y divide-gray-200 dark:divide-gray-700">
                 {rows.map(row => (
-                  <ReviewEntry key={row.item.id} row={row} eventId={event.id} clock={clock} trackName={tracks.length > 1 ? trackNames.get(row.item.trackId) ?? null : null} />
+                  <ReviewEntry key={row.item.id} row={row} eventId={event.id} clock={clock} trackName={tracks.length > 1 ? trackNames.get(row.item.trackId) ?? null : null}
+                    protocol={placed?.byItem.get(row.item.id) ?? []} />
                 ))}
               </ol>
             </section>
           </>
+        )}
+
+        {placed && placed.outside.length > 0 && (
+          <section aria-labelledby="review-outside" className="space-y-2">
+            <h2 id="review-outside" className="font-bold">Außerhalb der Punkte</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Kommen, Gehen und Beschlüsse vor dem ersten Punkt, in Pausen oder danach.</p>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow print:shadow-none print:border p-3">
+              <ProtocolList entries={placed.outside} clock={clock} testId="protocol-outside" />
+            </div>
+          </section>
         )}
 
         <section aria-labelledby="review-history" className="space-y-2 print:break-before-page">
@@ -149,8 +172,38 @@ export default async function ReviewPage({ params, searchParams }: {
   )
 }
 
-function ReviewEntry({ row, eventId, clock, trackName }: {
-  row: ReviewRow<ReviewItem>; eventId: string; clock: (date: Date) => string; trackName: string | null
+/** "12× Kommen oder Gehen · 3 Beschlüsse" - was aus rsvp-app freigegeben ist. */
+function protocolSummary(entries: ProtocolEntry[], presence: boolean, decisions: boolean): string {
+  const moves = entries.filter(entry => entry.kind === 'presence').length
+  const resolutions = entries.length - moves
+  return [
+    presence && `${moves}× Kommen oder Gehen`,
+    decisions && `${resolutions} ${resolutions === 1 ? 'Beschluss' : 'Beschlüsse'}`
+  ].filter(Boolean).join(' · ')
+}
+
+/** Kommen, Gehen und Beschlüsse mit Uhrzeit (aus rsvp-app, nur angezeigt). */
+function ProtocolList({ entries, clock, testId }: { entries: ProtocolEntry[]; clock: (date: Date) => string; testId: string }) {
+  return (
+    <ol data-testid={testId} className="text-sm space-y-0.5">
+      {entries.map((entry, index) => {
+        const names = decisionNames(entry)
+        return (
+          <li key={index} className={`flex gap-2 ${entry.kind === 'decision' ? 'font-medium' : 'text-gray-700 dark:text-gray-300'}`}>
+            <span className="w-12 shrink-0 tabular-nums text-gray-600 dark:text-gray-400">{clock(entry.at)}</span>
+            <span className="min-w-0">
+              {entry.kind === 'decision' ? '🗳️ ' : entry.change === 'OUT' ? '← ' : '→ '}{describeProtocolEntry(entry)}
+              {names && <span className="block text-xs font-normal text-gray-600 dark:text-gray-400">{names}</span>}
+            </span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+function ReviewEntry({ row, eventId, clock, trackName, protocol }: {
+  row: ReviewRow<ReviewItem>; eventId: string; clock: (date: Date) => string; trackName: string | null; protocol: ProtocolEntry[]
 }) {
   const { item } = row
   const range = (start: Date | null, end: Date | null) => (start ? `${clock(start)}–${end ? clock(end) : '…'}` : '–')
@@ -181,6 +234,7 @@ function ReviewEntry({ row, eventId, clock, trackName }: {
           {deviations && <span className="text-gray-600 dark:text-gray-400"> · {deviations}</span>}
         </p>
         {row.outcome === 'cancelled' && item.cancelReason && <p className="text-sm text-gray-700 dark:text-gray-300">Grund: {item.cancelReason}</p>}
+        {protocol.length > 0 && <ProtocolList entries={protocol} clock={clock} testId="protocol-item" />}
         {item.resultNote && <p data-result-note className="text-sm bg-gray-50 dark:bg-gray-900 print:bg-white rounded px-2 py-1 whitespace-pre-line">{item.resultNote}</p>}
         {item.canSee && (
           <details className="print:hidden">

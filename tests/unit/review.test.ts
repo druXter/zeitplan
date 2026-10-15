@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildReview, formatDeviation, reviewTable, type ReviewCsvItem } from '../../app/lib/review/review'
+import { buildReview, formatDeviation, placeByTime, reviewTable, type ReviewCsvItem } from '../../app/lib/review/review'
 import { toCsv } from '../../app/lib/csv'
 import { at, hhmm } from './schedule/fixtures'
 
@@ -84,5 +84,19 @@ describe('reviewTable + toCsv', () => {
     expect(csv).toContain(';"\'=HYPERLINK(""x"")"\r\n')
     expect(csv).toContain(';-9;') // negative Abweichung bleibt eine Zahl
     expect(csv).toContain('zurückgestellt, nicht nachgeholt')
+  })
+})
+
+describe('placeByTime (Idee L7, Protokoll aus rsvp-app)', () => {
+  it('ordnet dem Punkt zu, der lief; Pausen, vorher und nachher landen außerhalb', () => {
+    const { rows } = buildReview(meeting(), ['main'])
+    const entries = ['17:50', '18:05', '18:12', '18:30', '18:58', '19:10', '19:35', '20:00'].map(time => ({ at: at(time), time }))
+    const { byItem, outside } = placeByTime(rows, entries)
+    expect(byItem.get('top1')?.map(e => e.time)).toEqual(['18:05'])
+    // 18:12: TOP 1 endet, TOP 2 beginnt - der zuletzt begonnene gewinnt
+    expect(byItem.get('top2')?.map(e => e.time)).toEqual(['18:12', '18:30'])
+    expect(byItem.get('dringend')?.map(e => e.time)).toEqual(['18:58'])
+    expect(byItem.get('top5')?.map(e => e.time)).toEqual(['19:35'])
+    expect(outside.map(e => e.time)).toEqual(['17:50', '19:10', '20:00'])
   })
 })

@@ -4,8 +4,7 @@ import { baseUrl } from '../../../../lib/base-url'
 import { loadEventOr404 } from '../../../../lib/events/store'
 import { formatDate } from '../../../../lib/timezone'
 import { isGuestVisibleStatus } from '../../../../lib/guest/access'
-import { buttonClass } from '../../../../ui/kit'
-import PrintButton from '../../../../ui/print-button'
+import { buttonClass, PrintButton } from '../../../../ui/kit'
 
 export const dynamic = 'force-dynamic'
 

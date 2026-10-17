@@ -5,8 +5,7 @@ import { canManageEvent } from '../../../lib/permissions'
 import { linkedRsvpEventId } from '../../../lib/rsvp/token'
 import { linkedShiftsEventId } from '../../../lib/shifts/token'
 import { formatDate } from '../../../lib/timezone'
-import { Badge, ButtonLink, Main, PageHeader } from '../../../ui/kit'
-import NavLink from '../../../ui/nav-link'
+import { Badge, ButtonLink, Main, PageHeader, Tabs } from '../../../ui/kit'
 import StatusBadge from '../../../ui/status-badge'
 
 const ACCESS_BADGES = { PUBLIC: null, CODE: 'Zugangscode', ACCOUNT: 'nur mit Konto', RSVP: 'nur mit Zusage' } as const
@@ -50,9 +49,7 @@ export default async function EventLayout({ children, params }: { children: Reac
           }
           actions={<ButtonLink href={`/${event.slug}`} external size="sm">Gästeansicht ↗</ButtonLink>}
         />
-        <nav className="-mx-4 mb-6 flex overflow-x-auto border-b border-gray-200 px-4 dark:border-gray-700" aria-label="Bereiche des Events">
-          {tabs.map(tab => <NavLink key={tab.href} href={tab.href} exact={tab.exact} match={tab.match} variant="tab">{tab.label}</NavLink>)}
-        </nav>
+        <Tabs label="Bereiche des Events" items={tabs} />
       </div>
       {children}
     </Main>

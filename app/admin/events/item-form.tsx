@@ -1,11 +1,11 @@
 'use client'
 
+import { SubmitButton } from '../../ui/kit'
 import { useActionState, useState } from 'react'
 import type { ItemVisibility } from '@prisma/client'
 import { saveItem } from './plan-actions'
 import { ITEM_VISIBILITY_LABELS, PLAN_LIMITS } from '../../lib/planning/rules'
 import { Feedback, input, labelClass } from './event-forms'
-import SubmitButton from '../../ui/submit-button'
 
 export type ItemFormValues = {
   title: string

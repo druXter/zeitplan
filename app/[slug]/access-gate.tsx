@@ -1,11 +1,10 @@
 'use client'
 
+import { SubmitButton, Notice } from '../ui/kit'
 import Link from 'next/link'
 import { useActionState, useSyncExternalStore } from 'react'
 import type { GuestAccess } from '@prisma/client'
 import { enterAccessCode } from './actions'
-import SubmitButton from '../ui/submit-button'
-import Notice from '../ui/notice'
 
 const noSubscription = () => () => {}
 

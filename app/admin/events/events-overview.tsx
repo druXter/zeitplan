@@ -5,10 +5,8 @@ import { prisma } from '../../lib/prisma'
 import type { CurrentUser } from '../../lib/auth'
 import { canCreateEvents } from '../../lib/permissions'
 import { formatDate, formatItemClock, utcToZonedDate } from '../../lib/timezone'
-import { Badge, ButtonLink, EmptyState, Main, PageHeader, sectionTitleClass } from '../../ui/kit'
+import { Badge, ButtonLink, EmptyState, Main, PageHeader, sectionTitleClass, Notice, InstallHint } from '../../ui/kit'
 import StatusBadge from '../../ui/status-badge'
-import Notice from '../../ui/notice'
-import InstallHint from '../../ui/install-hint'
 
 const CURRENT: EventStatus[] = ['DRAFT', 'PUBLISHED', 'LIVE']
 

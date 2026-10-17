@@ -1,5 +1,5 @@
+import { Notice } from '../ui/kit'
 import type { Metadata } from 'next'
-import Notice from '../ui/notice'
 
 export const metadata: Metadata = { title: 'Zeitplan öffnen', robots: { index: false, follow: false } }
 

@@ -1,4 +1,5 @@
 // app/admin/users/page.tsx
+import { SubmitButton, Notice, ConfirmForm, CopyableField } from '../../ui/kit'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { prisma } from '../../lib/prisma'
@@ -6,11 +7,7 @@ import { INVITE_LINK_COOKIE, requireUser } from '../../lib/auth'
 import { ROLE_LABELS } from '../../lib/roles'
 import { createUser, deleteUser, resendInvite, updateUserRole } from '../../auth-actions'
 import { isMailConfigured } from '../../lib/mail'
-import SubmitButton from '../../ui/submit-button'
-import Notice from '../../ui/notice'
 import { issuerLabel } from '../../lib/suite'
-import ConfirmForm from '../../ui/confirm-form'
-import CopyableField from '../../ui/copyable-field'
 
 export const dynamic = 'force-dynamic'
 

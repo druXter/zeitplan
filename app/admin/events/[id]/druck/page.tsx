@@ -11,8 +11,7 @@ import { loadPlan, type PlanTrack } from '../../../../lib/planning/store'
 import type { PlanItem } from '../../../../lib/planning/items'
 import { placeIndex, type Place } from '../../../../lib/planning/places'
 import { formatDate, formatDateTime, formatDuration, formatItemClock } from '../../../../lib/timezone'
-import PrintButton from '../../../../ui/print-button'
-import { Segmented } from '../../../../ui/kit'
+import { Segmented, PrintButton } from '../../../../ui/kit'
 
 export const dynamic = 'force-dynamic'
 

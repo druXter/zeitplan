@@ -1,3 +1,4 @@
+import { Notice } from '../../../../ui/kit'
 import { requireUser } from '../../../../lib/auth'
 import { loadEventOr404 } from '../../../../lib/events/store'
 import { loadPlan } from '../../../../lib/planning/store'
@@ -5,7 +6,6 @@ import type { PlanItem } from '../../../../lib/planning/items'
 import { isActive, project, whatIf, LIVE_LIMITS, type WhatIfRefusal, type WhatIfRow } from '../../../../lib/schedule'
 import { formatDuration, formatItemClock } from '../../../../lib/timezone'
 import Badge from '../../../../ui/badge'
-import Notice from '../../../../ui/notice'
 
 export const dynamic = 'force-dynamic'
 

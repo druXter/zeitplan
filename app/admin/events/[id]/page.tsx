@@ -9,10 +9,7 @@ import { loadPlan } from '../../../lib/planning/store'
 import { formatItemClock } from '../../../lib/timezone'
 import { crewToken, displayLinkConfigured, displayToken } from '../../../lib/guest/tokens'
 import { changeEventStatus, regenerateDisplayLink, setCrewLink } from '../actions'
-import ConfirmForm from '../../../ui/confirm-form'
-import CopyableField from '../../../ui/copyable-field'
-import { ButtonLink, buttonClass, Card, Stat } from '../../../ui/kit'
-import Notice from '../../../ui/notice'
+import { ButtonLink, buttonClass, Card, Stat, ConfirmForm, CopyableField, Notice } from '../../../ui/kit'
 
 export const dynamic = 'force-dynamic'
 

@@ -10,9 +10,7 @@ import { linkedRsvpEventId, rsvpConfigured, timelineLinkFor } from '../../../../
 import { linkedShiftsEventId, shiftsConfigured, shiftsLinkUrl, shiftsOrigin } from '../../../../lib/shifts/token'
 import { deleteEvent, shareEvent, unshareEvent } from '../../actions'
 import { EventOptionsForm, EventSettingsForm, GuestAccessForm, ShiftsLinkForm } from '../../event-forms'
-import ConfirmForm from '../../../../ui/confirm-form'
-import { buttonClass, Card, inputClass, SettingsSection } from '../../../../ui/kit'
-import Notice from '../../../../ui/notice'
+import { buttonClass, Card, inputClass, SettingsSection, ConfirmForm, Notice } from '../../../../ui/kit'
 
 export const dynamic = 'force-dynamic'
 

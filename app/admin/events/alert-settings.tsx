@@ -1,8 +1,8 @@
+import { Notice } from '../../ui/kit'
 import type { AlertSetting } from '@prisma/client'
 import { saveAlertSetting } from './alert-actions'
 import { ALERT_LEAD_OPTIONS, ALERT_SCOPE_LABELS } from '../../lib/alerts/due'
 import PushToggle from '../../ui/push-toggle'
-import Notice from '../../ui/notice'
 
 const ALERT_NOTICES: Record<string, { tone: 'success' | 'error'; text: string }> = {
   saved: { tone: 'success', text: 'Vorwarnung gespeichert.' },

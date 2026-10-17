@@ -32,9 +32,9 @@ Moderator\*innen steuern am Tag selbst mit dem Telefon, Gäste lesen den Ablauf 
 
 ## Gestaltung
 
-* Bausteine in `app/ui/kit.tsx`, dieselben wie in den anderen Tools (Card, Badge, Stat, ButtonLink/buttonClass,
-  SettingsSection, PageHeader, Main, EmptyState, Segmented, inputClass). Hinweise über `app/ui/notice.tsx` mit
-  denselben Farben; `app/ui/badge.tsx` und `app/ui/status-badge.tsx` nutzen den Badge aus dem Kit.
+* Bausteine aus `suite-kit/ui` (seit suite-kit v0.3.0 gemeinsam für alle Tools, Regeln in `docs/DESIGN.md` dort),
+  re-exportiert in `app/ui/kit.tsx`; Kopf- und Fußzeile sind `AppHeader`/`AppFooter`, die Reiter `Tabs`, Grundregeln
+  kommen aus `suite-kit/theme.css`. `app/ui/badge.tsx` und `app/ui/status-badge.tsx` nutzen den Badge aus dem Kit.
 * Ruhig: weiß/grau, Blau nur für Hauptaktionen und den aktiven Reiter, keine Emojis an Knöpfen. Farbe trägt Bedeutung:
   Status grün veröffentlicht, rot live, grau Entwurf/beendet; amber Verspätung, Team und Durchsage; lila geheim und
   Schichten; pink rsvp-app; türkis freigegeben.

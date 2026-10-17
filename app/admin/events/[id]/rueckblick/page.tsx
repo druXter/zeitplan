@@ -8,9 +8,7 @@ import { decisionNames, describeProtocolEntry, loadProtocol, type ProtocolEntry 
 import { loadReview, type ReviewItem } from '../../../../lib/review/store'
 import { formatDate, formatDuration, formatItemClock } from '../../../../lib/timezone'
 import Badge from '../../../../ui/badge'
-import Notice from '../../../../ui/notice'
-import { buttonClass } from '../../../../ui/kit'
-import PrintButton from '../../../../ui/print-button'
+import { buttonClass, Notice, PrintButton } from '../../../../ui/kit'
 import { saveResultNote } from '../../review-actions'
 
 export const dynamic = 'force-dynamic'

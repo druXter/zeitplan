@@ -13,11 +13,9 @@ import { deletePlace } from '../../place-actions'
 import { prisma } from '../../../../lib/prisma'
 import { placeIndex, type Place } from '../../../../lib/planning/places'
 import PlaceForm from '../../place-form'
-import ConfirmForm from '../../../../ui/confirm-form'
 import PlaceLine from '../../../../ui/place-line'
-import Notice from '../../../../ui/notice'
 import Badge from '../../../../ui/badge'
-import { ButtonLink, buttonClass, Card, EmptyState, hintClass, inputClass, labelClass, Segmented, SettingsSection } from '../../../../ui/kit'
+import { ButtonLink, buttonClass, Card, EmptyState, hintClass, inputClass, labelClass, Segmented, SettingsSection, ConfirmForm, Notice } from '../../../../ui/kit'
 
 export const dynamic = 'force-dynamic'
 

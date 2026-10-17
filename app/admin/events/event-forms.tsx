@@ -5,10 +5,7 @@ import { useActionState, useState } from 'react'
 import { createEvent, duplicateEvent, importEvent, updateEventOptions, updateEventSettings, updateGuestAccess, updateShiftsLink, type FormState } from './actions'
 import { suggestSlug, SLUG_MAX_LENGTH } from '../../lib/slugs'
 import { DESCRIPTION_MAX_LENGTH, OPTION_BOUNDS, TITLE_MAX_LENGTH, type EventOptions } from '../../lib/events/settings'
-import SubmitButton from '../../ui/submit-button'
-import CopyableField from '../../ui/copyable-field'
-import Notice from '../../ui/notice'
-import { buttonClass, hintClass, inputClass, labelClass } from '../../ui/kit'
+import { buttonClass, hintClass, inputClass, labelClass, SubmitButton, CopyableField, Notice } from '../../ui/kit'
 
 export function Feedback({ state }: { state: FormState }) {
   if (!state) return null

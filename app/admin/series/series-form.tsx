@@ -1,11 +1,11 @@
 'use client'
 
+import { SubmitButton } from '../../ui/kit'
 import { useActionState, useState } from 'react'
 import { createSeries, updateSeries } from './actions'
 import { suggestSlug, SLUG_MAX_LENGTH } from '../../lib/slugs'
 import { TITLE_MAX_LENGTH } from '../../lib/events/settings'
 import { Feedback, input, labelClass } from '../events/event-forms'
-import SubmitButton from '../../ui/submit-button'
 
 /** Titel + Adresse einer Reihe; solange die Adresse nicht selbst geändert wurde, folgt sie dem Titel. */
 export default function SeriesForm({ baseUrl, seriesId, values }: { baseUrl: string; seriesId?: string; values?: { title: string; slug: string } }) {

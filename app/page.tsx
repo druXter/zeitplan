@@ -1,7 +1,7 @@
 // app/page.tsx
+import { InstallHint } from './ui/kit'
 import Link from 'next/link'
 import { APP_NAME } from './lib/app'
-import InstallHint from './ui/install-hint'
 
 /**
  * Startseite. Gäste kommen über den Link oder QR-Code zu ihrem Event (/<slug>) und sehen diese

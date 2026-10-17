@@ -1,3 +1,4 @@
+import { Notice } from './kit'
 import type { GuestItem } from '../lib/schedule'
 import { ITEM_VISIBILITY_LABELS } from '../lib/planning/rules'
 import type { PlanTrack } from '../lib/planning/store'
@@ -7,7 +8,6 @@ import { myItems, type TeamItem, type TeamView } from '../lib/team/view'
 import { timelineSections } from '../lib/timeline'
 import { formatDuration, formatItemClock } from '../lib/timezone'
 import Badge from './badge'
-import Notice from './notice'
 import PlaceLine from './place-line'
 
 /**

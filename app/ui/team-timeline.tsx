@@ -61,7 +61,7 @@ export default function TeamTimeline({ view, event, now, announcement, meId, min
     <>
       {announcement && (
         <Notice tone="info">
-          <span className="font-bold">Durchsage {announcement.until ? `bis ${clock(announcement.until)} Uhr` : 'ohne Ablauf'}:</span> {announcement.text}
+          <span className="font-semibold">Durchsage {announcement.until ? `bis ${clock(announcement.until)} Uhr` : 'ohne Ablauf'}:</span> {announcement.text}
         </Notice>
       )}
       {view.loop && <Notice tone="error">„Wartet auf“ ergibt eine Schleife – die Prognose rechnet vorerst ohne Zusammenführungen.</Notice>}
@@ -78,8 +78,8 @@ export default function TeamTimeline({ view, event, now, announcement, meId, min
       )}
 
       {mine.length > 0 && !mineOnly && (
-        <section data-mine className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-2">
-          <h2 className="text-lg font-bold">Meine Punkte</h2>
+        <section data-mine className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-2">
+          <h2 className="text-lg font-semibold">Meine Punkte</h2>
           <ul className="space-y-1">
             {mine.slice(0, 5).map(({ item, minutesUntil }) => (
               <li key={item.id} className="flex flex-wrap gap-x-2 text-sm">
@@ -97,7 +97,7 @@ export default function TeamTimeline({ view, event, now, announcement, meId, min
       )}
 
       {listed.length === 0 && (
-        <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-sm text-gray-600 dark:text-gray-400">
+        <p className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 text-sm text-gray-600 dark:text-gray-400">
           {mineOnly ? 'Für keinen Punkt als zuständig eingetragen.' : 'Noch keine Programmpunkte.'}
         </p>
       )}
@@ -106,8 +106,10 @@ export default function TeamTimeline({ view, event, now, announcement, meId, min
       {sections.later.length > 0 && <Section title="Danach"><List>{sections.later.map(item => row(item))}</List></Section>}
       {deferred.length > 0 && <Section title="Zurückgestellt"><List>{deferred.map(item => row(item))}</List></Section>}
       {sections.past.length > 0 && (
-        <details open={sections.now.length + sections.next.length + sections.later.length === 0}>
-          <summary className="cursor-pointer text-lg font-bold py-1">Vorbei ({sections.past.length})</summary>
+        <details open={sections.now.length + sections.next.length + sections.later.length === 0} className="group">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-1 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <span aria-hidden className="inline-block transition group-open:rotate-90">▸</span> Vorbei ({sections.past.length})
+          </summary>
           <div className="mt-2"><List>{sections.past.map(item => row(item))}</List></div>
         </details>
       )}
@@ -116,11 +118,11 @@ export default function TeamTimeline({ view, event, now, announcement, meId, min
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="space-y-2"><h2 className="text-lg font-bold">{title}</h2>{children}</section>
+  return <section className="space-y-2"><h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{title}</h2>{children}</section>
 }
 
 function List({ children }: { children: React.ReactNode }) {
-  return <ul className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">{children}</ul>
+  return <ul className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm divide-y divide-gray-100 dark:divide-gray-700">{children}</ul>
 }
 
 function TeamRow({ item, track, guest, original, place, assignees, mine, waitsFor, clock, highlight }: {
@@ -137,13 +139,13 @@ function TeamRow({ item, track, guest, original, place, assignees, mine, waitsFo
 }) {
   const inactive = item.status === 'DEFERRED' || item.status === 'CANCELLED'
   return (
-    <li id={`punkt-${item.id}`} data-item={item.id} className={`p-3 flex gap-3 ${highlight ? 'bg-blue-50 dark:bg-blue-950/50 border-2 border-blue-600 rounded-lg shadow' : ''} ${inactive ? 'opacity-70' : ''}`}>
-      <div className="w-28 shrink-0 text-sm tabular-nums">
-        <div className="font-bold">{clock(item.expectedStart)}</div>
+    <li id={`punkt-${item.id}`} data-item={item.id} className={`scroll-mt-20 p-3 flex gap-3 ${highlight ? 'rounded-xl border-2 border-blue-500 bg-blue-50 shadow-sm dark:border-blue-600 dark:bg-blue-950/50' : ''} ${inactive ? 'opacity-70' : ''}`}>
+      <div className="w-20 shrink-0 text-sm tabular-nums sm:w-28">
+        <div className="font-semibold">{clock(item.expectedStart)}</div>
         <div className="text-gray-600 dark:text-gray-400">bis {clock(item.expectedEnd)}</div>
         {item.delayMin !== 0 && (
           <div className="text-xs">
-            <span className={`font-bold ${item.delayMin > 0 ? 'text-amber-800 dark:text-amber-200' : 'text-green-800 dark:text-green-200'}`}>{item.delayMin > 0 ? `+${item.delayMin}` : `−${-item.delayMin}`}</span>{' '}
+            <span className={`font-semibold ${item.delayMin > 0 ? 'text-amber-800 dark:text-amber-200' : 'text-green-800 dark:text-green-200'}`}>{item.delayMin > 0 ? `+${item.delayMin}` : `−${-item.delayMin}`}</span>{' '}
             <span className="text-gray-600 dark:text-gray-400">Plan {clock(item.plannedStart)}</span>
           </div>
         )}
@@ -174,7 +176,7 @@ function TeamRow({ item, track, guest, original, place, assignees, mine, waitsFo
         {item.location && <PlaceLine location={item.location} place={place} />}
         {assignees.length > 0 && <p className="text-sm text-gray-700 dark:text-gray-300">Zuständig: {assignees.join(', ')}</p>}
         {item.description && <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{item.description}</p>}
-        {item.internalNote && <p className="text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 rounded px-2 py-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}
+        {item.internalNote && <p className="text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 rounded-lg px-2 py-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}
         {waitsFor.length > 0 && <p className="text-xs text-gray-600 dark:text-gray-400">wartet auf: {waitsFor.join(', ')}</p>}
       </div>
     </li>

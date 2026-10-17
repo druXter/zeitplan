@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { prisma } from '../../../../lib/prisma'
 import { requireUser } from '../../../../lib/auth'
 import { loadEventOr404 } from '../../../../lib/events/store'
@@ -10,8 +9,8 @@ import { loadReview, type ReviewItem } from '../../../../lib/review/store'
 import { formatDate, formatDuration, formatItemClock } from '../../../../lib/timezone'
 import Badge from '../../../../ui/badge'
 import Notice from '../../../../ui/notice'
+import { buttonClass } from '../../../../ui/kit'
 import PrintButton from '../../../../ui/print-button'
-import StatusBadge from '../../../../ui/status-badge'
 import { saveResultNote } from '../../review-actions'
 
 export const dynamic = 'force-dynamic'
@@ -76,99 +75,98 @@ export default async function ReviewPage({ params, searchParams }: {
   ].filter(Boolean).join(' · ')
 
   return (
-    <main className="bg-gray-50 dark:bg-gray-900 print:bg-white py-6 px-4">
-      <div className="max-w-4xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
+    <div className="max-w-4xl space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <p className="text-sm print:hidden"><Link href={`/admin/events/${event.id}`} className="text-blue-700 dark:text-blue-300 hover:underline">{event.title}</Link></p>
-          <h1 className="text-2xl font-bold">Rückblick: {event.title} <span className="print:hidden"><StatusBadge status={event.status} /></span></h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(event.date, event.timezone)}</p>
+          {/* Beim Drucken fehlt der Kopf des Events - dann steht der Titel hier. */}
+          <h2 className="text-lg font-semibold print:text-2xl">Rückblick<span className="hidden print:inline">: {event.title}</span></h2>
+          <p className="hidden text-sm text-gray-600 print:block">{formatDate(event.date, event.timezone)}</p>
         </div>
-
-        <div className="flex flex-wrap gap-2 text-sm print:hidden">
+        <div className="flex flex-wrap gap-2 print:hidden">
           <PrintButton />
-          <a href={`/admin/events/${event.id}/rueckblick/csv`} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">Als CSV herunterladen</a>
+          <a href={`/admin/events/${event.id}/rueckblick/csv`} className={buttonClass('secondary')}>Als CSV herunterladen</a>
         </div>
+      </div>
 
-        {search.noted === '1' && <div className="print:hidden"><Notice tone="success">Protokollnotiz gespeichert.</Notice></div>}
-        {search.noteError && <Notice tone="error">{NOTE_ERRORS[search.noteError] ?? 'Das hat nicht geklappt.'}</Notice>}
-        {!summary.frozen && (
-          <Notice tone="info">Das Event war noch nicht live – verglichen wird mit dem aktuellen Plan statt mit einem eingefrorenen Ursprungsplan.</Notice>
-        )}
-        {event.status === 'LIVE' && <Notice tone="info">Das Event läuft noch – der Rückblick zeigt den Stand von jetzt.</Notice>}
-        {protocol.state === 'unreachable' && <Notice tone="warning">Anwesenheit und Beschlüsse ließen sich gerade nicht aus rsvp-app laden – bitte später neu laden.</Notice>}
-        {protocol.state === 'ok' && protocol.decisions === 'unreachable' && <Notice tone="warning">Die Beschlüsse ließen sich gerade nicht aus dem Abstimmungstool laden – bitte später neu laden.</Notice>}
+      {search.noted === '1' && <div className="print:hidden"><Notice tone="success">Protokollnotiz gespeichert.</Notice></div>}
+      {search.noteError && <Notice tone="error">{NOTE_ERRORS[search.noteError] ?? 'Das hat nicht geklappt.'}</Notice>}
+      {!summary.frozen && (
+        <Notice tone="info">Das Event war noch nicht live – verglichen wird mit dem aktuellen Plan statt mit einem eingefrorenen Ursprungsplan.</Notice>
+      )}
+      {event.status === 'LIVE' && <Notice tone="info">Das Event läuft noch – der Rückblick zeigt den Stand von jetzt.</Notice>}
+      {protocol.state === 'unreachable' && <Notice tone="warning">Anwesenheit und Beschlüsse ließen sich gerade nicht aus rsvp-app laden – bitte später neu laden.</Notice>}
+      {protocol.state === 'ok' && protocol.decisions === 'unreachable' && <Notice tone="warning">Die Beschlüsse ließen sich gerade nicht aus dem Abstimmungstool laden – bitte später neu laden.</Notice>}
 
-        {rows.length === 0 ? (
-          <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-sm text-gray-600 dark:text-gray-400">Noch keine Programmpunkte.</p>
-        ) : (
-          <>
-            <section aria-labelledby="review-summary" className="bg-white dark:bg-gray-800 rounded-lg shadow print:shadow-none print:border p-4 space-y-2">
-              <h2 id="review-summary" className="font-bold">Zusammenfassung</h2>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                <dt className="text-gray-600 dark:text-gray-400">Geplant</dt>
-                <dd className="tabular-nums">{summary.plannedStart && summary.plannedEnd ? `${clock(summary.plannedStart)}–${clock(summary.plannedEnd)} Uhr` : '–'}</dd>
-                <dt className="text-gray-600 dark:text-gray-400">Tatsächlich</dt>
-                <dd className="tabular-nums">
-                  {summary.actualStart ? `${clock(summary.actualStart)}–${summary.actualEnd ? `${clock(summary.actualEnd)} Uhr` : '…'}` : 'noch nichts begonnen'}
-                  {summary.endDeviationMin !== null && ` (Ende ${formatDeviation(summary.endDeviationMin)} Min)`}
-                </dd>
-                <dt className="text-gray-600 dark:text-gray-400">Punkte</dt>
-                <dd>{countText}</dd>
-                {protocol.state === 'ok' && (
-                  <>
-                    <dt className="text-gray-600 dark:text-gray-400">Protokoll</dt>
-                    <dd data-protocol-summary>{protocolSummary(protocol.entries, protocol.presence, protocol.decisions === 'ok')}</dd>
-                  </>
-                )}
-                {summary.overruns.length > 0 && (
-                  <>
-                    <dt className="text-gray-600 dark:text-gray-400">Überzogen</dt>
-                    <dd>{summary.overruns.map(overrun => `„${titles.get(overrun.id)}“ ${formatDeviation(overrun.minutes)} Min`).join(', ')}</dd>
-                  </>
-                )}
-              </dl>
-            </section>
-
-            <section aria-labelledby="review-items" className="space-y-2">
-              <h2 id="review-items" className="font-bold">Punkte</h2>
-              <ol className="bg-white dark:bg-gray-800 rounded-lg shadow print:shadow-none print:border divide-y divide-gray-200 dark:divide-gray-700">
-                {rows.map(row => (
-                  <ReviewEntry key={row.item.id} row={row} eventId={event.id} clock={clock} trackName={tracks.length > 1 ? trackNames.get(row.item.trackId) ?? null : null}
-                    protocol={placed?.byItem.get(row.item.id) ?? []} />
-                ))}
-              </ol>
-            </section>
-          </>
-        )}
-
-        {placed && placed.outside.length > 0 && (
-          <section aria-labelledby="review-outside" className="space-y-2">
-            <h2 id="review-outside" className="font-bold">Außerhalb der Punkte</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Kommen, Gehen und Beschlüsse vor dem ersten Punkt, in Pausen oder danach.</p>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow print:shadow-none print:border p-3">
-              <ProtocolList entries={placed.outside} clock={clock} testId="protocol-outside" />
-            </div>
+      {rows.length === 0 ? (
+        <p className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 text-sm text-gray-600 dark:text-gray-400">Noch keine Programmpunkte.</p>
+      ) : (
+        <>
+          <section aria-labelledby="review-summary" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm print:shadow-none print:border p-4 space-y-2">
+            <h2 id="review-summary" className="font-semibold">Zusammenfassung</h2>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+              <dt className="text-gray-600 dark:text-gray-400">Geplant</dt>
+              <dd className="tabular-nums">{summary.plannedStart && summary.plannedEnd ? `${clock(summary.plannedStart)}–${clock(summary.plannedEnd)} Uhr` : '–'}</dd>
+              <dt className="text-gray-600 dark:text-gray-400">Tatsächlich</dt>
+              <dd className="tabular-nums">
+                {summary.actualStart ? `${clock(summary.actualStart)}–${summary.actualEnd ? `${clock(summary.actualEnd)} Uhr` : '…'}` : 'noch nichts begonnen'}
+                {summary.endDeviationMin !== null && ` (Ende ${formatDeviation(summary.endDeviationMin)} Min)`}
+              </dd>
+              <dt className="text-gray-600 dark:text-gray-400">Punkte</dt>
+              <dd>{countText}</dd>
+              {protocol.state === 'ok' && (
+                <>
+                  <dt className="text-gray-600 dark:text-gray-400">Protokoll</dt>
+                  <dd data-protocol-summary>{protocolSummary(protocol.entries, protocol.presence, protocol.decisions === 'ok')}</dd>
+                </>
+              )}
+              {summary.overruns.length > 0 && (
+                <>
+                  <dt className="text-gray-600 dark:text-gray-400">Überzogen</dt>
+                  <dd>{summary.overruns.map(overrun => `„${titles.get(overrun.id)}“ ${formatDeviation(overrun.minutes)} Min`).join(', ')}</dd>
+                </>
+              )}
+            </dl>
           </section>
-        )}
 
-        <section aria-labelledby="review-history" className="space-y-2 print:break-before-page">
-          <h2 id="review-history" className="font-bold">Verlauf</h2>
-          {history.length === 0 ? <p className="text-sm text-gray-600 dark:text-gray-400">Keine Meldungen.</p> : (
-            <ol className="bg-white dark:bg-gray-800 rounded-lg shadow print:shadow-none print:border divide-y divide-gray-200 dark:divide-gray-700 text-sm">
-              {history.map(entry => (
-                <li key={entry.id} data-history={entry.id} className="px-3 py-1.5 flex gap-3">
-                  <span className="w-16 shrink-0 tabular-nums text-gray-600 dark:text-gray-400">{clock(entry.at)}</span>
-                  <span className="grow min-w-0">
-                    <span className={entry.undoneBy ? 'line-through text-gray-500 dark:text-gray-400' : ''}>{entry.text}</span>
-                    <span className="text-xs text-gray-600 dark:text-gray-400"> · {entry.who ?? 'automatisch'}{entry.undoneBy ? ` · rückgängig gemacht von ${entry.undoneBy}` : ''}</span>
-                  </span>
-                </li>
+          <section aria-labelledby="review-items" className="space-y-2">
+            <h2 id="review-items" className="font-semibold">Punkte</h2>
+            <ol className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm print:shadow-none print:border divide-y divide-gray-200 dark:divide-gray-700">
+              {rows.map(row => (
+                <ReviewEntry key={row.item.id} row={row} eventId={event.id} clock={clock} trackName={tracks.length > 1 ? trackNames.get(row.item.trackId) ?? null : null}
+                  protocol={placed?.byItem.get(row.item.id) ?? []} />
               ))}
             </ol>
-          )}
+          </section>
+        </>
+      )}
+
+      {placed && placed.outside.length > 0 && (
+        <section aria-labelledby="review-outside" className="space-y-2">
+          <h2 id="review-outside" className="font-semibold">Außerhalb der Punkte</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Kommen, Gehen und Beschlüsse vor dem ersten Punkt, in Pausen oder danach.</p>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm print:shadow-none print:border p-3">
+            <ProtocolList entries={placed.outside} clock={clock} testId="protocol-outside" />
+          </div>
         </section>
-      </div>
-    </main>
+      )}
+
+      <section aria-labelledby="review-history" className="space-y-2 print:break-before-page">
+        <h2 id="review-history" className="font-semibold">Verlauf</h2>
+        {history.length === 0 ? <p className="text-sm text-gray-600 dark:text-gray-400">Keine Meldungen.</p> : (
+          <ol className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm print:shadow-none print:border divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+            {history.map(entry => (
+              <li key={entry.id} data-history={entry.id} className="px-3 py-1.5 flex gap-3">
+                <span className="w-16 shrink-0 tabular-nums text-gray-600 dark:text-gray-400">{clock(entry.at)}</span>
+                <span className="grow min-w-0">
+                  <span className={entry.undoneBy ? 'line-through text-gray-500 dark:text-gray-400' : ''}>{entry.text}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400"> · {entry.who ?? 'automatisch'}{entry.undoneBy ? ` · rückgängig gemacht von ${entry.undoneBy}` : ''}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
+    </div>
   )
 }
 
@@ -235,7 +233,7 @@ function ReviewEntry({ row, eventId, clock, trackName, protocol }: {
         </p>
         {row.outcome === 'cancelled' && item.cancelReason && <p className="text-sm text-gray-700 dark:text-gray-300">Grund: {item.cancelReason}</p>}
         {protocol.length > 0 && <ProtocolList entries={protocol} clock={clock} testId="protocol-item" />}
-        {item.resultNote && <p data-result-note className="text-sm bg-gray-50 dark:bg-gray-900 print:bg-white rounded px-2 py-1 whitespace-pre-line">{item.resultNote}</p>}
+        {item.resultNote && <p data-result-note className="text-sm bg-gray-50 dark:bg-gray-900 print:bg-white rounded-lg px-2 py-1 whitespace-pre-line">{item.resultNote}</p>}
         {item.canSee && (
           <details className="print:hidden">
             <summary className="cursor-pointer text-sm text-blue-700 dark:text-blue-300 min-h-9 flex items-center">Protokollnotiz {item.resultNote ? 'bearbeiten' : 'hinzufügen'}</summary>
@@ -244,8 +242,8 @@ function ReviewEntry({ row, eventId, clock, trackName, protocol }: {
               <input type="hidden" name="itemId" value={item.id} />
               <input type="hidden" name="previous" value={item.resultNote ?? ''} />
               <label htmlFor={`note-${item.id}`} className="sr-only">Protokollnotiz zu „{item.title}“</label>
-              <textarea id={`note-${item.id}`} name="note" defaultValue={item.resultNote ?? ''} maxLength={PLAN_LIMITS.noteMax} rows={3} placeholder="z. B. Ergebnis, Beschluss" className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded text-sm" />
-              <button type="submit" className="py-1.5 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900 text-sm">Notiz speichern</button>
+              <textarea id={`note-${item.id}`} name="note" defaultValue={item.resultNote ?? ''} maxLength={PLAN_LIMITS.noteMax} rows={3} placeholder="z. B. Ergebnis, Beschluss" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900" />
+              <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">Notiz speichern</button>
             </form>
           </details>
         )}

@@ -66,7 +66,7 @@ export default function PushToggle({ publicKey }: { publicKey: string }) {
     }
   }
 
-  const button = 'text-sm px-3 py-1.5 rounded transition disabled:opacity-50'
+  const button = 'text-sm font-medium px-3.5 py-2 rounded-lg transition disabled:opacity-60'
   return (
     <div className="space-y-2 text-sm">
       {state === 'unsupported' && <p className="text-gray-600 dark:text-gray-400">Dieser Browser unterstützt keine Push-Mitteilungen. Auf dem iPhone/iPad gehen sie nur, wenn das Tool als App installiert ist (Safari → Teilen → „Zum Home-Bildschirm“).</p>}

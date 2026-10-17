@@ -41,72 +41,70 @@ export default async function EditItemPage({ params, searchParams }: {
   const { options, minStart, maxStart } = await itemFormOptions(event, user, tracks, items, item.id)
 
   return (
-    <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
-      <div className="max-w-2xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-4">
-          <p className="text-sm"><Link href={`/admin/events/${event.id}/plan?track=${item.trackId}#item-${item.id}`} className="text-blue-700 dark:text-blue-300 hover:underline">Zurück zum Ablauf</Link></p>
-          <h1 className="text-2xl font-bold">Punkt bearbeiten</h1>
-          <ItemForm
-            eventId={event.id}
-            itemId={item.id}
-            version={item.version}
-            options={options}
-            minStart={minStart}
-            maxStart={maxStart}
-            values={{
-              title: item.title, location: item.location ?? '', description: item.description ?? '', internalNote: item.internalNote ?? '',
-              trackId: item.trackId, start: utcToZonedInput(item.plannedStart, event.timezone), durationMin: String(item.plannedDurationMin),
-              minDurationMin: item.minDurationMin === null ? '' : String(item.minDurationMin),
-              visibility: item.visibility, isAnchor: item.isAnchor, mayStartEarly: item.mayStartEarly, waitsFor: item.waitsFor,
-              secretViewers: item.visibility === 'SECRET' ? item.secretViewerIds : [user.id],
-              assignees: item.assigneeIds
-            }}
-          />
-        </div>
-        {!item.actualStart && !item.actualEnd && <div id="block" className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow space-y-3">
-          <h2 className="font-bold">Block verschieben</h2>
-          <p className="text-xs text-gray-600 dark:text-gray-400">
-            Verschiebt diesen Punkt und alle folgenden seiner Spur um dieselbe Zeit – Dauern und Abstände bleiben. Begonnene
-            Punkte bleiben, wo sie sind.
-          </p>
-          {shiftError && <Notice tone="error">{SHIFT_ERRORS[shiftError] ?? 'Das hat nicht geklappt.'}</Notice>}
-          <form action={shiftItems} className="flex flex-wrap items-end gap-2">
+    <div className="max-w-2xl space-y-4">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+        <p className="text-sm"><Link href={`/admin/events/${event.id}/plan?track=${item.trackId}#item-${item.id}`} className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200">← Zurück zum Ablauf</Link></p>
+        <h2 className="text-lg font-semibold">Punkt bearbeiten</h2>
+        <ItemForm
+          eventId={event.id}
+          itemId={item.id}
+          version={item.version}
+          options={options}
+          minStart={minStart}
+          maxStart={maxStart}
+          values={{
+            title: item.title, location: item.location ?? '', description: item.description ?? '', internalNote: item.internalNote ?? '',
+            trackId: item.trackId, start: utcToZonedInput(item.plannedStart, event.timezone), durationMin: String(item.plannedDurationMin),
+            minDurationMin: item.minDurationMin === null ? '' : String(item.minDurationMin),
+            visibility: item.visibility, isAnchor: item.isAnchor, mayStartEarly: item.mayStartEarly, waitsFor: item.waitsFor,
+            secretViewers: item.visibility === 'SECRET' ? item.secretViewerIds : [user.id],
+            assignees: item.assigneeIds
+          }}
+        />
+      </div>
+      {!item.actualStart && !item.actualEnd && <div id="block" className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+        <h2 className="font-semibold">Block verschieben</h2>
+        <p className="text-xs text-gray-600 dark:text-gray-400">
+          Verschiebt diesen Punkt und alle folgenden seiner Spur um dieselbe Zeit – Dauern und Abstände bleiben. Begonnene
+          Punkte bleiben, wo sie sind.
+        </p>
+        {shiftError && <Notice tone="error">{SHIFT_ERRORS[shiftError] ?? 'Das hat nicht geklappt.'}</Notice>}
+        <form action={shiftItems} className="flex flex-wrap items-end gap-2">
+          <input type="hidden" name="eventId" value={event.id} />
+          <input type="hidden" name="itemId" value={item.id} />
+          <input type="hidden" name="version" value={item.version} />
+          <div>
+            <label htmlFor="shift-minutes" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Minuten</label>
+            <input id="shift-minutes" name="minutes" type="number" inputMode="numeric" min={1} max={MAX_SHIFT_MIN} required defaultValue={15} className="w-24 rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900" />
+          </div>
+          <div>
+            <label htmlFor="shift-direction" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Richtung</label>
+            <select id="shift-direction" name="direction" defaultValue="later" className="rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900">
+              <option value="later">später</option>
+              <option value="earlier">früher</option>
+            </select>
+          </div>
+          <div className="grow min-w-48">
+            <label htmlFor="shift-scope" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Bis</label>
+            <select id="shift-scope" name="scope" defaultValue="until-anchor" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900">
+              <option value="until-anchor">vor den nächsten Anker (Anker bleibt)</option>
+              <option value="track-end">zum Ende der Spur (Anker mit)</option>
+            </select>
+          </div>
+          <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">Verschieben</button>
+        </form>
+      </div>}
+      {canAddRemoveItems(event.level, event) && (
+        <div className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-2">
+          <h2 className="font-semibold">Punkt löschen</h2>
+          <p className="text-xs text-gray-600 dark:text-gray-400">Punkte, die auf diesen warten, beginnen danach ohne ihn.</p>
+          <ConfirmForm action={deleteItem} message={`Punkt „${item.title}“ löschen?`}>
             <input type="hidden" name="eventId" value={event.id} />
             <input type="hidden" name="itemId" value={item.id} />
-            <input type="hidden" name="version" value={item.version} />
-            <div>
-              <label htmlFor="shift-minutes" className="block text-sm font-medium mb-1">Minuten</label>
-              <input id="shift-minutes" name="minutes" type="number" inputMode="numeric" min={1} max={MAX_SHIFT_MIN} required defaultValue={15} className="w-24 border border-gray-300 dark:border-gray-600 p-2 rounded text-sm" />
-            </div>
-            <div>
-              <label htmlFor="shift-direction" className="block text-sm font-medium mb-1">Richtung</label>
-              <select id="shift-direction" name="direction" defaultValue="later" className="border border-gray-300 dark:border-gray-600 p-2 rounded text-sm bg-white dark:bg-gray-800">
-                <option value="later">später</option>
-                <option value="earlier">früher</option>
-              </select>
-            </div>
-            <div className="grow min-w-48">
-              <label htmlFor="shift-scope" className="block text-sm font-medium mb-1">Bis</label>
-              <select id="shift-scope" name="scope" defaultValue="until-anchor" className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded text-sm bg-white dark:bg-gray-800">
-                <option value="until-anchor">vor den nächsten Anker (Anker bleibt)</option>
-                <option value="track-end">zum Ende der Spur (Anker mit)</option>
-              </select>
-            </div>
-            <button type="submit" className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900 text-sm">Verschieben</button>
-          </form>
-        </div>}
-        {canAddRemoveItems(event.level, event) && (
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow space-y-2">
-            <h2 className="font-bold">Punkt löschen</h2>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Punkte, die auf diesen warten, beginnen danach ohne ihn.</p>
-            <ConfirmForm action={deleteItem} message={`Punkt „${item.title}“ löschen?`}>
-              <input type="hidden" name="eventId" value={event.id} />
-              <input type="hidden" name="itemId" value={item.id} />
-              <button type="submit" className="text-sm text-red-700 dark:text-red-300 hover:underline">Punkt löschen</button>
-            </ConfirmForm>
-          </div>
-        )}
-      </div>
-    </main>
+            <button type="submit" className="text-sm text-red-700 dark:text-red-300 hover:underline">Punkt löschen</button>
+          </ConfirmForm>
+        </div>
+      )}
+    </div>
   )
 }

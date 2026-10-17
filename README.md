@@ -38,6 +38,10 @@ finden ihre Punkte unter „Meine Punkte“, Dienstleister lesen über einen **T
 Reden) fangen Verspätungen auf, bevor sie weiterwandern; **„Was wäre wenn?“** spielt eine Verspätung durch, ohne etwas zu
 speichern; die **Vorwarnung** schickt Zuständigen kurz vor ihrem Punkt eine Push-Mitteilung nach der erwarteten Zeit.
 
+**Oberfläche:** aufgebaut wie rsvp-app, Abstimmungstool und Schichten – Kopfzeile mit Konto-Menü, Übersicht der Events
+als Karten, pro Event eine Seite mit Reitern (Übersicht, Ablauf, Live, Team-Ansicht, Rückblick, Einstellungen) und
+Einstellungen in einklappbaren Abschnitten; fürs Handy gebaut (siehe [docs/KONZEPT-OBERFLAECHE.md](docs/KONZEPT-OBERFLAECHE.md)).
+
 **Darkmode:** folgt der Systemeinstellung des Geräts (wie rsvp-app), für Verwaltung, Live-Steuerung und Gästeansicht.
 Die Anzeigetafel ist unabhängig davon immer dunkel; Ausdrucke bleiben hell.
 
@@ -122,7 +126,11 @@ bleibt ein einzelnes Tool.
 
 ## Events
 
-Unter `/admin/events` legen Creator und Admins Events an, Moderator\*innen sehen dort die ihnen freigegebenen.
+Unter `/admin` (auch `/admin/events`) legen Creator und Admins Events an, Moderator\*innen sehen dort die ihnen
+freigegebenen – als Karten, getrennt nach *Aktuell* und *Vergangen*, mit Knopf „Live-Steuerung“ für Events, die live
+sind oder heute stattfinden. Pro Event gibt es die Reiter **Übersicht** (Kennzahlen, Status, Links für Gäste, Tafel und
+Team-Link), **Ablauf**, **Live**, **Team-Ansicht**, **Rückblick** und – für Besitzer\*in und Admins – **Einstellungen**
+(Event, Zugang für Gäste, Prognose/Anzeige/Rechte, Schichten, Freigaben, Löschen).
 
 * **Anlegen:** Titel, Adresse (Vorschlag aus dem Titel), Datum, Beschreibung – leer (mit einer Spur „Ablauf“) oder mit
   der **Vorlage „Hochzeit“** (`app/lib/planning/template.ts`: Trauung, Empfang, Abendessen als Anker, Party bis nach
@@ -136,7 +144,7 @@ Unter `/admin/events` legen Creator und Admins Events an, Moderator\*innen sehen
   von Kalendertagen, die Uhrzeiten bleiben (nicht, solange das Event live ist).
 * **Status:** Entwurf ↔ veröffentlicht, archivieren. „Live“ und „Beendet“ setzt die Live-Steuerung; einige Stunden nach
   dem letzten Punkt endet ein Event automatisch.
-* **Ablauf und Gäste:** Rundung, Hysterese, Horizont und „+10 zeigen“ für die Gästeanzeige, Fortschreiben mit
+* **Prognose, Anzeige und Rechte** (Einstellungen): Rundung, Hysterese, Horizont und „+10 zeigen“ für die Gästeanzeige, Fortschreiben mit
   Nachfrage und Deckel für die Prognose (Standardwerte aus dem Konzept).
 * **Freigaben:** Besitzer\*in oder Admin gibt das Event per E-Mail-Adresse einem bestehenden Konto frei. Freigegebene
   Konten sehen das Event mit internen Notizen und steuern später den Ablauf live; Einstellungen ändern, löschen und
@@ -170,7 +178,7 @@ Unter `/admin/events/<id>/plan` (für alle Konten mit Zugriff; bearbeiten nur mi
   Moderation am laufenden Punkt „+5“ (läuft länger), auch nicht. Team-Ansicht und Live-Steuerung zeigen „gekürzt um …“,
   Gäste sehen nur die Zeiten. Geht mit in Export, Import und Duplizieren; die Vorlage „Hochzeit“ macht Kaffee und
   Reden kürzbar.
-* **Was wäre wenn?** (`/admin/events/<id>/was-waere-wenn`, verlinkt in Eventseite, Planung und Live-Steuerung, für
+* **Was wäre wenn?** (`/admin/events/<id>/was-waere-wenn`, verlinkt in Übersicht, Ablauf und Live-Steuerung, für
   alle Konten mit Zugriff): einen Punkt wählen und „+20“ – die Seite zeigt, welche Punkte sich verschieben, wo Puffer
   die Verspätung schlucken, wo kürzbare Punkte gekürzt werden, welche Konflikte mit Ankern entstehen und um wie viel
   sich das Ende jeder Spur verschiebt. Gerechnet wird vom aktuellen Stand aus, genau wie der Knopf „+X“ in der
@@ -388,7 +396,7 @@ Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, vers
   „nicht bestätigt“, „überzogen“, „unklar“ und „läuft noch?“, zurückgestellten Punkten, Orten mit Adresse,
   Zuständigen, gekürzten Punkten und der Zeit, die Gäste gerade sehen. Oben „Meine Punkte“ (siehe „Planung“) und die
   **Vorwarnung aufs Handy** (siehe unten). Lädt sich alle 30 Sekunden neu.
-* **Team-Link für Dienstleister** (Eventseite, Abschnitt „Team-Link für Dienstleister“): dieselbe Team-Ansicht nur zum
+* **Team-Link für Dienstleister** (Reiter „Übersicht“ des Events, Abschnitt „Team-Link für Dienstleister“): dieselbe Team-Ansicht nur zum
   Lesen, ohne Konto und ohne Links in die Verwaltung – mit Team-Punkten und internen Notizen, geheime Punkte nur als
   „Geheimer Punkt“ mit Zeit und Dauer, Zuständige nur mit Namen (nie mit E-Mail-Adresse). Standardmäßig aus;
   einschalten, neu erzeugen und ausschalten dürfen Besitzer\*in und Admin, den Link sehen alle Konten mit Zugriff. Neu

@@ -8,6 +8,7 @@ import { DESCRIPTION_MAX_LENGTH, OPTION_BOUNDS, TITLE_MAX_LENGTH, type EventOpti
 import SubmitButton from '../../ui/submit-button'
 import CopyableField from '../../ui/copyable-field'
 import Notice from '../../ui/notice'
+import { buttonClass, hintClass, inputClass, labelClass } from '../../ui/kit'
 
 export function Feedback({ state }: { state: FormState }) {
   if (!state) return null
@@ -23,8 +24,8 @@ export function Feedback({ state }: { state: FormState }) {
   return state.message ? <Notice tone="success">{state.message}</Notice> : null
 }
 
-export const input = 'w-full border border-gray-300 dark:border-gray-600 p-2 rounded'
-export const labelClass = 'block text-sm font-medium mb-1'
+export const input = inputClass
+export { labelClass }
 
 export type EventFormValues = { title: string; slug: string; date: string; description: string }
 
@@ -48,10 +49,10 @@ function TitleAndSlug({ initialTitle, initialSlug, baseUrl, required = true }: {
       </div>
       <div>
         <label htmlFor="event-slug" className={labelClass}>Adresse</label>
-        <div className="flex items-center gap-1">
-          <span className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">{baseUrl}/</span>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-sm text-gray-600 dark:text-gray-400 break-all">{baseUrl}/</span>
           <input
-            id="event-slug" name="slug" required maxLength={SLUG_MAX_LENGTH} value={slug} className={input}
+            id="event-slug" name="slug" required maxLength={SLUG_MAX_LENGTH} value={slug} className={`${input} min-w-40 flex-1`}
             pattern="[a-z0-9]+(-[a-z0-9]+)*" aria-describedby="event-slug-hint"
             onChange={event => {
               setSlug(event.currentTarget.value)
@@ -59,7 +60,7 @@ function TitleAndSlug({ initialTitle, initialSlug, baseUrl, required = true }: {
             }}
           />
         </div>
-        <p id="event-slug-hint" className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+        <p id="event-slug-hint" className={hintClass}>
           Kleinbuchstaben, Ziffern und Bindestriche. Ändert sich die Adresse später, funktionieren bereits verteilte Links
           und QR-Codes nicht mehr.
         </p>
@@ -73,7 +74,7 @@ function EventDate({ value, required = true, hint = 'Der Tag, an dem der Ablauf 
     <div>
       <label htmlFor="event-date" className={labelClass}>Datum</label>
       <input id="event-date" name="date" type="date" required={required} defaultValue={value} className={input} />
-      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{hint}</p>
+      <p className={hintClass}>{hint}</p>
     </div>
   )
 }
@@ -151,7 +152,7 @@ export function EventSettingsForm({ eventId, values, baseUrl, series, seriesId }
           <option value="">keine</option>
           {series.map(entry => <option key={entry.id} value={entry.id}>{entry.title}</option>)}
         </select>
-        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Mehrere Events (z. B. Polterabend, Hochzeit, Brunch) mit gemeinsamer Übersichtsseite. Reihen legst du unter „Reihen“ an.</p>
+        <p className={hintClass}>Mehrere Events (z. B. Polterabend, Hochzeit, Brunch) mit gemeinsamer Übersichtsseite. Reihen legst du unter „Reihen“ an.</p>
       </div>
       <SubmitButton disabled={pending}>Einstellungen speichern</SubmitButton>
     </form>
@@ -167,7 +168,7 @@ function MinutesField({ name, label, value, hint }: { name: keyof typeof OPTION_
         <input id={`option-${name}`} name={name} type="number" inputMode="numeric" min={bound.min} max={bound.max} step={1} required defaultValue={value} className={`${input} max-w-28`} />
         <span className="text-sm text-gray-600 dark:text-gray-400">Min.</span>
       </div>
-      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">{hint}</p>
+      <p className={hintClass}>{hint}</p>
     </div>
   )
 }
@@ -191,21 +192,21 @@ export function EventOptionsForm({ eventId, options, modsMayEditPlan, modsMayIns
       <input type="hidden" name="eventId" value={eventId} />
       <Feedback state={state} />
       <fieldset className="space-y-3">
-        <legend className="font-medium">Rechte der Moderator*innen</legend>
+        <legend className="text-sm font-semibold text-gray-900 dark:text-gray-100">Rechte der Moderator*innen</legend>
         <Toggle name="modsMayEditPlan" label="Plan bearbeiten" checked={modsMayEditPlan}
           hint="Texte, Orte, Zeiten, Dauer, Anker und Sichtbarkeit aller Punkte ändern, Punkte anlegen und löschen – auch vor dem Event. Spuren und Einstellungen bleiben bei dir." />
         <Toggle name="modsMayInsert" label="Einschübe und Löschen während des Events" checked={modsMayInsert}
           hint="Spontane Punkte einfügen und wieder entfernen, solange das Event live ist." />
       </fieldset>
       <fieldset className="space-y-3">
-        <legend className="font-medium">Anzeige für Gäste</legend>
+        <legend className="text-sm font-semibold text-gray-900 dark:text-gray-100">Anzeige für Gäste</legend>
         <MinutesField name="guestRoundingMin" label="Rundung" value={options.guestRoundingMin} hint="Abweichende Zeiten werden auf so viele Minuten gerundet und mit „ca.“ gezeigt." />
         <MinutesField name="hysteresisMin" label="Hysterese" value={options.hysteresisMin} hint="Kleinere Schwankungen ändern die Anzeige nicht, damit Zeiten nicht springen." />
         <MinutesField name="guestHorizonMin" label="Horizont" value={options.guestHorizonMin} hint="Abweichungen sehen Gäste erst so kurz vor dem geplanten Beginn, davor die Planzeit." />
         <Toggle name="showDelayToGuests" label="Abweichung zeigen („+10“)" checked={options.showDelayToGuests} hint="Sonst sehen Gäste nur die neue Uhrzeit mit „ca.“." />
       </fieldset>
       <fieldset className="space-y-3">
-        <legend className="font-medium">Prognose</legend>
+        <legend className="text-sm font-semibold text-gray-900 dark:text-gray-100">Prognose</legend>
         <Toggle name="autoCreep" label="Fortschreiben" checked={options.autoCreep} hint="Läuft ein Punkt länger und niemand drückt „Beendet“, wächst die Verspätung live mit." />
         <MinutesField name="creepNudgeMin" label="Nachfrage nach" value={options.creepNudgeMin} hint="So lange nach dem erwarteten Ende fragt die Live-Steuerung „läuft noch?“." />
         <MinutesField name="creepCapMin" label="Deckel" value={options.creepCapMin} hint="Weiter wächst die Verspätung ohne Bestätigung nicht; das Team sieht dann „unklar“." />
@@ -265,11 +266,11 @@ export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConf
             <label htmlFor="rsvp-event-id" className={labelClass}>Termin in rsvp-app (id{selected === 'RSVP' ? '' : ', optional'})</label>
             <input
               id="rsvp-event-id" name="rsvpEventId" required={selected === 'RSVP'} defaultValue={rsvp.rsvpEventId} maxLength={40} pattern="[a-z0-9]{10,40}"
-              autoComplete="off" spellCheck={false} className={`${input} font-mono text-sm`} placeholder="z. B. cm1a2b3c4d5e6f7g8h9"
+              autoComplete="off" spellCheck={false} className={`${input} font-mono`} placeholder="z. B. cm1a2b3c4d5e6f7g8h9"
               aria-describedby="rsvp-event-hint"
             />
             {selected !== 'RSVP' && (
-              <p id="rsvp-event-hint" className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              <p id="rsvp-event-hint" className={hintClass}>
                 Auch ohne Zugang „nur mit Zusage“: Gibt der Termin in rsvp-app Kommen und Gehen oder die Beschlüsse einer
                 Sitzung frei, zeigt der Rückblick sie beim jeweiligen Punkt. Leer = nicht verknüpft.
               </p>
@@ -292,11 +293,11 @@ export function GuestAccessForm({ eventId, access, hasCode, suggestion, codeConf
                 id="access-code" name="code" value={code} onChange={event => setCode(event.currentTarget.value)} maxLength={60}
                 autoComplete="off" spellCheck={false} className={input} aria-describedby="access-code-hint" required={!hasCode}
               />
-              <button type="button" onClick={() => setCode(suggestion)} className="shrink-0 text-sm py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">
+              <button type="button" onClick={() => setCode(suggestion)} className={`shrink-0 ${buttonClass('secondary')}`}>
                 Vorschlag
               </button>
             </div>
-            <p id="access-code-hint" className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+            <p id="access-code-hint" className={hintClass}>
               {hasCode ? 'Ein Code ist festgelegt. Leer lassen, um ihn zu behalten. ' : ''}
               Mindestens 8 Zeichen, nicht leicht zu raten (kein Name, kein Datum). Groß- und Kleinschreibung, Leerzeichen und
               Bindestriche sind für Gäste egal. Der Code wird nicht im Klartext gespeichert und nach dem Speichern nicht mehr
@@ -339,8 +340,8 @@ export function ShiftsLinkForm({ eventId, shiftsUrl, origin }: { eventId: string
       <Feedback state={state} />
       <div>
         <label htmlFor="shifts-url" className={labelClass}>Schichten-Link</label>
-        <input id="shifts-url" name="shiftsUrl" type="url" defaultValue={shiftsUrl} className={`${input} text-sm`} placeholder={`${origin}/zeitplan/…`} />
-        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+        <input id="shifts-url" name="shiftsUrl" type="url" defaultValue={shiftsUrl} className={input} placeholder={`${origin}/zeitplan/…`} />
+        <p className={hintClass}>
           Aus den Einstellungen des Events in Schichten. Dort umgekehrt die id dieses Events eintragen: <code className="select-all">{eventId}</code>.
           Schichten bekommt dann Titel, Spur und Zeiten aller Punkte außer geheimen – keine Notizen, Orte oder Namen.
         </p>

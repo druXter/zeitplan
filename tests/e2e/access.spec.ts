@@ -150,7 +150,7 @@ test('Zugang in der Verwaltung: neuer Code beendet alte Sitzungen, nur Besitzer*
   expect(await guestView()).toBe(200)
 
   await login(page, owner.email)
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=zugang`)
   await expect(page.getByText('1 Gast-Zugang ist gerade aktiv.')).toBeVisible()
   const accessForm = await readForm(page, 'form:has(input[name="access"])')
 

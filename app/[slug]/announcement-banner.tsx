@@ -32,8 +32,8 @@ export default function AnnouncementBanner({ announcement, timezone, board = fal
     )
   }
   return (
-    <div data-announcement role="status" className="rounded-lg border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/50 p-3 space-y-1">
-      <p className="text-xs font-bold uppercase tracking-wide text-amber-900 dark:text-amber-200">Durchsage · {at} Uhr</p>
+    <div data-announcement role="status" className="rounded-xl border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/50 p-4 space-y-1">
+      <p className="text-xs font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">Durchsage · {at} Uhr</p>
       <p className="font-medium whitespace-pre-line">{announcement.text}</p>
     </div>
   )

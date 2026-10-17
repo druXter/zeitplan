@@ -27,13 +27,13 @@ test('verknüpfen, Prognose abrufen: SECRET nie, TEAM ja, Verspätung drin; Schu
   expect((await http.post('/api/schichten/forecast', { data: request(event.id) })).status()).toBe(404)
 
   await login(page, owner.email)
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=schichten`)
   await page.getByLabel('Schichten-Link').fill('https://fremd.example/zeitplan/cmshiftseventzp0001')
   await page.getByRole('button', { name: 'Verknüpfung speichern' }).click()
-  await expect(page.getByText('Erwartet wird der Link')).toBeVisible()
+  await expect(page.locator('#schichten').getByText('Erwartet wird der Link')).toBeVisible()
   await page.getByLabel('Schichten-Link').fill(`${TEST_SHIFTS_BASE_URL}/zeitplan/${SHIFTS_EVENT}`)
   await page.getByRole('button', { name: 'Verknüpfung speichern' }).click()
-  await expect(page.getByText('Verknüpft.')).toBeVisible()
+  await expect(page.locator('#schichten').getByText('Verknüpft.')).toBeVisible()
 
   // Verspätung am Dinner: +15
   await prisma.item.update({ where: { id: dinner.id }, data: { reportedDelayMin: 15 } })

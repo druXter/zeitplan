@@ -21,9 +21,9 @@ export default function AccessGate({ slug, access, codeAvailable }: { slug: stri
 
   if (embedded) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-2">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-2">
         <p className="text-gray-700 dark:text-gray-300">Den Ablauf siehst du nach der Eingabe deines Zugangs auf unserer Seite.</p>
-        <a href={`/${slug}`} target="_blank" rel="noopener" className="inline-block bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">
+        <a href={`/${slug}`} target="_blank" rel="noopener" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 border border-blue-600">
           Ablauf in neuem Tab öffnen
         </a>
       </div>
@@ -32,21 +32,21 @@ export default function AccessGate({ slug, access, codeAvailable }: { slug: stri
 
   if (access === 'CODE') {
     return codeAvailable ? <CodeForm slug={slug} /> : (
-      <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-gray-700 dark:text-gray-300">Der Zugang per Code ist noch nicht eingerichtet. Schau später wieder vorbei.</p>
+      <p className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 text-gray-700 dark:text-gray-300">Der Zugang per Code ist noch nicht eingerichtet. Schau später wieder vorbei.</p>
     )
   }
   if (access === 'ACCOUNT') {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-2">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-2">
         <p className="text-gray-700 dark:text-gray-300">Melde dich mit deinem Konto an, um den Ablauf zu sehen.</p>
-        <Link href={`/login?next=${encodeURIComponent(`/${slug}`)}`} className="inline-block bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">
+        <Link href={`/login?next=${encodeURIComponent(`/${slug}`)}`} className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 border border-blue-600">
           Anmelden
         </Link>
       </div>
     )
   }
   return (
-    <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-gray-700 dark:text-gray-300">
+    <p className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 text-gray-700 dark:text-gray-300">
       Den Ablauf öffnest du über deine Zusage – den Link findest du in der Einladung.
     </p>
   )
@@ -55,14 +55,14 @@ export default function AccessGate({ slug, access, codeAvailable }: { slug: stri
 function CodeForm({ slug }: { slug: string }) {
   const [state, action, pending] = useActionState(enterAccessCode, null)
   return (
-    <form action={action} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
+    <form action={action} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-3">
       <input type="hidden" name="slug" value={slug} />
       {state && <Notice tone="error">{state.error}</Notice>}
       <div>
-        <label htmlFor="access-code" className="block text-sm font-medium mb-1">Zugangscode</label>
+        <label htmlFor="access-code" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Zugangscode</label>
         <input
           id="access-code" name="code" required maxLength={60} autoComplete="off" autoCapitalize="characters" spellCheck={false}
-          className="w-full border border-gray-300 dark:border-gray-600 p-3 rounded text-lg tracking-wider" aria-describedby="access-code-hint"
+          className="w-full rounded-lg border border-gray-300 bg-white p-3 text-lg text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900 tracking-wider" aria-describedby="access-code-hint"
         />
         <p id="access-code-hint" className="text-xs text-gray-600 dark:text-gray-400 mt-1">Steht auf deiner Einladung. Groß- und Kleinschreibung sind egal.</p>
       </div>

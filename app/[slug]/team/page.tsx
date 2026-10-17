@@ -32,11 +32,11 @@ export default async function CrewPage({ params, searchParams }: Props) {
   const now = new Date()
   const view = await loadTeamView(event, { kind: 'crew' }, now)
   return (
-    <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
+    <main className="py-6 px-4">
       <AutoRefresh />
       <div className="max-w-3xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold">{event.title}</h1>
+          <h1 className="text-2xl font-semibold">{event.title}</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Ablauf fürs Team, {formatDate(event.date, event.timezone)}. Stand {formatItemClock(now, event.date, event.timezone)} Uhr,
             minutengenau mit Verspätungen; aktualisiert sich alle 30 Sekunden. Bitte nicht an Gäste weitergeben.

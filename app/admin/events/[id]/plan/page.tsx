@@ -15,9 +15,9 @@ import { placeIndex, type Place } from '../../../../lib/planning/places'
 import PlaceForm from '../../place-form'
 import ConfirmForm from '../../../../ui/confirm-form'
 import PlaceLine from '../../../../ui/place-line'
-import StatusBadge from '../../../../ui/status-badge'
 import Notice from '../../../../ui/notice'
 import Badge from '../../../../ui/badge'
+import { ButtonLink, buttonClass, Card, EmptyState, hintClass, inputClass, labelClass, Segmented, SettingsSection } from '../../../../ui/kit'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,7 +45,7 @@ const TRACK_ERRORS: Record<string, string> = {
 }
 
 /**
- * Planung (docs/KONZEPT.md Abschnitt 4): Tabs "Alle" und je Spur, Liste mit Uhrzeit, Dauer und Ende, Puffer
+ * Planung (docs/KONZEPT.md Abschnitt 4): Umschalter "Alle" und je Spur, Liste mit Uhrzeit, Dauer und Ende, Puffer
  * und Überschneidungen als Zeilen dazwischen, Umsortieren per nach oben/unten (tauscht mit dem Nachbarn, siehe
  * moveItem). Alle Punkte kommen aus loadPlan - geheime Punkte ohne Eintrag nur mit Zeit und Dauer.
  */
@@ -73,134 +73,117 @@ export default async function PlanPage({ params, searchParams }: { params: Promi
   const clock = (date: Date) => formatItemClock(date, event.date, event.timezone)
   const trackQuery = current ? current.id : 'all'
 
+  const base = `/admin/events/${event.id}`
+
   return (
-    <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
-      <div className="max-w-4xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
-        <div className="space-y-1">
-          <p className="text-sm"><Link href={`/admin/events/${event.id}`} className="text-blue-700 dark:text-blue-300 hover:underline">{event.title}</Link></p>
-          <h1 className="text-2xl font-bold">Ablauf <StatusBadge status={event.status} /></h1>
-          {!mayEdit && <p className="text-sm text-gray-600 dark:text-gray-400">Du kannst den Plan ansehen, aber nicht bearbeiten.</p>}
-          <p className="text-sm">
-            <Link href={`/admin/events/${event.id}/was-waere-wenn`} className="text-blue-700 dark:text-blue-300 hover:underline">Was wäre wenn?</Link>{' '}
-            <span className="text-gray-600 dark:text-gray-400">– eine Verspätung durchspielen, ohne etwas zu speichern.</span>
-          </p>
+    <div className="space-y-4">
+      {search.saved === '1' && <Notice tone="success">Punkt gespeichert.</Notice>}
+      {search.deleted === '1' && <Notice tone="success">Punkt gelöscht.</Notice>}
+      {search.moved === '1' && <Notice tone="success">Reihenfolge geändert.</Notice>}
+      {search.shifted && /^\d+$/.test(search.shifted) && (
+        <Notice tone="success">{search.shifted === '1' ? 'Punkt verschoben.' : `${search.shifted} Punkte verschoben.`}</Notice>
+      )}
+      {search.moveError && <Notice tone="error">{MOVE_ERRORS[search.moveError] ?? 'Das hat nicht geklappt.'}</Notice>}
+      {search.trackSaved === '1' && <Notice tone="success">Spur gespeichert.</Notice>}
+      {search.trackDeleted === '1' && <Notice tone="success">Spur gelöscht.</Notice>}
+      {search.placeDeleted === '1' && <Notice tone="success">Ort gelöscht. Die Punkte behalten ihn als Text, ohne Adresse.</Notice>}
+      {search.trackError && <Notice tone="error">{TRACK_ERRORS[search.trackError] ?? 'Das hat nicht geklappt.'}</Notice>}
+
+      {!projection.ok && (
+        <Notice tone="error">„Wartet auf“ ergibt eine Schleife – bitte bei einem der betroffenen Punkte korrigieren.</Notice>
+      )}
+      {projection.ok && projection.conflicts.length > 0 && (
+        <Notice tone="warning">
+          <ul className="list-disc list-inside">
+            {projection.conflicts.map(conflict => (
+              <li key={`${conflict.anchorId}-${conflict.itemId}`}>
+                „{itemById.get(conflict.itemId)?.title}“ überschneidet den Anker „{itemById.get(conflict.anchorId)?.title}“ um {minutes(conflict.overlapMin)}.
+              </li>
+            ))}
+          </ul>
+        </Notice>
+      )}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {tracks.length > 0 ? (
+          <Segmented label="Spuren" items={[
+            { href: `${base}/plan`, label: 'Alle', active: !current },
+            ...tracks.map(track => ({ href: `${base}/plan?track=${track.id}`, label: `${track.name}${track.visibility === 'TEAM' ? ' (Team)' : ''}`, active: current?.id === track.id }))
+          ]} />
+        ) : <span />}
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href={`${base}/was-waere-wenn`}>Was wäre wenn?</ButtonLink>
+          {mayAdd && <ButtonLink href={`${base}/items/new${current ? `?track=${current.id}` : ''}`} variant="primary">Neuer Punkt</ButtonLink>}
         </div>
+      </div>
+      {!mayEdit && <p className="text-sm text-gray-600 dark:text-gray-400">Du kannst den Plan ansehen, aber nicht bearbeiten.</p>}
+      {current && <p className="text-xs text-gray-500 dark:text-gray-400">Nur „{current.name}“, mit Puffern und Überschneidungen. Mit ↑ und ↓ tauschst du benachbarte Punkte.</p>}
 
-        {search.saved === '1' && <Notice tone="success">Punkt gespeichert.</Notice>}
-        {search.deleted === '1' && <Notice tone="success">Punkt gelöscht.</Notice>}
-        {search.moved === '1' && <Notice tone="success">Reihenfolge geändert.</Notice>}
-        {search.shifted && /^\d+$/.test(search.shifted) && (
-          <Notice tone="success">{search.shifted === '1' ? 'Punkt verschoben.' : `${search.shifted} Punkte verschoben.`}</Notice>
-        )}
-        {search.moveError && <Notice tone="error">{MOVE_ERRORS[search.moveError] ?? 'Das hat nicht geklappt.'}</Notice>}
-        {search.trackSaved === '1' && <Notice tone="success">Spur gespeichert.</Notice>}
-        {search.trackDeleted === '1' && <Notice tone="success">Spur gelöscht.</Notice>}
-        {search.placeDeleted === '1' && <Notice tone="success">Ort gelöscht. Die Punkte behalten ihn als Text, ohne Adresse.</Notice>}
-        {search.trackError && <Notice tone="error">{TRACK_ERRORS[search.trackError] ?? 'Das hat nicht geklappt.'}</Notice>}
+      {rows.length === 0 ? (
+        <EmptyState>{tracks.length === 0 ? 'Noch keine Spur – lege unten eine an.' : 'Noch keine Programmpunkte.'}</EmptyState>
+      ) : (
+        <Card padded={false}>
+          <ol className="divide-y divide-gray-100 dark:divide-gray-700">
+            {rows.map(row => (
+              <Row
+                key={row.item.id}
+                row={row}
+                eventId={event.id}
+                track={trackById.get(row.item.trackId)}
+                showTrack={!current}
+                showGap={current !== null}
+                clock={clock}
+                waitsFor={row.item.waitsFor.map(other => itemById.get(other)).filter((i): i is PlanItem => i !== undefined)}
+                editable={canEditItem(event.level, event, row.item, row.item.canSee)}
+                neighbourEditable={(other: string | null) => {
+                  const neighbour = other ? itemById.get(other) : undefined
+                  return neighbour !== undefined && canEditItem(event.level, event, neighbour, neighbour.canSee)
+                }}
+                trackQuery={trackQuery}
+                place={placeOf(row.item.location)}
+              />
+            ))}
+          </ol>
+        </Card>
+      )}
 
-        {!projection.ok && (
-          <Notice tone="error">„Wartet auf“ ergibt eine Schleife – bitte bei einem der betroffenen Punkte korrigieren.</Notice>
-        )}
-        {projection.ok && projection.conflicts.length > 0 && (
-          <Notice tone="warning">
-            <ul className="list-disc list-inside">
-              {projection.conflicts.map(conflict => (
-                <li key={`${conflict.anchorId}-${conflict.itemId}`}>
-                  „{itemById.get(conflict.itemId)?.title}“ überschneidet den Anker „{itemById.get(conflict.anchorId)?.title}“ um {minutes(conflict.overlapMin)}.
-                </li>
-              ))}
-            </ul>
-          </Notice>
-        )}
-
-        <nav aria-label="Spuren" className="flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-700">
-          <TabLink href={`/admin/events/${event.id}/plan`} active={!current}>Alle</TabLink>
-          {tracks.map(track => (
-            <TabLink key={track.id} href={`/admin/events/${event.id}/plan?track=${track.id}`} active={current?.id === track.id}>
-              {track.name}{track.visibility === 'TEAM' && ' (Team)'}
-            </TabLink>
-          ))}
-        </nav>
-
-        {mayAdd && (
-          <p>
-            <Link href={`/admin/events/${event.id}/items/new${current ? `?track=${current.id}` : ''}`} className="inline-block bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">
-              Neuer Punkt
-            </Link>
-          </p>
-        )}
-
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-          {rows.length === 0 ? (
-            <p className="p-4 text-sm text-gray-600 dark:text-gray-400">{tracks.length === 0 ? 'Noch keine Spur – lege unten eine an.' : 'Noch keine Programmpunkte.'}</p>
-          ) : (
-            <ol className="divide-y">
-              {rows.map(row => (
-                <Row
-                  key={row.item.id}
-                  row={row}
-                  eventId={event.id}
-                  track={trackById.get(row.item.trackId)}
-                  showTrack={!current}
-                  showGap={current !== null}
-                  clock={clock}
-                  waitsFor={row.item.waitsFor.map(other => itemById.get(other)).filter((i): i is PlanItem => i !== undefined)}
-                  editable={canEditItem(event.level, event, row.item, row.item.canSee)}
-                  neighbourEditable={(other: string | null) => {
-                    const neighbour = other ? itemById.get(other) : undefined
-                    return neighbour !== undefined && canEditItem(event.level, event, neighbour, neighbour.canSee)
-                  }}
-                  trackQuery={trackQuery}
-                  place={placeOf(row.item.location)}
-                />
-              ))}
-            </ol>
-          )}
-        </div>
-
-        <Places eventId={event.id} places={places} editable={mayEdit} />
-
+      <div className="space-y-3 pt-2">
         {isOwner && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-4">
-            <h2 className="font-bold">Spuren</h2>
-            <p className="text-xs text-gray-600 dark:text-gray-400">
-              Parallele Abläufe, z. B. „Brautpaar“ neben „Gäste“, jede mit eigener Kette. Punkte in Team-Spuren sehen Gäste
-              nie. Ein Punkt kann auf Punkte anderer Spuren warten („wartet auf“).
-            </p>
+          <SettingsSection id="spuren" title="Spuren" summary={tracks.length === 1 ? '1 Spur' : `${tracks.length} Spuren`}
+            open={tracks.length === 0 || search.trackSaved !== undefined || search.trackError !== undefined}
+            description="Parallele Abläufe, z. B. „Brautpaar“ neben „Gäste“, jede mit eigener Kette. Punkte in Team-Spuren sehen Gäste nie. Ein Punkt kann auf Punkte anderer Spuren warten („wartet auf“).">
             {current && <TrackEditor eventId={event.id} track={current} />}
-            <form action={createTrack} className="flex flex-wrap items-end gap-2">
+            <form action={createTrack} className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <input type="hidden" name="eventId" value={event.id} />
-              <div className="grow min-w-40">
-                <label htmlFor="track-new-name" className="block text-sm font-medium mb-1">Neue Spur</label>
-                <input id="track-new-name" name="name" required maxLength={60} placeholder="z. B. Brautpaar" className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded text-sm" />
+              <div className="sm:flex-1">
+                <label htmlFor="track-new-name" className={labelClass}>Neue Spur</label>
+                <input id="track-new-name" name="name" required maxLength={60} placeholder="z. B. Brautpaar" className={inputClass} />
               </div>
               <div>
-                <label htmlFor="track-new-visibility" className="block text-sm font-medium mb-1">Sichtbarkeit der Spur</label>
-                <select id="track-new-visibility" name="visibility" defaultValue="PUBLIC" className="border border-gray-300 dark:border-gray-600 p-2 rounded text-sm">
+                <label htmlFor="track-new-visibility" className={labelClass}>Sichtbarkeit der Spur</label>
+                <select id="track-new-visibility" name="visibility" defaultValue="PUBLIC" className={inputClass}>
                   {Object.entries(TRACK_VISIBILITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </div>
-              <button type="submit" className="bg-blue-600 text-white font-bold py-2 px-3 rounded hover:bg-blue-700 text-sm">Spur anlegen</button>
+              <button type="submit" className={buttonClass('primary')}>Spur anlegen</button>
             </form>
-          </div>
+            {!current && tracks.length > 0 && <p className={hintClass}>Name, Sichtbarkeit und Reihenfolge einer Spur änderst du, wenn du sie oben auswählst.</p>}
+          </SettingsSection>
         )}
+        <Places eventId={event.id} places={places} editable={mayEdit} open={search.placeDeleted !== undefined} />
       </div>
-    </main>
+    </div>
   )
 }
 
 /** Orte mit Adresse (Idee L22): Punkte gehören über ihr Feld „Ort“ dazu, Gäste sehen Adresse und „Route öffnen“. */
-function Places({ eventId, places, editable }: { eventId: string; places: Place[]; editable: boolean }) {
+function Places({ eventId, places, editable, open }: { eventId: string; places: Place[]; editable: boolean; open: boolean }) {
   if (!editable && places.length === 0) return null
   return (
-    <div id="orte" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
-      <h2 className="font-bold">Orte</h2>
-      <p className="text-xs text-gray-600 dark:text-gray-400">
-        Orte mit Adresse, z. B. Kirche und Feier-Location. Steht ihr Name im Feld „Ort“ eines Punkts, sehen Gäste dort die
-        Adresse und „Route öffnen“. Umbenennen ändert den Ort auch an den Punkten.
-      </p>
+    <SettingsSection id="orte" title="Orte" summary={places.length === 0 ? 'keine' : places.length === 1 ? '1 Ort' : `${places.length} Orte`} open={open}
+      description="Orte mit Adresse, z. B. Kirche und Feier-Location. Steht ihr Name im Feld „Ort“ eines Punkts, sehen Gäste dort die Adresse und „Route öffnen“. Umbenennen ändert den Ort auch an den Punkten.">
       {places.length > 0 && (
-        <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+        <ul className="divide-y divide-gray-100 dark:divide-gray-700">
           {places.map(place => (
             <li key={place.id} data-place={place.name} className="py-2 space-y-2">
               {editable ? (
@@ -211,7 +194,7 @@ function Places({ eventId, places, editable }: { eventId: string; places: Place[
                     <ConfirmForm action={deletePlace} message={`Ort „${place.name}“ löschen? Die Punkte behalten ihn als Text, ohne Adresse.`}>
                       <input type="hidden" name="eventId" value={eventId} />
                       <input type="hidden" name="placeId" value={place.id} />
-                      <button type="submit" className="text-xs text-red-700 dark:text-red-300 hover:underline">Ort löschen</button>
+                      <button type="submit" className={buttonClass('danger', 'sm')}>Ort löschen</button>
                     </ConfirmForm>
                   </div>
                 </details>
@@ -223,58 +206,46 @@ function Places({ eventId, places, editable }: { eventId: string; places: Place[
         </ul>
       )}
       {editable && (
-        <details open={places.length === 0} className="border-t border-gray-200 dark:border-gray-700 pt-2">
-          <summary className="cursor-pointer text-sm font-medium">Neuer Ort</summary>
+        <details open={places.length === 0} className="border-t border-gray-100 pt-2 dark:border-gray-700">
+          <summary className="cursor-pointer text-sm font-medium text-blue-700 dark:text-blue-300">Neuer Ort</summary>
           <div className="mt-2"><PlaceForm eventId={eventId} /></div>
         </details>
       )}
-    </div>
-  )
-}
-
-function TabLink({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? 'page' : undefined}
-      className={`px-3 py-2 text-sm rounded-t ${active ? 'bg-white dark:bg-gray-800 border border-b-white dark:border-b-gray-800 border-gray-200 dark:border-gray-700 -mb-px font-bold' : 'text-blue-700 dark:text-blue-300 hover:underline'}`}
-    >
-      {children}
-    </Link>
+    </SettingsSection>
   )
 }
 
 function TrackEditor({ eventId, track }: { eventId: string; track: PlanTrack }) {
   return (
-    <div className="space-y-2 border-b pb-4">
-      <form action={updateTrack} className="flex flex-wrap items-end gap-2">
+    <div className="space-y-2 border-b border-gray-100 pb-4 dark:border-gray-700">
+      <form action={updateTrack} className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <input type="hidden" name="eventId" value={eventId} />
         <input type="hidden" name="trackId" value={track.id} />
-        <div className="grow min-w-40">
-          <label htmlFor="track-name" className="block text-sm font-medium mb-1">Name dieser Spur</label>
-          <input id="track-name" name="name" required maxLength={60} defaultValue={track.name} className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded text-sm" />
+        <div className="sm:flex-1">
+          <label htmlFor="track-name" className={labelClass}>Name dieser Spur</label>
+          <input id="track-name" name="name" required maxLength={60} defaultValue={track.name} className={inputClass} />
         </div>
         <div>
-          <label htmlFor="track-visibility" className="block text-sm font-medium mb-1">Sichtbarkeit dieser Spur</label>
-          <select id="track-visibility" name="visibility" defaultValue={track.visibility} className="border border-gray-300 dark:border-gray-600 p-2 rounded text-sm">
+          <label htmlFor="track-visibility" className={labelClass}>Sichtbarkeit dieser Spur</label>
+          <select id="track-visibility" name="visibility" defaultValue={track.visibility} className={inputClass}>
             {Object.entries(TRACK_VISIBILITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
         </div>
-        <button type="submit" className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900 text-sm">Spur speichern</button>
+        <button type="submit" className={buttonClass('secondary')}>Spur speichern</button>
       </form>
-      <div className="flex flex-wrap gap-2 text-sm">
+      <div className="flex flex-wrap gap-2">
         {(['left', 'right'] as const).map(direction => (
           <form key={direction} action={moveTrack}>
             <input type="hidden" name="eventId" value={eventId} />
             <input type="hidden" name="trackId" value={track.id} />
             <input type="hidden" name="direction" value={direction} />
-            <button type="submit" className="py-1 px-2 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">{direction === 'left' ? '← Tab nach links' : 'Tab nach rechts →'}</button>
+            <button type="submit" className={buttonClass('secondary', 'sm')}>{direction === 'left' ? '← Tab nach links' : 'Tab nach rechts →'}</button>
           </form>
         ))}
         <form action={deleteTrack}>
           <input type="hidden" name="eventId" value={eventId} />
           <input type="hidden" name="trackId" value={track.id} />
-          <button type="submit" className="py-1 px-2 text-red-700 dark:text-red-300 hover:underline">Spur löschen</button>
+          <button type="submit" className={buttonClass('danger', 'sm')}>Spur löschen</button>
         </form>
       </div>
     </div>
@@ -288,7 +259,7 @@ function MoveButton({ eventId, itemId, otherId, trackQuery, label, symbol }: { e
       <input type="hidden" name="itemId" value={itemId} />
       <input type="hidden" name="otherId" value={otherId} />
       <input type="hidden" name="track" value={trackQuery} />
-      <button type="submit" aria-label={label} title={label} className="w-9 h-9 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900">{symbol}</button>
+      <button type="submit" aria-label={label} title={label} className="h-10 w-10 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">{symbol}</button>
     </form>
   )
 }
@@ -308,47 +279,49 @@ function Row({ row, eventId, track, showTrack, showGap, clock, waitsFor, editabl
 }) {
   const { item } = row
   const inactive = item.status === 'DEFERRED' || item.status === 'CANCELLED'
+  const up = !showTrack && row.previousId && neighbourEditable(row.previousId)
+  const down = !showTrack && row.nextId && neighbourEditable(row.nextId)
   return (
-    <li id={`item-${item.id}`} data-item={item.id}>
+    <li id={`item-${item.id}`} data-item={item.id} className="scroll-mt-20">
       {showGap && row.gapMin !== null && row.gapMin !== 0 && (
         <p className={`px-4 py-1 text-xs ${row.gapMin > 0 ? 'bg-green-50 dark:bg-green-950/50 text-green-800 dark:text-green-200' : 'bg-red-50 dark:bg-red-950/50 text-red-800 dark:text-red-200'}`}>
           {row.gapMin > 0 ? `Puffer ${minutes(row.gapMin)}` : `Überschneidung ${minutes(-row.gapMin)}`}
         </p>
       )}
-      <div className={`p-3 flex gap-3 ${inactive ? 'opacity-60' : ''}`}>
-        <div className="w-28 shrink-0 text-sm tabular-nums">
-          <div className="font-bold">{clock(item.plannedStart)}</div>
-          <div className="text-gray-600 dark:text-gray-400">bis {clock(row.end)}</div>
-          <div className="text-xs text-gray-600 dark:text-gray-400">{minutes(item.plannedDurationMin)}</div>
-        </div>
-        <div className="grow min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-1">
-            <span className={`font-medium ${inactive ? 'line-through' : ''}`}>{item.title}</span>
-            {item.isAnchor && <Badge tone="blue">Anker</Badge>}
-            {item.mayStartEarly && <Badge>darf früher beginnen</Badge>}
-            {item.minDurationMin !== null && <Badge>kürzbar bis {minutes(item.minDurationMin)}</Badge>}
-            {item.visibility !== 'PUBLIC' && <Badge tone={item.visibility === 'SECRET' ? 'purple' : 'amber'}>{ITEM_VISIBILITY_LABELS[item.visibility]}</Badge>}
-            {track?.visibility === 'TEAM' && item.visibility === 'PUBLIC' && <Badge tone="amber">Team-Spur</Badge>}
-            {item.status === 'DEFERRED' && <Badge>zurückgestellt</Badge>}
-            {item.status === 'CANCELLED' && <Badge>fällt aus</Badge>}
-            {showTrack && track && <Badge>{track.name}</Badge>}
+      <div className={`flex flex-col gap-2 px-4 py-3 sm:flex-row sm:gap-3 ${inactive ? 'opacity-60' : ''}`}>
+        <div className="flex min-w-0 flex-1 gap-3">
+          <div className="w-16 shrink-0 text-sm tabular-nums sm:w-24">
+            <div className="font-semibold">{clock(item.plannedStart)}</div>
+            <div className="text-gray-600 dark:text-gray-400">bis {clock(row.end)}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">{minutes(item.plannedDurationMin)}</div>
           </div>
-          {item.location && <PlaceLine location={item.location} place={place} />}
-          {item.description && <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{item.description}</p>}
-          {item.internalNote && <p className="text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 rounded px-2 py-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}
-          {waitsFor.length > 0 && <p className="text-xs text-gray-600 dark:text-gray-400">wartet auf: {waitsFor.map(other => other.title).join(', ')}</p>}
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-1">
+              <span className={`mr-1 font-medium ${inactive ? 'line-through' : ''}`}>{item.title}</span>
+              {item.isAnchor && <Badge tone="blue">Anker</Badge>}
+              {item.mayStartEarly && <Badge>darf früher beginnen</Badge>}
+              {item.minDurationMin !== null && <Badge>kürzbar bis {minutes(item.minDurationMin)}</Badge>}
+              {item.visibility !== 'PUBLIC' && <Badge tone={item.visibility === 'SECRET' ? 'purple' : 'amber'}>{ITEM_VISIBILITY_LABELS[item.visibility]}</Badge>}
+              {track?.visibility === 'TEAM' && item.visibility === 'PUBLIC' && <Badge tone="amber">Team-Spur</Badge>}
+              {item.status === 'DEFERRED' && <Badge>zurückgestellt</Badge>}
+              {item.status === 'CANCELLED' && <Badge tone="red">fällt aus</Badge>}
+              {showTrack && track && <Badge>{track.name}</Badge>}
+            </div>
+            {item.location && <PlaceLine location={item.location} place={place} />}
+            {item.description && <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line">{item.description}</p>}
+            {item.internalNote && <p className="text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/50 rounded-lg px-2 py-1 whitespace-pre-line">Notiz: {item.internalNote}</p>}
+            {waitsFor.length > 0 && <p className="text-xs text-gray-600 dark:text-gray-400">wartet auf: {waitsFor.map(other => other.title).join(', ')}</p>}
+          </div>
         </div>
         {editable && (
-          <div className="shrink-0 flex flex-col items-end gap-1">
-            <div className="flex gap-1">
-              {!showTrack && row.previousId && neighbourEditable(row.previousId) && (
-                <MoveButton eventId={eventId} itemId={item.id} otherId={row.previousId} trackQuery={trackQuery} label={`„${item.title}“ nach oben`} symbol="↑" />
-              )}
-              {!showTrack && row.nextId && neighbourEditable(row.nextId) && (
-                <MoveButton eventId={eventId} itemId={item.id} otherId={row.nextId} trackQuery={trackQuery} label={`„${item.title}“ nach unten`} symbol="↓" />
-              )}
-            </div>
-            <Link href={`/admin/events/${eventId}/items/${item.id}`} className="text-sm text-blue-700 dark:text-blue-300 hover:underline" aria-label={`„${item.title}“ bearbeiten`}>Bearbeiten</Link>
+          <div className="flex shrink-0 items-center justify-end gap-1 sm:flex-col sm:items-end sm:justify-start">
+            {(up || down) && (
+              <div className="flex gap-1">
+                {up && <MoveButton eventId={eventId} itemId={item.id} otherId={row.previousId!} trackQuery={trackQuery} label={`„${item.title}“ nach oben`} symbol="↑" />}
+                {down && <MoveButton eventId={eventId} itemId={item.id} otherId={row.nextId!} trackQuery={trackQuery} label={`„${item.title}“ nach unten`} symbol="↓" />}
+              </div>
+            )}
+            <Link href={`/admin/events/${eventId}/items/${item.id}`} className={buttonClass('secondary', 'sm')} aria-label={`„${item.title}“ bearbeiten`}>Bearbeiten</Link>
           </div>
         )}
       </div>

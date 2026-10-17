@@ -251,8 +251,9 @@ test('Einstellungen, Schalter und Status nur für Besitzer*in - Moderator*in und
   const moderator = await createAccount('MODERATOR')
   await prisma.eventAccess.create({ data: { eventId: event.id, userId: moderator.id } })
 
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen`)
   const options = await readForm(page, 'form:has(input[name="guestHorizonMin"])')
+  await page.goto(`/admin/events/${event.id}`)
   const publish = await readForm(page, 'form:has(input[name="status"][value="PUBLISHED"])')
   await page.goto(`/admin/events/${event.id}/items/new?track=${track.id}`)
   const create = await readForm(page, 'form:has(input[name="title"])')
@@ -360,7 +361,7 @@ test('Duplizieren: neuer Tag, gleiche Uhrzeiten, ohne Freigaben - geheime Punkte
 test('Neues Datum verschiebt alle Punkte mit, Uhrzeiten bleiben - auch über die Zeitumstellung', async ({ page }) => {
   const owner = await loggedIn(page)
   const { event, a } = await planWithTwoItems(owner.id)
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=event`)
   await page.getByLabel('Datum').fill('2026-10-25')
   await page.getByRole('button', { name: 'Einstellungen speichern' }).click()
   await expect(page.getByText('alle Punkte auf den neuen Tag verschoben')).toBeVisible()
@@ -385,7 +386,7 @@ test('Reihen: anlegen, Event zuordnen, Adressen teilen sich einen Namensraum mit
   const series = await prisma.series.findUniqueOrThrow({ where: { slug: seriesSlug } })
 
   // Event der Reihe zuordnen; seine Adresse darf nicht die der Reihe werden.
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=event`)
   await page.getByLabel('Reihe (optional)').selectOption({ label: 'Hochzeitswochenende' })
   await page.getByRole('button', { name: 'Einstellungen speichern' }).click()
   await expect(page.getByText('Einstellungen gespeichert.')).toBeVisible()
@@ -400,7 +401,7 @@ test('Reihen: anlegen, Event zuordnen, Adressen teilen sich einen Namensraum mit
   await login(other, otherUser.email)
   expect((await other.goto(`/admin/series/${series.id}`))?.status()).toBe(404)
   const otherEvent = await createEventRecord(otherUser.id)
-  await other.goto(`/admin/events/${otherEvent.id}`)
+  await other.goto(`/admin/events/${otherEvent.id}/einstellungen`)
   const settings = await readForm(other, 'form:has(input[name="title"])')
   await submitForm(other, settings, { seriesId: series.id })
   expect((await prisma.event.findUniqueOrThrow({ where: { id: otherEvent.id } })).seriesId).toBeNull()

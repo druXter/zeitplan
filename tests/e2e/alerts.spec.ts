@@ -162,6 +162,7 @@ test('Vorwarnung (L17): geheime Punkte nur für Eingetragene, kein Versand ohne 
 
   // Abmelden beendet die Mitteilungen dieses Geräts (Abo hängt an der Sitzung).
   await page.goto('/account')
+  await page.getByLabel('Konto-Menü').click()
   await page.getByRole('button', { name: 'Abmelden' }).click()
   await page.waitForURL(url => url.pathname !== '/account')
   await expect.poll(() => prisma.pushSubscription.count({ where: { userId: dj.id } })).toBe(0)

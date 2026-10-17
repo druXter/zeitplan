@@ -118,7 +118,7 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
       </fieldset>
 
       {visibility === 'SECRET' && (
-        <fieldset className="space-y-1 border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/50 rounded p-3">
+        <fieldset className="space-y-1 border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/50 rounded-lg p-3">
           <legend className={`${labelClass} px-1`}>Geheim für</legend>
           {options.accounts.map(account => (
             <label key={account.id} className="flex items-center gap-2 text-sm">
@@ -158,7 +158,7 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
       </fieldset>
 
       {options.items.length > 0 && (
-        <details open={values.waitsFor.length > 0} className="border border-gray-200 dark:border-gray-700 rounded p-3">
+        <details open={values.waitsFor.length > 0} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3">
           <summary className="text-sm font-medium cursor-pointer">Wartet auf ({values.waitsFor.length} gewählt)</summary>
           <p className="text-xs text-gray-600 dark:text-gray-400 my-2">Der Punkt beginnt frühestens, wenn alle gewählten Punkte vorbei sind – meist Punkte anderer Spuren (Torte wartet auf das Fotoshooting).</p>
           <div className="max-h-64 overflow-y-auto space-y-1">

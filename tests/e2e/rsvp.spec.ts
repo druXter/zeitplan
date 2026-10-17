@@ -174,7 +174,7 @@ test('Verwaltung: Zugang RSVP mit Termin-id, Zeitplan-Link zum Eintragen; neuer 
   expect(await apiStatus(guest, event.slug)).toBe(200)
 
   await login(page, owner.email)
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=zugang`)
   await expect(page.getByLabel('Nur mit Zusage in rsvp-app')).toBeChecked()
   await expect(page.getByLabel('Termin in rsvp-app (id)')).toHaveValue(rsvpEventId)
   await expect(page.getByLabel('Zeitplan-Link – in rsvp-app beim Termin eintragen')).toHaveValue(`${ZEITPLAN}/rsvp/${event.id}`)
@@ -211,7 +211,7 @@ test('Verwaltung: Termin in rsvp-app auch ohne Zugang "nur mit Zusage" (Protokol
   const owner = await createAccount('CREATOR')
   const event = await createEventRecord(owner.id, { status: 'PUBLISHED', access: 'PUBLIC', date: SUMMER_DAY, title: 'Sitzung öffentlich' })
   await login(page, owner.email)
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=zugang`)
   await expect(page.getByLabel('Öffentlich')).toBeChecked()
   const field = page.getByLabel('Termin in rsvp-app (id, optional)')
   await expect(field).toHaveValue('')

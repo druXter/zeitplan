@@ -32,12 +32,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="de" suppressHydrationWarning>
-      <body className="antialiased min-h-screen flex flex-col dark:bg-gray-900 dark:text-gray-100">
+      <body className="antialiased min-h-screen flex flex-col bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
         {/* Eingebettete Live-Steuerung (Sitzungsleitung im Abstimmungstool, proxy.ts): ohne Kopf- und Fußzeile.
             Vor dem ersten Zeichnen gesetzt, damit nichts aufblitzt. */}
         <script dangerouslySetInnerHTML={{ __html: EMBED_SCRIPT }} />
         {/* Der Konto-Status liest Cookies (dynamisch) - in Suspense, damit er den Rest der Seite nicht aufhält. */}
-        <Suspense fallback={<div className="h-12 embed-hidden" />}>
+        <Suspense fallback={null}>
           <AccountNav />
         </Suspense>
         <div className="grow">{children}</div>

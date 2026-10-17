@@ -47,6 +47,7 @@ test('Abmelden löscht die Sitzung auch in der Datenbank', async ({ page }) => {
   const user = await createAccount('CREATOR')
   await login(page, user.email)
   await expect(page).toHaveURL(/\/admin$/)
+  await page.getByLabel('Konto-Menü').click()
   await page.getByRole('button', { name: 'Abmelden' }).click()
   await expect(page).toHaveURL(`${BASE_URL}/`)
   expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0)

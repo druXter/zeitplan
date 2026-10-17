@@ -19,13 +19,13 @@ export default function UndoBar({ eventId, track, actionId, description, seconds
   if (!visible) return null
   return (
     <div role="status" className="fixed inset-x-0 bottom-0 z-40 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <form action={liveCommand} className="max-w-xl mx-auto flex items-center gap-3 rounded-lg bg-gray-900 text-white shadow-lg p-3">
+      <form action={liveCommand} className="max-w-xl mx-auto flex items-center gap-3 rounded-xl bg-gray-900 text-white shadow-lg p-3 dark:bg-gray-700">
         <input type="hidden" name="eventId" value={eventId} />
         <input type="hidden" name="track" value={track} />
         <input type="hidden" name="command" value="undo" />
         <input type="hidden" name="actionId" value={actionId} />
         <p className="grow min-w-0 text-sm">{description}</p>
-        <PendingButton className="shrink-0 min-h-12 px-4 rounded bg-white text-gray-900 font-bold">Rückgängig</PendingButton>
+        <PendingButton className="shrink-0 min-h-12 px-4 rounded-lg bg-white text-gray-900 font-semibold">Rückgängig</PendingButton>
       </form>
     </div>
   )

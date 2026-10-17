@@ -28,12 +28,12 @@ export default function DatenschutzPage() {
   const smtpHost = process.env.SMTP_HOST || '[E-Mail-Server noch nicht konfiguriert]'
 
   return (
-    <main className="bg-gray-50 dark:bg-gray-900 py-8 px-4">
-      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow text-gray-800 dark:text-gray-200 space-y-6">
-        <h1 className="text-3xl font-bold border-b pb-4">Datenschutzerklärung</h1>
+    <main className="py-8 px-4">
+      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm text-gray-800 dark:text-gray-200 space-y-6">
+        <h1 className="text-3xl font-semibold border-b pb-4">Datenschutzerklärung</h1>
 
         <div>
-          <h2 className="font-bold text-lg">1. Verantwortlicher</h2>
+          <h2 className="font-semibold text-lg">1. Verantwortlicher</h2>
           <p className="mt-2">
             Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) für die Datenverarbeitung auf dieser
             Website ist:
@@ -51,7 +51,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">2. Worum es geht</h2>
+          <h2 className="font-semibold text-lg">2. Worum es geht</h2>
           <p className="mt-2">
             Mit dieser Anwendung planen Veranstalter*innen den Ablauf von Veranstaltungen (z. B. einer Hochzeit), und
             Moderator*innen melden während der Veranstaltung Verspätungen und Änderungen. Ein Konto brauchen nur Personen,
@@ -62,7 +62,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">3. Konto (für Planung und Moderation)</h2>
+          <h2 className="font-semibold text-lg">3. Konto (für Planung und Moderation)</h2>
           <p className="mt-2">Für ein Konto speichern wir:</p>
           <ul className="list-disc list-inside mt-2 space-y-1 text-sm">
             <li>E-Mail-Adresse, optional einen Namen, deine Rolle, den Zeitpunkt der Anlage und der letzten Anmeldung,</li>
@@ -79,7 +79,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">3a. Anmeldung mit dem Konto eines anderen Tools (optional)</h2>
+          <h2 className="font-semibold text-lg">3a. Anmeldung mit dem Konto eines anderen Tools (optional)</h2>
           <p className="mt-2">
             Ist dies vom Betreiber eingerichtet, kannst du dich hier mit einem Konto eines verbundenen Tools anmelden
             (z.B. rsvp-app), und umgekehrt kann man sich dort mit einem Konto von hier anmelden. Das geschieht{' '}
@@ -102,7 +102,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">4. Veranstaltungen und Freigaben</h2>
+          <h2 className="font-semibold text-lg">4. Veranstaltungen und Freigaben</h2>
           <p className="mt-2">
             Für eine Veranstaltung speichern wir Titel, Adresse der Seite für Gäste, Datum, Beschreibung, Status, das Konto,
             dem sie gehört, und die Konten, für die sie freigegeben wurde (z. B. Moderator*innen). Sehen können die
@@ -159,7 +159,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">5. Ablauf für Gäste</h2>
+          <h2 className="font-semibold text-lg">5. Ablauf für Gäste</h2>
           <p className="mt-2">
             Die Seite mit dem Ablauf einer Veranstaltung (und die Anzeigetafel vor Ort) kannst du ohne Konto aufrufen.
             Ist sie öffentlich, speichern wir dabei nichts über dich und setzen keine Cookies. Damit die Seite aktuell
@@ -202,7 +202,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">6. Schutz vor Missbrauch (Drosselung)</h2>
+          <h2 className="font-semibold text-lg">6. Schutz vor Missbrauch (Drosselung)</h2>
           <p className="mt-2">
             Um das Erraten von Passwörtern und das massenhafte Auslösen von Mails zu verhindern, zählen wir
             fehlgeschlagene Anmeldeversuche, Passwort-Reset-Anfragen und falsch eingegebene Zugangscodes. Dazu wird
@@ -215,7 +215,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">7. E-Mails</h2>
+          <h2 className="font-semibold text-lg">7. E-Mails</h2>
           <p className="mt-2">
             Wir verschicken E-Mails nur für Kontofunktionen: die Einladung zu einem neuen Konto und einen auf Wunsch
             angeforderten Passwort-Reset. Gäste bekommen von diesem Dienst keine Mails. Werbung oder Newsletter gibt es nicht.
@@ -223,7 +223,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">8. Cookies</h2>
+          <h2 className="font-semibold text-lg">8. Cookies</h2>
           <p className="mt-2">
             Wir setzen ausschließlich technisch notwendige Cookies ein (Art. 6 Abs. 1 lit. b/f DSGVO, § 25 Abs. 2 Nr. 2
             TDDDG) - eine Einwilligung ist dafür nicht erforderlich. Es gibt keine Tracking-, Analyse- oder
@@ -264,7 +264,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">9. Empfänger und Auftragsverarbeiter</h2>
+          <h2 className="font-semibold text-lg">9. Empfänger und Auftragsverarbeiter</h2>
           <p className="mt-2">
             <strong>E-Mail-Versand:</strong> Einladungs- und Passwort-Reset-Mails versenden wir über den E-Mail-Server{' '}
             <code>{smtpHost}</code>. Mit dem Betreiber dieses Servers besteht, soweit es sich um einen externen Anbieter
@@ -299,7 +299,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">10. Speicherdauer</h2>
+          <h2 className="font-semibold text-lg">10. Speicherdauer</h2>
           <p className="mt-2">
             Ein Konto wird automatisch gelöscht, wenn du dich <strong>2 Jahre</strong> lang nicht mehr angemeldet
             hast und dir keine Veranstaltungen mehr gehören - inklusive Sitzungen, Verknüpfungen zu anderen Tools und
@@ -319,7 +319,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">11. Deine Rechte</h2>
+          <h2 className="font-semibold text-lg">11. Deine Rechte</h2>
           <p className="mt-2">
             Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16 DSGVO), Löschung (Art. 17 DSGVO),
             Einschränkung der Verarbeitung (Art. 18 DSGVO), Datenübertragbarkeit (Art. 20 DSGVO) und Widerspruch (Art.
@@ -333,7 +333,7 @@ export default function DatenschutzPage() {
         </div>
 
         <div>
-          <h2 className="font-bold text-lg">12. Datensicherheit</h2>
+          <h2 className="font-semibold text-lg">12. Datensicherheit</h2>
           <p className="mt-2">
             Die Übertragung erfolgt verschlüsselt (TLS/HTTPS). Anmelde-Cookies sind <code>httpOnly</code> gesetzt und
             damit per JavaScript nicht auslesbar. Passwörter, Sitzungs-Tokens und Einmal-Links werden nur als Hash

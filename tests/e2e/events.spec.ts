@@ -60,7 +60,7 @@ test('Einstellungen speichern', async ({ page }) => {
   const user = await loggedIn(page)
   const event = await createEventRecord(user.id, { slug: uniqueSlug('einstellungen') })
 
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=event`)
   await page.getByLabel('Titel').fill('Polterabend')
   await page.getByLabel('Datum').fill('2026-10-25')
   await page.getByLabel('Beschreibung (optional)').fill('Im Garten')
@@ -81,7 +81,7 @@ test('Freigabe: Moderator*in sieht das Event erst mit Freigabe - ändert, lösch
   await login(modPage, moderator.email)
 
   // Formulare als Besitzer*in lesen (frischer Seitenaufruf, siehe readForm).
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=freigaben`)
   const settings = await readForm(page, 'form:has(input[name="title"])')
   const share = await readForm(page, 'form:has(input[name="email"])')
   const remove = await readForm(page, 'form:has(button:text("Event löschen"))')
@@ -104,6 +104,9 @@ test('Freigabe: Moderator*in sieht das Event erst mit Freigabe - ändert, lösch
   await expect(modPage.getByRole('button', { name: 'Einstellungen speichern' })).toHaveCount(0)
   await expect(modPage.getByRole('heading', { name: 'Freigaben' })).toHaveCount(0)
   await expect(modPage.getByRole('heading', { name: 'Event löschen' })).toHaveCount(0)
+  await expect(modPage.getByRole('link', { name: 'Einstellungen' })).toHaveCount(0)
+  await modPage.goto(`/admin/events/${event.id}/einstellungen`)
+  await expect(modPage).toHaveURL(new RegExp(`/admin/events/${event.id}$`))
 
   // Auch mit Freigabe wirken Einstellungen, Weiter-Freigeben und Löschen nicht (nachgespielt).
   const third = await createAccount('CREATOR')
@@ -121,7 +124,7 @@ test('Freigabe: Moderator*in sieht das Event erst mit Freigabe - ändert, lösch
   expect(await prisma.eventAccess.count({ where: { eventId: event.id, userId: third.id } })).toBe(1)
 
   // Freigabe entziehen - danach wieder kein Zugriff.
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=freigaben`)
   await page.getByRole('listitem').filter({ hasText: moderator.email }).getByRole('button', { name: 'Entfernen' }).click()
   await expect(page.getByText('Freigabe entfernt.')).toBeVisible()
   expect((await modPage.goto(`/admin/events/${event.id}`))?.status()).toBe(404)
@@ -135,7 +138,7 @@ test('Freigabe: Moderator*in sieht das Event erst mit Freigabe - ändert, lösch
 test('Freigabe nur an bestehende Konten, nicht an die Besitzer*in selbst', async ({ page }) => {
   const owner = await loggedIn(page)
   const event = await createEventRecord(owner.id)
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=freigaben`)
 
   await page.getByPlaceholder('E-Mail-Adresse des Kontos').fill('niemand@example.test')
   await page.getByRole('button', { name: 'Freigeben' }).click()
@@ -150,7 +153,7 @@ test('Freigabe nur an bestehende Konten, nicht an die Besitzer*in selbst', async
 test('Fremdes Konto: Seite 404, nachgespielte Aktionen wirkungslos, Admin darf alles', async ({ page, browser }) => {
   const owner = await loggedIn(page)
   const event = await createEventRecord(owner.id)
-  await page.goto(`/admin/events/${event.id}`)
+  await page.goto(`/admin/events/${event.id}/einstellungen?abschnitt=freigaben`)
   const settings = await readForm(page, 'form:has(input[name="title"])')
   const share = await readForm(page, 'form:has(input[name="email"])')
   const unshareTarget = await createAccount('MODERATOR')

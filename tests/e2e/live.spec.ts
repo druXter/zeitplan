@@ -330,7 +330,7 @@ test('nach Eventende automatisch beendet: Live-Steuerung gesperrt, auch per Cron
   await other.close()
 })
 
-test('Eingebettet in der Sitzungsleitung (LIVE_EMBED_ORIGINS): bedienbar, ohne Konto-Leiste und Fußzeile', async ({ page }) => {
+test('Eingebettet in der Sitzungsleitung (LIVE_EMBED_ORIGINS): bedienbar, ohne Kopfzeile, Reiter und Fußzeile', async ({ page }) => {
   const { moderator, event, trauung, sekt } = await liveEvent()
   await login(page, moderator.email)
   const host = `${LIVE_EMBED_ORIGIN}/sitzung`
@@ -341,7 +341,8 @@ test('Eingebettet in der Sitzungsleitung (LIVE_EMBED_ORIGINS): bedienbar, ohne K
   await page.goto(host)
   const frame = page.frameLocator('#f')
   await expect(frame.getByRole('button', { name: /Weiter: Sektempfang/ })).toBeVisible()
-  await expect(frame.getByRole('navigation', { name: 'Konto' })).toBeHidden()
+  await expect(frame.getByRole('navigation', { name: 'Hauptnavigation' })).toBeHidden()
+  await expect(frame.getByRole('navigation', { name: 'Bereiche des Events' })).toBeHidden()
   await expect(frame.getByRole('link', { name: 'Impressum' })).toBeHidden()
 
   await frame.getByRole('button', { name: /Weiter: Sektempfang/ }).click()
@@ -350,6 +351,7 @@ test('Eingebettet in der Sitzungsleitung (LIVE_EMBED_ORIGINS): bedienbar, ohne K
 
   // Ohne Einbettung: Konto-Leiste wie immer
   await page.goto(`/admin/events/${event.id}/live`)
-  await expect(page.getByRole('navigation', { name: 'Konto' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Hauptnavigation' })).toBeVisible()
+  await expect(page.getByRole('navigation', { name: 'Bereiche des Events' })).toBeVisible()
 })
 

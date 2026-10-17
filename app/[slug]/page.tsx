@@ -41,64 +41,73 @@ export default async function GuestPage({ params }: { params: Promise<{ slug: st
   if (resolved.kind === 'series') {
     const { series } = resolved
     return (
-      <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
-        <div className="max-w-2xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
-          <h1 className="text-2xl font-bold">{series.title}</h1>
-          {series.events.length === 0 ? (
-            <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-gray-700 dark:text-gray-300">Hier erscheinen die Abläufe, sobald sie veröffentlicht sind.</p>
-          ) : (
-            <ul className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">
-              {series.events.map(event => (
-                <li key={event.slug}>
-                  <Link href={`/${event.slug}`} className="block p-4 hover:bg-gray-50 dark:hover:bg-gray-900">
-                    <span className="block font-medium text-blue-700 dark:text-blue-300">{event.title}</span>
+      <GuestMain>
+        <header className={`${CARD} p-6`}>
+          <p className="text-xs font-medium uppercase tracking-wide text-purple-700 dark:text-purple-300">Reihe</p>
+          <h1 className="text-2xl font-semibold break-words sm:text-3xl">{series.title}</h1>
+        </header>
+        {series.events.length === 0 ? (
+          <p className={`${CARD} p-4 text-gray-700 dark:text-gray-300`}>Hier erscheinen die Abläufe, sobald sie veröffentlicht sind.</p>
+        ) : (
+          <ul className="space-y-3">
+            {series.events.map(event => (
+              <li key={event.slug}>
+                <Link href={`/${event.slug}`} className={`${CARD} flex items-center justify-between gap-3 p-4 transition hover:border-blue-300 hover:shadow dark:hover:border-blue-700`}>
+                  <span className="min-w-0">
+                    <span className="block font-semibold">{event.title}</span>
                     <span className="block text-sm text-gray-600 dark:text-gray-400">{formatDate(event.date, event.timezone)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </main>
+                  </span>
+                  <span aria-hidden className="text-gray-400">›</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </GuestMain>
     )
   }
 
   const { event, visibility } = resolved
   if (visibility === 'protected') {
     return (
-      <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
-        <div className="max-w-2xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
-          <h1 className="text-2xl font-bold">{event.title}</h1>
-          <Notice tone="info">Dieser Ablauf ist nur mit Zugang sichtbar.</Notice>
-          <AccessGate slug={event.slug} access={event.access} codeAvailable={event.access === 'CODE' && event.hasAccessCode && accessCodeConfigured()} />
-        </div>
-      </main>
+      <GuestMain>
+        <header className={`${CARD} p-6`}>
+          <h1 className="text-2xl font-semibold break-words sm:text-3xl">{event.title}</h1>
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Dieser Ablauf ist nur mit Zugang sichtbar.</p>
+        </header>
+        <AccessGate slug={event.slug} access={event.access} codeAvailable={event.access === 'CODE' && event.hasAccessCode && accessCodeConfigured()} />
+      </GuestMain>
     )
   }
 
   const payload = await loadGuestPayload(event, new Date())
   const preview = visibility === 'preview'
   return (
-    <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
-      <div className="max-w-2xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
-        {preview && (
-          <Notice tone="warning">
-            Vorschau: {event.access !== 'PUBLIC' && event.status !== 'DRAFT' && event.status !== 'ARCHIVED'
-              ? 'Gäste sehen diesen Ablauf nur mit Zugang.'
-              : `Dieses Event ist „${STATUS_LABELS[event.status]}“ und für Gäste nicht sichtbar.`}{' '}
-            <Link href={`/admin/events/${event.id}`} className="underline">Zur Verwaltung</Link>
-          </Notice>
+    <GuestMain>
+      {preview && (
+        <Notice tone="warning">
+          Vorschau: {event.access !== 'PUBLIC' && event.status !== 'DRAFT' && event.status !== 'ARCHIVED'
+            ? 'Gäste sehen diesen Ablauf nur mit Zugang.'
+            : `Dieses Event ist „${STATUS_LABELS[event.status]}“ und für Gäste nicht sichtbar.`}{' '}
+          <Link href={`/admin/events/${event.id}`} className="underline">Zur Verwaltung</Link>
+        </Notice>
+      )}
+      <header className={`${CARD} p-6`} data-testid="event-header">
+        {event.series && (
+          <p className="text-xs font-medium uppercase tracking-wide"><Link href={`/${event.series.slug}`} className="text-purple-700 hover:underline dark:text-purple-300">{event.series.title}</Link></p>
         )}
-        <header className="space-y-1">
-          {event.series && (
-            <p className="text-sm"><Link href={`/${event.series.slug}`} className="text-blue-700 dark:text-blue-300 hover:underline">{event.series.title}</Link></p>
-          )}
-          <h1 className="text-2xl font-bold">{event.title}</h1>
-          <p className="text-gray-700 dark:text-gray-300">{formatDate(event.date, event.timezone)}</p>
-          {event.description && <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line pt-1">{event.description}</p>}
-        </header>
-        <GuestTimeline slug={event.slug} initial={payload} etag={payloadEtag(payload)} remember={!preview} />
-      </div>
-    </main>
+        <h1 className="text-2xl font-semibold break-words sm:text-3xl">{event.title}</h1>
+        <p className="mt-2 text-sm text-gray-700 dark:text-gray-300"><span aria-hidden>📅 </span>{formatDate(event.date, event.timezone)}</p>
+        {event.description && <p className="mt-4 whitespace-pre-line text-gray-700 dark:text-gray-300">{event.description}</p>}
+      </header>
+      <GuestTimeline slug={event.slug} initial={payload} etag={payloadEtag(payload)} remember={!preview} />
+    </GuestMain>
   )
+}
+
+const CARD = 'rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800'
+
+/** Rahmen der Gästeseiten: schmal wie in rsvp-app, auf dem Handy mit wenig Rand. */
+function GuestMain({ children }: { children: React.ReactNode }) {
+  return <main className="mx-auto w-full max-w-2xl space-y-6 px-4 py-6 text-gray-900 sm:py-8 dark:text-gray-100">{children}</main>
 }

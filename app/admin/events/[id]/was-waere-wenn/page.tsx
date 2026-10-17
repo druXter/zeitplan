@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { requireUser } from '../../../../lib/auth'
 import { loadEventOr404 } from '../../../../lib/events/store'
 import { loadPlan } from '../../../../lib/planning/store'
@@ -7,7 +6,6 @@ import { isActive, project, whatIf, LIVE_LIMITS, type WhatIfRefusal, type WhatIf
 import { formatDuration, formatItemClock } from '../../../../lib/timezone'
 import Badge from '../../../../ui/badge'
 import Notice from '../../../../ui/notice'
-import StatusBadge from '../../../../ui/status-badge'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +34,6 @@ export default async function WhatIfPage({ params, searchParams }: { params: Pro
   const now = new Date()
   const clock = (date: Date) => formatItemClock(date, event.date, event.timezone)
   const trackName = new Map(tracks.map(track => [track.id, track.name]))
-  const link = 'text-blue-700 dark:text-blue-300 hover:underline'
 
   // Auswahl: Punkte, die noch kommen oder laufen, nach erwartetem Beginn.
   const current = project(items, now, event)
@@ -53,64 +50,61 @@ export default async function WhatIfPage({ params, searchParams }: { params: Pro
   const target = items.find(item => item.id === itemId)
 
   return (
-    <main className="bg-gray-50 dark:bg-gray-900 py-6 px-4">
-      <div className="max-w-3xl mx-auto space-y-4 text-gray-900 dark:text-gray-100">
-        <div className="space-y-1">
-          <p className="text-sm"><Link href={`/admin/events/${event.id}`} className={link}>{event.title}</Link> · <Link href={`/admin/events/${event.id}/plan`} className={link}>Planung</Link></p>
-          <h1 className="text-2xl font-bold">Was wäre wenn? <StatusBadge status={event.status} /></h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Simuliert eine Verspätung, ohne etwas zu speichern – eine Generalprobe für die Puffer. Gerechnet wird vom jetzigen
-            Stand aus ({clock(now)} Uhr, mit allen Meldungen), so als würdest du in der Live-Steuerung „+X“ drücken.
-          </p>
-        </div>
-
-        {!current.ok && <Notice tone="error">{REFUSALS.cycle}</Notice>}
-        {current.ok && choices.length === 0 && <Notice tone="info">Es gibt keinen Punkt, der noch kommt oder läuft.</Notice>}
-
-        {choices.length > 0 && (
-          <form method="get" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
-              <div>
-                <label htmlFor="whatif-item" className="block text-sm font-medium mb-1">Punkt</label>
-                <select id="whatif-item" name="punkt" defaultValue={itemId || choices[0].id} className="w-full border border-gray-300 dark:border-gray-600 p-2 rounded text-sm bg-white dark:bg-gray-800">
-                  {choices.map(item => (
-                    <option key={item.id} value={item.id}>
-                      {clock(item.expectedStart)} {item.title}{tracks.length > 1 ? ` (${trackName.get(item.trackId)})` : ''}{item.actualStart ? ' – läuft' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label htmlFor="whatif-plus" className="block text-sm font-medium mb-1">Minuten später</label>
-                <input id="whatif-plus" name="plus" type="number" inputMode="numeric" min={1} max={LIVE_LIMITS.maxDelayMin} step={1} defaultValue={plus} className="w-full sm:w-28 border border-gray-300 dark:border-gray-600 p-2 rounded text-sm" />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="submit" className="bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 text-sm">Durchspielen</button>
-              {QUICK.map(minutes => (
-                <button key={minutes} type="submit" name="schnell" value={minutes} className="py-2 px-3 rounded border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900 text-sm">+{minutes}</button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Bei einem laufenden Punkt heißt „+X“: Er dauert X Minuten länger.</p>
-          </form>
-        )}
-
-        {result && !result.ok && <Notice tone="error">{REFUSALS[result.reason]}</Notice>}
-        {result && result.ok && target && (
-          <Outcome
-            rows={result.rows}
-            conflicts={result.conflicts}
-            trackEnds={result.trackEnds}
-            target={target}
-            plus={plus}
-            clock={clock}
-            titleOf={titleOf}
-            trackName={trackName}
-            multipleTracks={tracks.length > 1}
-          />
-        )}
+    <div className="max-w-3xl space-y-4">
+      <div className="space-y-1">
+        <h2 className="text-lg font-semibold">Was wäre wenn?</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Simuliert eine Verspätung, ohne etwas zu speichern – eine Generalprobe für die Puffer. Gerechnet wird vom jetzigen
+          Stand aus ({clock(now)} Uhr, mit allen Meldungen), so als würdest du in der Live-Steuerung „+X“ drücken.
+        </p>
       </div>
-    </main>
+
+      {!current.ok && <Notice tone="error">{REFUSALS.cycle}</Notice>}
+      {current.ok && choices.length === 0 && <Notice tone="info">Es gibt keinen Punkt, der noch kommt oder läuft.</Notice>}
+
+      {choices.length > 0 && (
+        <form method="get" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
+            <div>
+              <label htmlFor="whatif-item" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Punkt</label>
+              <select id="whatif-item" name="punkt" defaultValue={itemId || choices[0].id} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900">
+                {choices.map(item => (
+                  <option key={item.id} value={item.id}>
+                    {clock(item.expectedStart)} {item.title}{tracks.length > 1 ? ` (${trackName.get(item.trackId)})` : ''}{item.actualStart ? ' – läuft' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="whatif-plus" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Minuten später</label>
+              <input id="whatif-plus" name="plus" type="number" inputMode="numeric" min={1} max={LIVE_LIMITS.maxDelayMin} step={1} defaultValue={plus} className="w-full sm:w-28 rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900" />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 border border-blue-600">Durchspielen</button>
+            {QUICK.map(minutes => (
+              <button key={minutes} type="submit" name="schnell" value={minutes} className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">+{minutes}</button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-600 dark:text-gray-400">Bei einem laufenden Punkt heißt „+X“: Er dauert X Minuten länger.</p>
+        </form>
+      )}
+
+      {result && !result.ok && <Notice tone="error">{REFUSALS[result.reason]}</Notice>}
+      {result && result.ok && target && (
+        <Outcome
+          rows={result.rows}
+          conflicts={result.conflicts}
+          trackEnds={result.trackEnds}
+          target={target}
+          plus={plus}
+          clock={clock}
+          titleOf={titleOf}
+          trackName={trackName}
+          multipleTracks={tracks.length > 1}
+        />
+      )}
+    </div>
   )
 }
 
@@ -133,7 +127,7 @@ function Outcome({ rows, conflicts, trackEnds, target, plus, clock, titleOf, tra
 
   return (
     <section data-whatif className="space-y-3">
-      <h2 className="text-lg font-bold">„{target.title}“ +{formatDuration(plus)}</h2>
+      <h2 className="text-lg font-semibold">„{target.title}“ +{formatDuration(plus)}</h2>
       <ul className="text-sm space-y-1">
         <li>{moved.length === 1 ? 'Ein Punkt verschiebt sich.' : `${moved.length} Punkte verschieben sich.`}</li>
         {trackEnds.map(end => (
@@ -157,7 +151,7 @@ function Outcome({ rows, conflicts, trackEnds, target, plus, clock, titleOf, tra
       )}
       {conflicts.length === 0 && <Notice tone="success">Kein Konflikt mit einem Anker.</Notice>}
 
-      <ol className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">
+      <ol className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm divide-y divide-gray-200 dark:divide-gray-700">
         {shown.map(row => {
           const item = row.after
           const changed = row.startShiftMin > 0 || row.endShiftMin > 0

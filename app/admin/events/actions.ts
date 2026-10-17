@@ -161,7 +161,7 @@ export async function updateEventSettings(_previous: FormState, formData: FormDa
     if (error instanceof SlugTakenError || isUniqueViolation(error)) return { errors: [SLUG_TAKEN] }
     throw error
   }
-  revalidatePath(`/admin/events/${event.id}`)
+  revalidatePath(`/admin/events/${event.id}`, 'layout')
   return { errors: [], message: shifted > 0 ? 'Einstellungen gespeichert, alle Punkte auf den neuen Tag verschoben.' : 'Einstellungen gespeichert.' }
 }
 
@@ -233,7 +233,7 @@ export async function updateGuestAccess(_previous: FormState, formData: FormData
     })
     if (changed) await tx.guestSession.deleteMany({ where: { eventId: event.id } })
   })
-  revalidatePath(`/admin/events/${event.id}`)
+  revalidatePath(`/admin/events/${event.id}`, 'layout')
   if (access === 'CODE' && code) {
     return { errors: [], message: `Gespeichert. Der Zugangscode lautet „${code}“ – notiere ihn jetzt, er wird nicht noch einmal angezeigt.` }
   }
@@ -254,7 +254,7 @@ export async function updateShiftsLink(_previous: FormState, formData: FormData)
   if (input && !shiftsEventId) return { errors: ['Schichten-Link: Erwartet wird der Link aus den Einstellungen des Events in Schichten (…/zeitplan/<id>).'] }
   if (shiftsEventId === linkedShiftsEventId(event.shiftsLink)) return { errors: [], message: 'Keine Änderung.' }
   await prisma.event.update({ where: { id: event.id }, data: { shiftsLink: shiftsEventId ? { shiftsEventId } : Prisma.DbNull } })
-  revalidatePath(`/admin/events/${event.id}`)
+  revalidatePath(`/admin/events/${event.id}`, 'layout')
   return { errors: [], message: shiftsEventId ? 'Verknüpft. Schichten ruft die Prognose ab, sobald dort die id dieses Events eingetragen ist.' : 'Verknüpfung gelöst.' }
 }
 
@@ -320,15 +320,15 @@ export async function shareEvent(formData: FormData) {
 
   const email = normalizeEmail(formString(formData, 'email', 254))
   const target = email ? await prisma.user.findUnique({ where: { email }, select: { id: true } }) : null
-  if (!target) redirect(`/admin/events/${event.id}?shareError=notfound`)
-  if (target.id === event.ownerId) redirect(`/admin/events/${event.id}?shareError=owner`)
+  if (!target) redirect(`/admin/events/${event.id}/einstellungen?abschnitt=freigaben&shareError=notfound#freigaben`)
+  if (target.id === event.ownerId) redirect(`/admin/events/${event.id}/einstellungen?abschnitt=freigaben&shareError=owner#freigaben`)
 
   await prisma.eventAccess.upsert({
     where: { eventId_userId: { eventId: event.id, userId: target.id } },
     update: {},
     create: { eventId: event.id, userId: target.id }
   })
-  redirect(`/admin/events/${event.id}?shared=1`)
+  redirect(`/admin/events/${event.id}/einstellungen?abschnitt=freigaben&shared=1#freigaben`)
 }
 
 /** Nimmt eine Freigabe zurück. Nur owner des betroffenen Events. */
@@ -340,7 +340,7 @@ export async function unshareEvent(formData: FormData) {
   if (!event || !canManageEvent(event.level)) redirect('/admin/events')
 
   await prisma.eventAccess.delete({ where: { id: access.id } })
-  redirect(`/admin/events/${event.id}?unshared=1`)
+  redirect(`/admin/events/${event.id}/einstellungen?abschnitt=freigaben&unshared=1#freigaben`)
 }
 
 /** Löscht das Event samt Freigaben, Spuren, Punkten, Verlauf und Gast-Sitzungen (Cascade). Nur owner. */

@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import QRCode from 'qrcode'
 import { prisma } from '../../../../lib/prisma'
 import { requireUser } from '../../../../lib/auth'
@@ -13,6 +12,7 @@ import type { PlanItem } from '../../../../lib/planning/items'
 import { placeIndex, type Place } from '../../../../lib/planning/places'
 import { formatDate, formatDateTime, formatDuration, formatItemClock } from '../../../../lib/timezone'
 import PrintButton from '../../../../ui/print-button'
+import { Segmented } from '../../../../ui/kit'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,40 +40,33 @@ export default async function PrintPage({ params, searchParams }: { params: Prom
   const clock = (date: Date) => formatItemClock(date, event.date, event.timezone)
   const programme = search.art === 'programm'
   const base = `/admin/events/${event.id}/druck`
-  const tab = (href: string, active: boolean, label: string) => (
-    <Link key={href} href={href} aria-current={active ? 'page' : undefined}
-      className={`px-3 py-1.5 rounded text-sm ${active ? 'bg-blue-600 text-white font-bold' : 'border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-900'}`}>
-      {label}
-    </Link>
-  )
-
   return (
-    <main className="bg-gray-50 dark:bg-gray-900 print:bg-white py-6 px-4 print:p-0">
-      <div className="max-w-4xl mx-auto space-y-4 text-gray-900 dark:text-gray-100 print:text-black">
-        <div className="space-y-3 print:hidden">
-          <p className="text-sm"><Link href={`/admin/events/${event.id}`} className="text-blue-700 dark:text-blue-300 hover:underline">{event.title}</Link></p>
-          <div className="flex flex-wrap gap-2">
-            {tab(base, !programme && !search.spur, 'Regieplan pro Spur')}
-            {tracks.length > 1 && tab(`${base}?spur=alle`, !programme && search.spur === 'alle', 'Regieplan, alle Spuren zusammen')}
-            {tracks.length > 1 && tracks.map(track => tab(`${base}?spur=${track.id}`, !programme && search.spur === track.id, `Nur ${track.name}`))}
-            {tab(`${base}?art=programm`, programme, 'Programmheft für Gäste')}
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <PrintButton />
-            <span className="text-gray-600 dark:text-gray-400">
-              {programme
-                ? 'Nur öffentliche Punkte, zur Planzeit. Ausgefallene Punkte fehlen.'
-                : 'Mit internen Notizen – nur fürs Team. Planzeiten (aktueller Plan), keine Prognose.'}
-            </span>
-          </div>
+    <div className="max-w-4xl space-y-4 print:text-black">
+      <div className="space-y-3 print:hidden">
+        <h2 className="text-lg font-semibold">Drucken</h2>
+        <Segmented label="Art des Ausdrucks" items={[
+          { href: base, label: 'Regieplan pro Spur', active: !programme && !search.spur },
+          ...(tracks.length > 1 ? [
+            { href: `${base}?spur=alle`, label: 'Regieplan, alle Spuren zusammen', active: !programme && search.spur === 'alle' },
+            ...tracks.map(track => ({ href: `${base}?spur=${track.id}`, label: `Nur ${track.name}`, active: !programme && search.spur === track.id }))
+          ] : []),
+          { href: `${base}?art=programm`, label: 'Programmheft für Gäste', active: programme }
+        ]} />
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          <PrintButton />
+          <span className="text-gray-600 dark:text-gray-400">
+            {programme
+              ? 'Nur öffentliche Punkte, zur Planzeit. Ausgefallene Punkte fehlen.'
+              : 'Mit internen Notizen – nur fürs Team. Planzeiten (aktueller Plan), keine Prognose.'}
+          </span>
         </div>
-
-        {programme
-          ? <Programme event={event} items={items} tracks={tracks} placeOf={placeOf} clock={clock} />
-          : <DirectorPlan event={event} items={items} tracks={tracks} selected={search.spur} placeOf={placeOf} clock={clock}
-              names={await assigneeNames(event, items)} />}
       </div>
-    </main>
+
+      {programme
+        ? <Programme event={event} items={items} tracks={tracks} placeOf={placeOf} clock={clock} />
+        : <DirectorPlan event={event} items={items} tracks={tracks} selected={search.spur} placeOf={placeOf} clock={clock}
+            names={await assigneeNames(event, items)} />}
+    </div>
   )
 }
 
@@ -107,9 +100,9 @@ function DirectorPlan({ event, items, tracks, selected, placeOf, clock, names }:
   return (
     <>
       {groups.map((group, index) => (
-        <section key={group.title ?? 'alle'} className={`bg-white dark:bg-gray-800 print:bg-white rounded-lg shadow print:shadow-none p-4 print:p-0 space-y-2 ${index > 0 ? 'print:break-before-page' : ''}`}>
+        <section key={group.title ?? 'alle'} className={`bg-white dark:bg-gray-800 print:bg-white rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm print:border-0 print:shadow-none p-4 print:p-0 space-y-2 ${index > 0 ? 'print:break-before-page' : ''}`}>
           <header>
-            <h1 className="text-xl font-bold">Regieplan: {event.title}{group.title && tracks.length > 1 ? ` – ${group.title}` : ''}</h1>
+            <h1 className="text-xl font-semibold">Regieplan: {event.title}{group.title && tracks.length > 1 ? ` – ${group.title}` : ''}</h1>
             <p className="text-sm text-gray-600 dark:text-gray-400 print:text-gray-700">
               {formatDate(event.date, event.timezone)} · Stand {formatDateTime(new Date(), event.timezone)} · Planzeiten, aktuelle Zeiten in der Team-Ansicht
             </p>
@@ -189,12 +182,12 @@ async function Programme({ event, items, tracks, placeOf, clock }: {
   const svg = await QRCode.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } })
 
   return (
-    <section className="bg-white dark:bg-gray-800 print:bg-white rounded-lg shadow print:shadow-none p-6 print:p-0 space-y-4">
+    <section className="bg-white dark:bg-gray-800 print:bg-white rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm print:border-0 print:shadow-none p-6 print:p-0 space-y-4">
       {!isGuestVisibleStatus(event.status as Parameters<typeof isGuestVisibleStatus>[0]) && (
         <p className="text-sm text-amber-900 dark:text-amber-200 print:hidden">Hinweis: Das Event ist noch nicht veröffentlicht – der QR-Code führt Gäste erst danach zum Ablauf.</p>
       )}
       <header className="text-center space-y-1">
-        <h1 className="text-3xl font-bold">{event.title}</h1>
+        <h1 className="text-3xl font-semibold">{event.title}</h1>
         <p>{formatDate(event.date, event.timezone)}</p>
         {event.description && <p className="text-sm whitespace-pre-line">{event.description}</p>}
       </header>

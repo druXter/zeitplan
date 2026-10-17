@@ -27,6 +27,7 @@ test('Orte (L22): anlegen in der Planung, Gäste sehen Adresse und Route nur an 
   await login(page, owner.email)
   await page.goto(`/admin/events/${event.id}/plan`)
   const places = page.locator('#orte')
+  await places.locator('summary').first().click()
   await places.getByText('Neuer Ort').click()
   await places.getByLabel('Name (wie im Feld „Ort“)').last().fill('kirche st. marien')
   await places.getByLabel('Adresse').last().fill('Marienplatz 1, 12345 Musterstadt')
@@ -48,6 +49,7 @@ test('Orte (L22): anlegen in der Planung, Gäste sehen Adresse und Route nur an 
 
   // Doppelter Name wird abgelehnt.
   await page.goto(`/admin/events/${event.id}/plan`)
+  await places.locator('summary').first().click()
   await places.getByText('Neuer Ort').click()
   await places.getByLabel('Name (wie im Feld „Ort“)').last().fill('LAGER')
   await places.getByLabel('Adresse').last().fill('Irgendwo 1')
@@ -57,6 +59,7 @@ test('Orte (L22): anlegen in der Planung, Gäste sehen Adresse und Route nur an 
   // Umbenennen ändert den Ort am Punkt mit (neue Version).
   const place = await prisma.place.findFirstOrThrow({ where: { eventId: event.id, address: { startsWith: 'Marienplatz' } } })
   await page.goto(`/admin/events/${event.id}/plan`)
+  await places.locator('summary').first().click()
   const entry = page.locator(`[data-place="${place.name}"]`)
   await entry.locator('summary').click()
   await entry.getByLabel('Name (wie im Feld „Ort“)').fill('Marienkirche')
@@ -78,6 +81,7 @@ test('Orte (L22): Moderator*in ohne Planrecht kann keinen Ort anlegen (Positivko
   // Formular vom Besitzer-Stand nachbauen und direkt abschicken.
   await prisma.event.update({ where: { id: event.id }, data: { modsMayEditPlan: true } })
   await page.goto(`/admin/events/${event.id}/plan`)
+  await page.locator('#orte > summary').click()
   await page.locator('#orte').getByText('Neuer Ort').click()
   const form = await readForm(page, '#orte form:has(button:text("Ort anlegen"))')
   await prisma.event.update({ where: { id: event.id }, data: { modsMayEditPlan: false } })

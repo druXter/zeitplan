@@ -5,6 +5,7 @@ import { timelineSections } from '../lib/timeline'
 import { formatClock, formatItemClock } from '../lib/timezone'
 import { useGuestView, type Connection } from './use-guest-view'
 import AnnouncementBanner from './announcement-banner'
+import { Badge } from '../ui/kit'
 
 /**
  * Gästeansicht (docs/KONZEPT.md Abschnitt 5): laufender Punkt hervorgehoben, "Als Nächstes", danach der Rest,
@@ -16,7 +17,7 @@ export default function GuestTimeline({ slug, initial, etag, remember }: { slug:
   const { event } = payload
 
   if (connection.gone) {
-    return <p role="status" className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-gray-700 dark:text-gray-300">Dieser Ablauf ist gerade nicht verfügbar.</p>
+    return <p role="status" className={`${CARD} p-4 text-gray-700 dark:text-gray-300`}>Dieser Ablauf ist gerade nicht verfügbar.</p>
   }
 
   const sections = timelineSections(payload.items, item => item.status, item => Date.parse(item.shownStart))
@@ -27,12 +28,12 @@ export default function GuestTimeline({ slug, initial, etag, remember }: { slug:
   )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <ConnectionNote connection={connection} timezone={event.timezone} />
       <AnnouncementBanner announcement={payload.announcement} timezone={event.timezone} />
 
       {payload.items.length === 0 && (
-        <p className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 text-gray-700 dark:text-gray-300">Der Ablauf wird gerade noch geplant. Schau später wieder vorbei.</p>
+        <p className={`${CARD} p-4 text-gray-700 dark:text-gray-300`}>Der Ablauf wird gerade noch geplant. Schau später wieder vorbei.</p>
       )}
       {event.status === 'ENDED' && payload.items.length > 0 && (
         <p className="text-sm text-gray-600 dark:text-gray-400">Das Event ist vorbei – hier kannst du den Ablauf nachlesen.</p>
@@ -45,28 +46,33 @@ export default function GuestTimeline({ slug, initial, etag, remember }: { slug:
       )}
       {sections.next.length > 0 && (
         <Section title="Als Nächstes">
-          <ul className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">{sections.next.map(item => row(item))}</ul>
+          <ul className={`${CARD} divide-y divide-gray-100 dark:divide-gray-700`}>{sections.next.map(item => row(item))}</ul>
         </Section>
       )}
       {sections.later.length > 0 && (
         <Section title="Danach">
-          <ul className="bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700">{sections.later.map(item => row(item))}</ul>
+          <ul className={`${CARD} divide-y divide-gray-100 dark:divide-gray-700`}>{sections.later.map(item => row(item))}</ul>
         </Section>
       )}
       {sections.past.length > 0 && (
         <details open={nothingAhead} className="group">
-          <summary className="cursor-pointer text-lg font-bold py-1">Vorbei ({sections.past.length})</summary>
-          <ul className="mt-2 bg-white dark:bg-gray-800 rounded-lg shadow divide-y divide-gray-200 dark:divide-gray-700 opacity-80">{sections.past.map(item => row(item))}</ul>
+          <summary className={`${HEADING} flex min-h-11 cursor-pointer list-none items-center gap-1`}>
+            <span aria-hidden className="inline-block transition group-open:rotate-90">▸</span> Vorbei ({sections.past.length})
+          </summary>
+          <ul className={`${CARD} mt-1 divide-y divide-gray-100 opacity-80 dark:divide-gray-700`}>{sections.past.map(item => row(item))}</ul>
         </details>
       )}
     </div>
   )
 }
 
+const CARD = 'rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800'
+const HEADING = 'text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400'
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2">
-      <h2 className="text-lg font-bold">{title}</h2>
+      <h2 className={HEADING}>{title}</h2>
       {children}
     </section>
   )
@@ -76,7 +82,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function ConnectionNote({ connection, timezone, className = '' }: { connection: Connection; timezone: string; className?: string }) {
   if (!connection.offline) return null
   return (
-    <p role="status" className={`rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 p-2 text-sm ${className}`}>
+    <p role="status" className={`rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 p-2 text-sm ${className}`}>
       Stand: {formatClock(new Date(connection.lastOk), timezone)}, keine Verbindung
     </p>
   )
@@ -92,28 +98,28 @@ function GuestRow({ item, clock, showTracks, highlight }: { item: GuestPayloadIt
   return (
     <li
       data-item-status={item.status}
-      className={`p-3 flex gap-3 ${highlight ? 'bg-blue-50 dark:bg-blue-950/50 border-2 border-blue-600 rounded-lg shadow' : ''}`}
+      className={`flex gap-3 p-4 ${highlight ? 'rounded-xl border-2 border-blue-500 bg-blue-50 shadow-sm dark:border-blue-600 dark:bg-blue-950/50' : ''}`}
     >
-      <div className="w-24 shrink-0 tabular-nums">
+      <div className="w-20 shrink-0 tabular-nums">
         {cancelled ? (
           <span className="line-through text-gray-500 dark:text-gray-400">{clock(item.plannedStart)}</span>
         ) : item.approximate ? (
           <>
             {item.delayMin === null && <span className="block text-xs text-gray-600 dark:text-gray-400">neu:</span>}
-            <span className="font-bold">ca. {clock(item.shownStart)}</span>
+            <span className={`font-semibold ${highlight ? 'text-lg' : ''}`}>ca. {clock(item.shownStart)}</span>
             {item.delayMin !== null && item.delayMin !== 0 && (
-              <span className="block text-xs font-bold text-amber-800 dark:text-amber-200">{formatDelay(item.delayMin)}</span>
+              <span className="block text-xs font-semibold text-amber-800 dark:text-amber-200">{formatDelay(item.delayMin)}</span>
             )}
           </>
         ) : (
-          <span className="font-bold">{clock(item.shownStart)}</span>
+          <span className={`font-semibold ${highlight ? 'text-lg' : ''}`}>{clock(item.shownStart)}</span>
         )}
       </div>
-      <div className="grow min-w-0 space-y-0.5">
-        <p className="flex flex-wrap items-center gap-1">
-          <span className={`font-medium ${cancelled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>{item.title}</span>
-          {cancelled && <span className="text-xs rounded px-1.5 py-0.5 bg-red-100 dark:bg-red-900 text-red-900 dark:text-red-200">fällt aus</span>}
-          {showTracks && <span className="text-xs rounded px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">{item.track}</span>}
+      <div className="min-w-0 grow space-y-1">
+        <p className="flex flex-wrap items-center gap-1.5">
+          <span className={`${highlight ? 'text-lg font-semibold' : 'font-medium'} ${cancelled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>{item.title}</span>
+          {cancelled && <Badge tone="red">fällt aus</Badge>}
+          {showTracks && <Badge>{item.track}</Badge>}
         </p>
         {item.location && <p className="text-sm text-gray-700 dark:text-gray-300">{item.location}</p>}
         {item.address && (

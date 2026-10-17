@@ -20,6 +20,12 @@
   }
 }
 
+/* Eingebettet (Live-Steuerung im Abstimmungstool, proxy.ts): ohne Konto-Leiste und Fußzeile - das Attribut setzt das
+   Skript in app/layout.tsx, bevor die Seite gezeichnet wird. */
+html[data-embedded] .embed-hidden {
+  display: none;
+}
+
 /* Anzeigetafel (/<slug>/tafel): Sie liegt als Vollbild über Kopf- und Fußzeile - die Seite dahinter darf nicht
    scrollen (Beamer/TV ohne Maus, docs/KONZEPT.md Abschnitt 5). */
 body:has([data-board]) {

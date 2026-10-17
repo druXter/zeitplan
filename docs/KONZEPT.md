@@ -176,7 +176,7 @@ Einschub kommt.
 | --- | --- | --- |
 | Gästeansicht `/<slug>` | Gäste | Ablauf mit Prognose, aktueller Punkt hervorgehoben, "Als Nächstes", Vergangenes eingeklappt, Ort je Punkt |
 | Anzeigetafel `/<slug>/tafel` | Beamer/TV vor Ort | große Schrift, jetzt + nächste 3–4 Punkte, Uhr, lädt selbst nach, kein Scrollen |
-| Live-Steuerung `/admin/events/<id>/live` | Moderator*innen | siehe Abschnitt 3 |
+| Live-Steuerung `/admin/events/<id>/live` | Moderator*innen | siehe Abschnitt 3; per iFrame in der Sitzungsleitung des Abstimmungstools (nur `LIVE_EMBED_ORIGINS`, Idee L7) |
 | Team-Ansicht | Moderator*innen, Creator | wie Gäste, plus Team-Punkte, geheime Punkte (je nach Eintrag), interne Notizen, Konflikte, minutengenau, Zuständige und „Meine Punkte“ (L16) |
 | Team-Link `/<slug>/team?k=…` | Dienstleister ohne Konto | Team-Ansicht nur lesen, geheime Punkte als Platzhalter (Idee L18, siehe "Entschieden") |
 | Drucken `/admin/events/<id>/druck` | alle Konten mit Zugriff | Regieplan fürs Team, Programmheft für Gäste (Idee L21, siehe "Entschieden") |
@@ -213,7 +213,8 @@ Pro Event einstellbar:
 * Die **Anzeigetafel** hat bei geschütztem Zugang einen eigenen, per HMAC abgeleiteten Link (wie der Verwaltungslink in
   Seating), der sich neu erzeugen lässt – für den Fernseher im Saal, an dem sich niemand anmeldet.
 * Gästeansicht und Tafel: `noindex`, bei geschütztem Zugang `no-store`. Die Gästeansicht ist per iFrame einbettbar
-  (siehe "Entschieden"), die Tafel nicht.
+  (siehe "Entschieden"), die Tafel nicht. Die Live-Steuerung nur in den Seiten aus `LIVE_EMBED_ORIGINS` (Sitzungsleitung
+  im Abstimmungstool, `proxy.ts`), mit Anmeldung hier.
 
 ---
 

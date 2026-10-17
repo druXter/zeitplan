@@ -22,6 +22,10 @@ export const BASE_URL = `http://127.0.0.1:${PORT}`
 // Rücksprung landet über BASE_URL bei der ersten Instanz (tests/e2e/login-redirect.spec.ts).
 export const REDIRECT_PORT = 3802
 export const TEST_CRON_SECRET = 'e2e-cron-secret'
+// Darf die Live-Steuerung einbetten (proxy.ts, Sitzungsleitung im Abstimmungstool): dieselbe Website wie dieses Tool
+// (Ports zählen nicht), wie vote.ramonroeser.de neben zeitplan.ramonroeser.de. Die Tests liefern die Seite per
+// page.route selbst aus.
+export const LIVE_EMBED_ORIGIN = 'http://127.0.0.1:3897'
 // Secrets für Zugangscode und Tafel-Link (app/lib/guest/tokens.ts) - auch im Testprozess gesetzt, damit
 // die Tests Codes direkt in der Datenbank festlegen und Tafel-Links ableiten können.
 const TEST_ACCESS_CODE_SECRET = 'e2e-access-code-secret-0123456789abcdef'
@@ -72,6 +76,8 @@ const SERVER_ENV: Record<string, string> = {
   SMTP_USER: '',
   SMTP_PASS: '',
   SMTP_FROM: 'Zeitplan Test <zeitplan@example.test>',
+  // Ungültige Einträge (Platzhalter, fremdes Schema, angehängte Direktive) müssen wegfallen.
+  LIVE_EMBED_ORIGINS: `${LIVE_EMBED_ORIGIN}, https://*.example.test javascript:alert(1) https://x.test;script-src *`,
   TZ: 'Europe/Berlin'
 }
 

@@ -417,6 +417,13 @@ Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, vers
   z. B. `<iframe src="https://zeitplan.deine-domain.de/<adresse>" width="100%" height="800"></iframe>`. Impressum und
   Datenschutz öffnen dann in einem neuen Tab. Tafel und Verwaltung sind nicht einbettbar. Nur bestimmte Websites
   zulassen: in `next.config.ts` `frame-ancestors *` durch deren Origins ersetzen und neu bauen.
+* **Live-Steuerung in der Sitzungsleitung des Abstimmungstools** (Idee L7): `/admin/events/<id>/live` darf in den
+  Seiten aus `LIVE_EMBED_ORIGINS` als iFrame erscheinen (z. B. `https://vote.deine-domain.de`), sonst nirgends. Die
+  Header setzt `proxy.ts` zur Laufzeit (ohne Eintrag wie bisher `frame-ancestors 'none'` und `DENY`). Im iFrame
+  blendet die Seite Konto-Leiste und Fußzeile aus (`html[data-embedded]`). Bedienen kann sie nur, wer hier angemeldet
+  ist und das Event steuern darf – eingebettet klappt das, weil alle Tools unter derselben Website laufen (Cookie
+  `SameSite=Lax`). Die Tagesordnung liest das Abstimmungstool über den öffentlichen Polling-Endpunkt (Gästeansicht
+  oder Tafel-Link), ohne Secret.
 
 Die Daten für Gäste entstehen ausschließlich in `toGuestView` (Prognose-Kern); `app/lib/guest/store.ts` lädt dafür den
 Ablauf (ohne interne Notizen), speichert den gezeigten Beginn je Punkt für die Hysterese und baut daraus den
@@ -517,7 +524,7 @@ Eröffnungstanz“, darunter Uhrzeit (mit Planzeit, falls abweichend), Ort und i
 * **Header** (`next.config.ts`): `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS für alle Seiten. **Nur die
   Gästeansicht bzw. Reihen-Übersicht `/<adresse>` ist einbettbar** (`frame-ancestors *`, wie in Seating); alle anderen
   Seiten – auch Tafel, Polling-Endpunkt, Impressum und Datenschutz – nicht (`frame-ancestors 'none'`,
-  `X-Frame-Options: DENY`). Gästeansicht und Tafel sind per `<meta name="robots">` nicht indexiert, der Polling-Endpunkt per
+  `X-Frame-Options: DENY`); einzige Ausnahme ist die Live-Steuerung für die Seiten aus `LIVE_EMBED_ORIGINS` (`proxy.ts`). Gästeansicht und Tafel sind per `<meta name="robots">` nicht indexiert, der Polling-Endpunkt per
   `X-Robots-Tag` und `no-store`. Login, Konto und Verwaltung zusätzlich `X-Robots-Tag: noindex` und `Cache-Control: no-store`;
   Reset-Links `Referrer-Policy: no-referrer`. Die Reihenfolge der Regeln ist wichtig (die spätere gewinnt, ein Header
   lässt sich nur überschreiben, nicht entfernen) und in der Datei kommentiert.
@@ -796,6 +803,7 @@ Siehe `.env.example` (mit Erklärungen). Kurzüberblick:
 | `DISPLAY_LINK_SECRET`, `DISPLAY_LINK_SECRET_PREVIOUS` | Schlüssel für Tafel-Links geschützter Events und Team-Links für Dienstleister; der vorherige hält alte Links beim Wechsel gültig; leer = kein Tafel- und kein Team-Link |
 | `SHIFTS_SECRET`, `SHIFTS_BASE_URL` | optional: Anbindung an Schichten (eigenes Secret, dort `TIMELINE_SHIFTS_SECRET`), mindestens 32 Zeichen |
 | `RSVP_TIMELINE_SECRET` | optional: eigenes Secret der Anbindung an rsvp-app (dort `TIMELINE_SECRET`), mindestens 32 Zeichen; leer = kein Zugang „nur mit Zusage“ |
+| `LIVE_EMBED_ORIGINS` | optional: Seiten, die die Live-Steuerung einbetten dürfen (Sitzungsleitung im Abstimmungstool), durch Leerzeichen oder Komma getrennt, nur `http(s)://host[:port]`; leer = nicht einbettbar |
 | `RSVP_APP_BASE_URL` | optional: Adresse von rsvp-app – nur dorthin fragt der Rückblick nach Anwesenheit und Beschlüssen; leer = kein Protokoll aus rsvp-app |
 | `SUITE_IDPS`, `SUITE_SIGNING_KEY`, `SUITE_SIGNING_KEY_PREVIOUS`, `SUITE_TRUSTED_APPS`, `SUITE_APP_NAME`, `SUITE_LOGIN_REDIRECT` | optional: Konto-Föderation (siehe „Anmelden mit einem Konto aus einem anderen Tool“) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Mailversand für Einladungen und Passwort-Reset (optional) |

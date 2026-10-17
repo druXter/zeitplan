@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import {
   createAccount, createEventRecord, createItemRecord, createTrackRecord, locationOf, login, prisma, readForm, submitForm
 } from './helpers'
-import { TEST_CRON_SECRET } from '../../playwright.config'
+import { BASE_URL, LIVE_EMBED_ORIGIN, TEST_CRON_SECRET } from '../../playwright.config'
 import { zonedDateToUtc } from '../../app/lib/timezone'
 
 // Live-Steuerung (Phase 4, docs/KONZEPT.md Abschnitt 3). Definition of Done: zwei gleichzeitige "Weiter"
@@ -329,3 +329,27 @@ test('nach Eventende automatisch beendet: Live-Steuerung gesperrt, auch per Cron
   expect(locationOf(blocked)?.searchParams.get('error')).toBe('not-live')
   await other.close()
 })
+
+test('Eingebettet in der Sitzungsleitung (LIVE_EMBED_ORIGINS): bedienbar, ohne Konto-Leiste und Fußzeile', async ({ page }) => {
+  const { moderator, event, trauung, sekt } = await liveEvent()
+  await login(page, moderator.email)
+  const host = `${LIVE_EMBED_ORIGIN}/sitzung`
+  await page.route(host, route => route.fulfill({
+    contentType: 'text/html',
+    body: `<!doctype html><html><body><iframe id="f" src="${BASE_URL}/admin/events/${event.id}/live" style="width:420px;height:800px;border:0"></iframe></body></html>`
+  }))
+  await page.goto(host)
+  const frame = page.frameLocator('#f')
+  await expect(frame.getByRole('button', { name: /Weiter: Sektempfang/ })).toBeVisible()
+  await expect(frame.getByRole('navigation', { name: 'Konto' })).toBeHidden()
+  await expect(frame.getByRole('link', { name: 'Impressum' })).toBeHidden()
+
+  await frame.getByRole('button', { name: /Weiter: Sektempfang/ }).click()
+  await expect.poll(async () => (await item(sekt.id)).status).toBe('RUNNING')
+  expect((await item(trauung.id)).status).toBe('DONE')
+
+  // Ohne Einbettung: Konto-Leiste wie immer
+  await page.goto(`/admin/events/${event.id}/live`)
+  await expect(page.getByRole('navigation', { name: 'Konto' })).toBeVisible()
+})
+

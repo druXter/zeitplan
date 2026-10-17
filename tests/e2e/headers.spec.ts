@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { LIVE_EMBED_ORIGIN } from '../../playwright.config'
 
 // Prüft die Header-Regeln aus next.config.ts - insbesondere die Reihenfolge (spätere Regel
 // gewinnt): sensible Bereiche müssen ihre strengeren Werte behalten. Übernommen aus Seating: nur die
@@ -6,7 +7,7 @@ import { expect, test } from '@playwright/test'
 
 const PUBLIC = ['/', '/impressum', '/datenschutz']
 const PRIVATE = ['/login', '/login/continue', '/rsvp', '/rsvp/x', '/forgot-password', '/reset-password', '/account', '/admin', '/admin/users', '/admin/events', '/admin/events/new', '/admin/events/x',
-  '/admin/events/import', '/admin/events/x/plan', '/admin/events/x/items/new', '/admin/events/x/export', '/admin/events/x/team', '/admin/events/x/live',
+  '/admin/events/import', '/admin/events/x/plan', '/admin/events/x/items/new', '/admin/events/x/export', '/admin/events/x/team',
   '/admin/events/x/qr', '/admin/series', '/admin/series/x']
 // Einbettbar: nur /<slug> (Gästeansicht, Reihen-Übersicht).
 const EMBEDDABLE = ['/irgendein-event']
@@ -91,3 +92,19 @@ test('Föderations-Pfade: Referrer-Policy überschreibt die allgemeine Regel, ke
   const discovery = await headersOf(request, '/.well-known/suite-identity')
   expect(discovery['cache-control']).toBe('public, max-age=300')
 })
+
+test('Live-Steuerung: ohne LIVE_EMBED_ORIGINS nicht einbettbar, sonst nur für die eingetragenen Seiten (proxy.ts)', async ({ request }) => {
+  // Die Test-Instanz trägt LIVE_EMBED_ORIGINS (playwright.config.ts) - ungültige Einträge fallen weg.
+  const live = await headersOf(request, '/admin/events/x/live')
+  expect(live['content-security-policy']).toBe(`frame-ancestors 'self' ${LIVE_EMBED_ORIGIN}`)
+  expect(live['x-frame-options']).toBeUndefined()
+  expect(live['x-robots-tag']).toBe('noindex, nofollow')
+  expect(live['cache-control']).toContain('no-store')
+  // Alles andere unter /admin bleibt gesperrt, auch Unterseiten der Live-Steuerung.
+  for (const path of ['/admin/events/x', '/admin/events/x/live/mehr', '/admin/events/x/rueckblick', '/admin/events/x/livex']) {
+    const h = await headersOf(request, path)
+    expect(h['content-security-policy'], path).toBe("frame-ancestors 'none'")
+    expect(h['x-frame-options'], path).toBe('DENY')
+  }
+})
+

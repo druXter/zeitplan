@@ -8,11 +8,16 @@ const NO_FRAMING = [
 ];
 
 // Seiten, die weder in Suchmaschinen noch in Caches landen sollen.
-const PRIVATE_PAGE = [
-  ...NO_FRAMING,
+const NOT_STORED = [
   { key: "X-Robots-Tag", value: "noindex, nofollow" },
   { key: "Cache-Control", value: "no-store" },
 ];
+const PRIVATE_PAGE = [...NO_FRAMING, ...NOT_STORED];
+
+// Einzige Ausnahme im Verwaltungsbereich: die Live-Steuerung /admin/events/<id>/live darf in der Sitzungsleitung des
+// Abstimmungstools erscheinen (Idee L7, LIVE_EMBED_ORIGINS). Ihre Framing-Header setzt proxy.ts zur Laufzeit - ohne
+// Eintrag wie überall "frame-ancestors 'none'" und DENY. Die Regeln hier lassen genau diesen Pfad aus.
+const LIVE = "admin/events/[^/]+/live/?$";
 
 // Einbettbar wie die Eventseiten in Seating und rsvp-app (z.B. als iFrame in die Hochzeits-Website,
 // docs/KONZEPT.md "Entschieden"): nur /<slug>. Die Gästeansicht löst keine Aktionen aus, Clickjacking hat
@@ -30,7 +35,8 @@ const nextConfig: NextConfig = {
   // der Gästeansicht). Aufbau wie in Seating:
   //
   //   1. allgemeine Regel für alles
-  //   2. kein Einbetten für "/" und alle mehrteiligen Pfade (/<slug>/tafel, /api/..., /admin/...)
+  //   2. kein Einbetten für "/" und alle mehrteiligen Pfade (/<slug>/tafel, /api/..., /admin/...) - außer der
+  //      Live-Steuerung (LIVE, Header aus proxy.ts)
   //   3. /:slug einbettbar - passt aber auch auf /admin, /login, /impressum, /offline.html ...
   //   4. einteilige Seiten des Tools wieder ohne Einbetten, sensible Bereiche mit weiteren Headern.
   //      Neue einteilige Routen hier ergänzen (tests/e2e/headers.spec.ts prüft die Header).
@@ -58,7 +64,7 @@ const nextConfig: NextConfig = {
 
       // 2. Sichere Voreinstellung für alles außer /<slug>.
       { source: "/", headers: NO_FRAMING },
-      { source: "/:first/:rest+", headers: NO_FRAMING },
+      { source: `/:path((?!${LIVE})[^/]+/.+)`, headers: NO_FRAMING },
 
       // Die Tafel eines geschützten Events trägt ihren Schlüssel in der URL (/<slug>/tafel?k=...) - er darf
       // nicht per Referer weitergegeben werden (wie beim Reset-Link).
@@ -71,8 +77,9 @@ const nextConfig: NextConfig = {
 
       // 4. Einteilige Seiten des Tools wieder ohne Einbetten.
       { source: "/:page(impressum|datenschutz|offline.html|manifest.webmanifest|icon.svg|apple-icon.png|favicon.ico)", headers: NO_FRAMING },
-      // Sensible Bereiche. `/admin/:path*` umfasst auch `/admin` selbst.
-      { source: "/admin/:path*", headers: PRIVATE_PAGE },
+      // Sensible Bereiche. Unter /admin/... kommt das Einbett-Verbot aus Regel 2 (ohne die Live-Steuerung, siehe LIVE).
+      { source: "/admin", headers: PRIVATE_PAGE },
+      { source: "/admin/:path+", headers: NOT_STORED },
       { source: "/account", headers: PRIVATE_PAGE },
       // `/login/:path*` umfasst `/login` und die Zwischenseite `/login/continue` (Föderation).
       { source: "/login/:path*", headers: PRIVATE_PAGE },

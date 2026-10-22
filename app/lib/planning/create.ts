@@ -45,6 +45,7 @@ export async function createEventFromPlan(ownerId: string, fields: EventFields, 
           plannedStart: item.plannedStart,
           plannedDurationMin: item.plannedDurationMin,
           minDurationMin: item.minDurationMin,
+          guestAlert: item.guestAlert,
           ...(item.visibility === 'SECRET' ? { secretViewers: { create: { userId: ownerId } } } : {})
         }
       })

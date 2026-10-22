@@ -9,7 +9,7 @@ function stored(overrides: Partial<StoredItem> & { id: string }): StoredItem {
   return {
     trackId: 't1', sortOrder: 1, title: 'Punkt', location: null, description: null, internalNote: null,
     visibility: 'PUBLIC', isAnchor: false, mayStartEarly: false, plannedStart: new Date('2026-06-20T12:00:00Z'),
-    plannedDurationMin: 30, minDurationMin: null, status: 'PLANNED', insertedLive: false, actualStart: null, actualEnd: null,
+    plannedDurationMin: 30, minDurationMin: null, guestAlert: false, status: 'PLANNED', insertedLive: false, actualStart: null, actualEnd: null,
     reportedDelayMin: null, cancelReason: null, version: 1, waitsFor: [], secretViewerIds: [], ...overrides
   }
 }
@@ -199,5 +199,26 @@ describe('Kürzbare Punkte (Idee L11)', () => {
     const file = clone(buildExport(event, tracks, [redactItem(stored({ id: 'k', title: 'Kaffee' }), 'u1')]))
     file.items[0].minDurationMin = 30
     expect(parseExport(file)).toEqual({ ok: false, errors: ['Punkt „Kaffee“: „kürzbar bis“ muss kürzer als die Dauer sein.'] })
+  })
+})
+
+describe('Gäste erinnern (Idee L12)', () => {
+  const items = [
+    stored({ id: 'a', sortOrder: 1, title: 'Trauung', guestAlert: true }),
+    stored({ id: 'b', sortOrder: 2, title: 'Aufbau', visibility: 'TEAM', guestAlert: true, plannedStart: new Date('2026-06-20T13:00:00Z') }),
+    stored({ id: 'c', sortOrder: 3, title: 'Sekt', plannedStart: new Date('2026-06-20T14:00:00Z') })
+  ]
+
+  it('nur an öffentlichen Punkten in der Datei, kommt beim Import zurück; ältere Dateien ohne Feld bleiben gültig', () => {
+    const file = buildExport(event, tracks, items.map(i => redactItem(i, 'u1')))
+    expect(file.items.map(i => i.guestAlert)).toEqual([true, undefined, undefined])
+    const parsed = parseExport(clone(file))
+    expect(parsed.ok && parsed.plan.items.map(i => i.guestAlert)).toEqual([true, false, false])
+    // Von Hand gesetzt an einem Team-Punkt: wirkungslos.
+    const edited = clone(file)
+    edited.items[1].guestAlert = true
+    const parsedEdited = parseExport(edited)
+    expect(parsedEdited.ok && parsedEdited.plan.items[1].guestAlert).toBe(false)
+    expect(JSON.stringify(file)).not.toContain('guestAlerts')
   })
 })

@@ -9,7 +9,9 @@ import { accessCodeConfigured, suggestAccessCode } from '../../../../lib/guest/t
 import { linkedRsvpEventId, rsvpConfigured, timelineLinkFor } from '../../../../lib/rsvp/token'
 import { linkedShiftsEventId, shiftsConfigured, shiftsLinkUrl, shiftsOrigin } from '../../../../lib/shifts/token'
 import { deleteEvent, shareEvent, unshareEvent } from '../../actions'
-import { EventOptionsForm, EventSettingsForm, GuestAccessForm, ShiftsLinkForm } from '../../event-forms'
+import { EventOptionsForm, EventSettingsForm, GuestAccessForm, GuestAlertsForm, ShiftsLinkForm } from '../../event-forms'
+import { GUEST_ALERT_MODE_LABELS } from '../../../../lib/events/settings'
+import { isPushConfigured } from '../../../../lib/push'
 import { buttonClass, Card, inputClass, SettingsSection, ConfirmForm, Notice } from '../../../../ui/kit'
 
 export const dynamic = 'force-dynamic'
@@ -20,7 +22,7 @@ const ACCESS_SUMMARY = { PUBLIC: 'jede*r mit Link', CODE: 'mit Zugangscode', ACC
 
 /**
  * Einstellungen in einklappbaren Abschnitten mit Kurzstand (docs/KONZEPT-OBERFLAECHE.md): Event · Zugang für Gäste ·
- * Prognose, Anzeige und Rechte · Schichten · Freigaben; darunter Löschen. Jeder Abschnitt speichert für sich,
+ * Erinnerungen für Gäste · Prognose, Anzeige und Rechte · Schichten · Freigaben; darunter Löschen. Jeder Abschnitt speichert für sich,
  * `?abschnitt=<id>` öffnet einen. Nur owner.
  */
 export default async function EventSettingsPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Search> }) {
@@ -31,14 +33,15 @@ export default async function EventSettingsPage({ params, searchParams }: { para
   const search = await searchParams
   const open = (section: string) => search.abschnitt === section
 
-  const [shares, series, activeGuestSessions] = await Promise.all([
+  const [shares, series, activeGuestSessions, guestSubscriptions] = await Promise.all([
     prisma.eventAccess.findMany({ where: { eventId: event.id }, include: { user: { select: { email: true } } }, orderBy: { createdAt: 'asc' } }),
     prisma.series.findMany({
       where: user.role === 'ADMIN' ? {} : { OR: [{ ownerId: user.id }, ...(event.seriesId ? [{ id: event.seriesId }] : [])] },
       orderBy: { title: 'asc' },
       select: { id: true, title: true }
     }),
-    prisma.guestSession.count({ where: { eventId: event.id, expiresAt: { gt: new Date() } } })
+    prisma.guestSession.count({ where: { eventId: event.id, expiresAt: { gt: new Date() } } }),
+    prisma.guestPushSubscription.count({ where: { eventId: event.id, expiresAt: { gt: new Date() } } })
   ])
   const rights = [event.modsMayEditPlan && 'planen', event.modsMayInsert && 'Einschübe'].filter(Boolean).join(', ')
   const shiftsEventId = linkedShiftsEventId(event.shiftsLink)
@@ -64,6 +67,17 @@ export default async function EventSettingsPage({ params, searchParams }: { para
           codeConfigured={accessCodeConfigured()}
           activeSessions={activeGuestSessions}
           rsvp={{ configured: rsvpConfigured(), rsvpEventId: linkedRsvpEventId(event.rsvpLink) ?? '', timelineLink: timelineLinkFor(event.id) }}
+        />
+      </SettingsSection>
+
+      <SettingsSection id="erinnerungen" title="Erinnerungen für Gäste" open={open('erinnerungen')}
+        summary={isPushConfigured() ? GUEST_ALERT_MODE_LABELS[event.guestAlerts] : 'nicht eingerichtet'}
+        description="Gäste können sich auf ihrem Handy kurz vor Programmpunkten erinnern lassen – nach der Zeit, die sie in der Gästeansicht sehen.">
+        <GuestAlertsForm
+          eventId={event.id}
+          pushConfigured={isPushConfigured()}
+          subscriptions={guestSubscriptions}
+          values={{ guestAlerts: event.guestAlerts, guestAlertLeadMin: event.guestAlertLeadMin, guestShiftAlertMin: event.guestShiftAlertMin }}
         />
       </SettingsSection>
 

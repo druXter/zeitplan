@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { cache } from 'react'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
 import { getCurrentUser } from '../auth'
 import { loadEventForUser } from '../events/store'
@@ -11,6 +12,8 @@ import { displayTokenValid } from './tokens'
 import { buildGuestPayload, type GuestPayload } from './payload'
 import { currentAnnouncement } from './announcement'
 import { placeIndex, routeUrl, type PlaceFields } from '../planning/places'
+import { isPushConfigured } from '../push'
+import type { GuestView } from '../schedule'
 
 function guestPlace(place: PlaceFields | null): { address: string; routeUrl: string } | null {
   return place ? { address: place.address, routeUrl: routeUrl(place) } : null
@@ -22,18 +25,33 @@ const guestEventSelect = {
   autoCreep: true, creepNudgeMin: true, creepCapMin: true,
   guestRoundingMin: true, hysteresisMin: true, showDelayToGuests: true, guestHorizonMin: true,
   announcementText: true, announcementAt: true, announcementUntil: true,
-  series: { select: { slug: true, title: true } }
+  guestAlerts: true, guestAlertLeadMin: true, guestShiftAlertMin: true,
+  series: { select: { slug: true, title: true } },
+  accessCodeHmac: true
 } as const
 
-/** accessCodeHmac selbst verlässt diese Datei nie - Seiten erfahren nur, ob ein Code festgelegt ist. */
-async function findGuestEvent(slug: string) {
-  const row = await prisma.event.findUnique({ where: { slug }, select: { ...guestEventSelect, accessCodeHmac: true } })
-  if (!row) return null
-  const { accessCodeHmac, ...event } = row
-  return { ...event, hasAccessCode: accessCodeHmac !== null }
+type GuestEventRow = Prisma.EventGetPayload<{ select: typeof guestEventSelect }>
+
+/**
+ * accessCodeHmac selbst verlässt diese Datei nie - Seiten erfahren nur, ob ein Code festgelegt ist. Ohne
+ * VAPID-Schlüssel gibt es keine Erinnerungen für Gäste (Idee L12) - dann gilt guestAlerts überall als OFF.
+ */
+function toGuestEvent(row: GuestEventRow) {
+  const { accessCodeHmac, guestAlerts, ...event } = row
+  return { ...event, guestAlerts: isPushConfigured() ? guestAlerts : 'OFF' as const, hasAccessCode: accessCodeHmac !== null }
 }
 
-export type GuestEvent = NonNullable<Awaited<ReturnType<typeof findGuestEvent>>>
+async function findGuestEvent(slug: string) {
+  const row = await prisma.event.findUnique({ where: { slug }, select: guestEventSelect })
+  return row ? toGuestEvent(row) : null
+}
+
+export type GuestEvent = ReturnType<typeof toGuestEvent>
+
+/** Events mit Erinnerungen für Gäste (Idee L12, app/lib/guest-alerts/send.ts) - wie die Gästeansicht sie lädt. */
+export async function findGuestEvents(where: Prisma.EventWhereInput): Promise<GuestEvent[]> {
+  return (await prisma.event.findMany({ where, select: guestEventSelect })).map(toGuestEvent)
+}
 
 export type ResolvedGuestEvent = { event: GuestEvent; visibility: Exclude<GuestVisibility, 'hidden'> }
 
@@ -72,6 +90,15 @@ export const resolveGuestEvent = cache(async (slug: string, displayKey?: string)
  * braucht die Punkte für die Kette) - heraus kommt aber nur, was toGuestView freigibt.
  */
 export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<GuestPayload> {
+  const { view, publicTrackCount } = await loadGuestView(event, now)
+  return buildGuestPayload(event, view, publicTrackCount, currentAnnouncement(event, now))
+}
+
+/**
+ * Die Gästeansicht selbst (toGuestView) samt Speichern von guestShownStart - für loadGuestPayload und die Erinnerungen
+ * an Gäste (Idee L12), damit eine Erinnerung genau die Zeit nennt, die Gäste in der Ansicht sehen.
+ */
+export async function loadGuestView(event: GuestEvent, now: Date): Promise<{ view: GuestView; publicTrackCount: number }> {
   const [tracks, rows, places] = await Promise.all([
     prisma.track.findMany({ where: { eventId: event.id }, select: { id: true, name: true, visibility: true, sortOrder: true } }),
     prisma.item.findMany({
@@ -79,7 +106,7 @@ export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<Gu
       select: {
         id: true, trackId: true, sortOrder: true, title: true, location: true, description: true, visibility: true,
         isAnchor: true, mayStartEarly: true, plannedStart: true, plannedDurationMin: true, minDurationMin: true, status: true,
-        actualStart: true, actualEnd: true, reportedDelayMin: true, cancelReason: true, guestShownStart: true,
+        actualStart: true, actualEnd: true, reportedDelayMin: true, cancelReason: true, guestShownStart: true, guestAlert: true,
         waitsFor: { select: { waitsForItemId: true } }
       }
     }),
@@ -106,6 +133,7 @@ export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<Gu
     reportedDelayMin: row.reportedDelayMin,
     cancelReason: row.cancelReason,
     place: guestPlace(placeOf(row.location)),
+    guestAlert: row.guestAlert,
     waitsFor: row.waitsFor.map(d => d.waitsForItemId)
   }))
 
@@ -124,7 +152,7 @@ export async function loadGuestPayload(event: GuestEvent, now: Date): Promise<Gu
     await prisma.$transaction(changed.map(([id, shown]) => prisma.item.updateMany({ where: { id }, data: { guestShownStart: shown } })))
   }
 
-  return buildGuestPayload(event, view, tracks.filter(track => track.visibility === 'PUBLIC').length, currentAnnouncement(event, now))
+  return { view, publicTrackCount: tracks.filter(track => track.visibility === 'PUBLIC').length }
 }
 
 /**

@@ -23,8 +23,10 @@ export default function GuestTimeline({ slug, initial, etag, remember }: { slug:
   const sections = timelineSections(payload.items, item => item.status, item => Date.parse(item.shownStart))
   const clock = (iso: string) => formatItemClock(new Date(iso), new Date(event.date), event.timezone)
   const nothingAhead = sections.now.length === 0 && sections.next.length === 0 && sections.later.length === 0
+  // 🔔 nur, wenn Erinnerungen bloß für markierte Punkte gelten - bei "alle Punkte" stünde sie überall.
+  const bells = payload.reminders?.mode === 'MARKED'
   const row = (item: GuestPayloadItem, highlight = false) => (
-    <GuestRow key={item.id} item={item} clock={clock} showTracks={payload.showTracks} highlight={highlight} />
+    <GuestRow key={item.id} item={item} clock={clock} showTracks={payload.showTracks} highlight={highlight} bell={bells && item.reminder && item.status === 'upcoming'} />
   )
 
   return (
@@ -93,10 +95,11 @@ export function formatDelay(delayMin: number): string {
   return delayMin > 0 ? `+${delayMin}` : `−${Math.abs(delayMin)}`
 }
 
-function GuestRow({ item, clock, showTracks, highlight }: { item: GuestPayloadItem; clock: (iso: string) => string; showTracks: boolean; highlight: boolean }) {
+function GuestRow({ item, clock, showTracks, highlight, bell }: { item: GuestPayloadItem; clock: (iso: string) => string; showTracks: boolean; highlight: boolean; bell: boolean }) {
   const cancelled = item.status === 'cancelled'
   return (
     <li
+      id={`punkt-${item.id}`}
       data-item-status={item.status}
       className={`flex gap-3 p-4 ${highlight ? 'rounded-xl border-2 border-blue-500 bg-blue-50 shadow-sm dark:border-blue-600 dark:bg-blue-950/50' : ''}`}
     >
@@ -118,6 +121,7 @@ function GuestRow({ item, clock, showTracks, highlight }: { item: GuestPayloadIt
       <div className="min-w-0 grow space-y-1">
         <p className="flex flex-wrap items-center gap-1.5">
           <span className={`${highlight ? 'text-lg font-semibold' : 'font-medium'} ${cancelled ? 'line-through text-gray-500 dark:text-gray-400' : ''}`}>{item.title}</span>
+          {bell && <span role="img" aria-label="mit Erinnerung" title="mit Erinnerung" data-testid="reminder-bell">🔔</span>}
           {cancelled && <Badge tone="red">fällt aus</Badge>}
           {showTracks && <Badge>{item.track}</Badge>}
         </p>

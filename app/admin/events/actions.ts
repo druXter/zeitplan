@@ -9,7 +9,7 @@ import { requireUser, type CurrentUser } from '../../lib/auth'
 import { formString, normalizeEmail } from '../../lib/form'
 import { canCreateEvents, canManageEvent } from '../../lib/permissions'
 import { loadEventForUser } from '../../lib/events/store'
-import { allowedStatusChanges, DEFAULT_EVENT_OPTIONS, parseEventForm, parseEventOptions, type EventFields, type EventOptions } from '../../lib/events/settings'
+import { allowedStatusChanges, DEFAULT_EVENT_OPTIONS, parseEventForm, parseEventOptions, parseGuestAlertOptions, type EventFields, type EventOptions } from '../../lib/events/settings'
 import { buildExport, IMPORT_MAX_BYTES, materializePlan, parseExport, type MaterializedPlan } from '../../lib/planning/exchange'
 import { WEDDING_TEMPLATE } from '../../lib/planning/template'
 import { createEventFromPlan, EMPTY_PLAN } from '../../lib/planning/create'
@@ -180,6 +180,26 @@ export async function updateEventOptions(_previous: FormState, formData: FormDat
   return { errors: [], message: 'Einstellungen gespeichert.' }
 }
 
+/**
+ * Erinnerungen für Gäste (Idee L12): wofür, wie lange vorher, ab welcher Verschiebung. Nur owner. Ausschalten löscht
+ * die Gäste-Abos des Events - wer später wieder Erinnerungen will, schaltet sie auf dem Gerät neu ein.
+ */
+export async function updateGuestAlerts(_previous: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser('/admin/events')
+  const event = await loadEventForUser(formString(formData, 'eventId', 50), user)
+  if (!event || !canManageEvent(event.level)) redirect('/admin/events')
+
+  const parsed = parseGuestAlertOptions(formData)
+  if (!parsed.ok) return { errors: parsed.errors }
+  await prisma.$transaction(async tx => {
+    await tx.event.update({ where: { id: event.id }, data: parsed.options })
+    if (parsed.options.guestAlerts === 'OFF') await tx.guestPushSubscription.deleteMany({ where: { eventId: event.id } })
+    await bumpLiveVersion(event.id, tx)
+  })
+  revalidatePath(`/admin/events/${event.id}`, 'layout')
+  return { errors: [], message: parsed.options.guestAlerts === 'OFF' && event.guestAlerts !== 'OFF' ? 'Gespeichert. Erinnerungen sind aus, die Abos der Gäste gelöscht.' : 'Einstellungen gespeichert.' }
+}
+
 const SELECTABLE_ACCESS: GuestAccess[] = ['PUBLIC', 'CODE', 'ACCOUNT', 'RSVP']
 
 /**
@@ -187,7 +207,8 @@ const SELECTABLE_ACCESS: GuestAccess[] = ['PUBLIC', 'CODE', 'ACCOUNT', 'RSVP']
  * danach nie wieder angezeigt; ein leeres Feld behält den bisherigen. RSVP braucht die id des Termins in rsvp-app
  * (Event.rsvpLink) - dort trägt die Besitzer*in umgekehrt den Zeitplan-Link ein. Bei anderen Zugängen ist die id
  * optional (Protokoll im Rückblick, Idee L7); leer löst die Verknüpfung. Ändern sich Zugang, Code oder
- * verknüpfter Termin, enden alle Gast-Sitzungen des Events - wer den alten Zugang hatte, braucht den neuen.
+ * verknüpfter Termin, enden alle Gast-Sitzungen des Events - wer den alten Zugang hatte, braucht den neuen. Mit ihnen
+ * enden die Erinnerungen der Gäste (Idee L12): Abos an Gast-Sitzungen per Cascade, alle übrigen werden gelöscht.
  */
 export async function updateGuestAccess(_previous: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser('/admin/events')
@@ -231,7 +252,10 @@ export async function updateGuestAccess(_previous: FormState, formData: FormData
       where: { id: event.id },
       data: { access, accessCodeHmac: codeHmac, ...(rsvpEventId !== previousRsvpEventId ? { rsvpLink: rsvpEventId ? { rsvpEventId } : Prisma.DbNull } : {}) }
     })
-    if (changed) await tx.guestSession.deleteMany({ where: { eventId: event.id } })
+    if (changed) {
+      await tx.guestSession.deleteMany({ where: { eventId: event.id } })
+      await tx.guestPushSubscription.deleteMany({ where: { eventId: event.id } })
+    }
   })
   revalidatePath(`/admin/events/${event.id}`, 'layout')
   if (access === 'CODE' && code) {

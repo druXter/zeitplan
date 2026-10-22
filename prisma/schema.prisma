@@ -50,15 +50,15 @@ model User {
   resetTokenHash      String?   @unique
   resetTokenExpiresAt DateTime?
 
-  sessions      Session[]
-  events        Event[]
-  eventAccess   EventAccess[]
-  series        Series[]
-  secretItems   ItemSecretViewer[]
-  assignedItems ItemAssignee[]
-  liveActions   LiveAction[]       @relation("LiveActionActor")
-  undoneActions LiveAction[]       @relation("LiveActionUndoneBy")
-  identities    ExternalIdentity[]
+  sessions          Session[]
+  events            Event[]
+  eventAccess       EventAccess[]
+  series            Series[]
+  secretItems       ItemSecretViewer[]
+  assignedItems     ItemAssignee[]
+  liveActions       LiveAction[]       @relation("LiveActionActor")
+  undoneActions     LiveAction[]       @relation("LiveActionUndoneBy")
+  identities        ExternalIdentity[]
   pushSubscriptions PushSubscription[]
   alertSettings     AlertSetting[]
   alertsSent        AlertSent[]
@@ -75,7 +75,8 @@ model Session {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
-  pushSubscriptions PushSubscription[]
+  pushSubscriptions      PushSubscription[]
+  guestPushSubscriptions GuestPushSubscription[]
 
   @@index([userId])
 }
@@ -201,6 +202,14 @@ model Event {
   announcementAt    DateTime?
   announcementUntil DateTime?
 
+  // Erinnerungen für Gäste per Push (Idee L12, app/lib/guest-alerts): OFF, nur markierte Punkte (Item.guestAlert) oder
+  // alle öffentlichen Punkte. guestAlertLeadMin: so viele Minuten vor dem für Gäste angezeigten Beginn.
+  // guestShiftAlertMin: zusätzlich melden, wenn sich ein Punkt um mindestens so viele Minuten verschiebt (nur live),
+  // null = aus. Gäste abonnieren auf ihrem Gerät (GuestPushSubscription); ohne VAPID-Schlüssel gilt OFF.
+  guestAlerts        GuestAlertMode @default(OFF)
+  guestAlertLeadMin  Int            @default(10)
+  guestShiftAlertMin Int?
+
   seriesId  String?
   series    Series?  @relation(fields: [seriesId], references: [id], onDelete: SetNull)
   ownerId   String?
@@ -208,13 +217,14 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  shares        EventAccess[]
-  tracks        Track[]
-  items         Item[]
-  liveActions   LiveAction[]
-  guestSessions GuestSession[]
-  places        Place[]
-  alertSettings AlertSetting[]
+  shares                 EventAccess[]
+  tracks                 Track[]
+  items                  Item[]
+  liveActions            LiveAction[]
+  guestSessions          GuestSession[]
+  places                 Place[]
+  alertSettings          AlertSetting[]
+  guestPushSubscriptions GuestPushSubscription[]
 
   @@index([ownerId])
   @@index([date])
@@ -332,17 +342,20 @@ model Item {
   // Protokollnotiz (Idee L24, Rückblick): Ergebnis bzw. Verlauf des Punkts, z. B. bei Tagesordnungspunkten
   // einer Sitzung. Nur fürs Team wie internalNote, bei SECRET nur für Eingetragene; nicht im Export.
   resultNote       String?
+  // Gäste erinnern (Idee L12): wirkt bei Event.guestAlerts = MARKED und nur an öffentlichen Punkten.
+  guestAlert       Boolean    @default(false)
 
   version   Int      @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  waitsFor      ItemDependency[]   @relation("DependencyItem")
-  waitedOnBy    ItemDependency[]   @relation("DependencyTarget")
-  secretViewers ItemSecretViewer[]
-  assignees     ItemAssignee[]
-  liveActions   LiveAction[]
-  alertsSent    AlertSent[]
+  waitsFor        ItemDependency[]   @relation("DependencyItem")
+  waitedOnBy      ItemDependency[]   @relation("DependencyTarget")
+  secretViewers   ItemSecretViewer[]
+  assignees       ItemAssignee[]
+  liveActions     LiveAction[]
+  alertsSent      AlertSent[]
+  guestAlertsSent GuestAlertSent[]
 
   @@index([eventId])
   @@index([trackId, sortOrder])
@@ -434,6 +447,8 @@ model GuestSession {
   createdAt DateTime @default(now())
   expiresAt DateTime
 
+  pushSubscriptions GuestPushSubscription[]
+
   @@index([eventId])
   @@index([expiresAt])
 }
@@ -473,5 +488,56 @@ model AlertSent {
 
   @@id([itemId, userId])
   @@index([userId])
+  @@index([sentAt])
+}
+
+enum GuestAlertMode {
+  OFF
+  MARKED
+  ALL
+}
+
+// Push-Abo eines Gäste-Geräts für die Erinnerungen eines Events (Idee L12) - ohne Namen, ohne Konto. Gilt nur, solange
+// der Zugang gilt, über den es entstand: bei geschützten Events hängt es an der Gast-Sitzung (Zugangscode, rsvp-Link)
+// bzw. an der Konto-Sitzung (Zugang "nur mit Konto", Vorschau des Teams) und verschwindet mit ihr (Cascade); bei
+// öffentlichen Events an nichts. Wechselt der Zugang oder werden die Erinnerungen ausgeschaltet, löscht die
+// Einstellung die Abos. expiresAt: Eventende + 1 Tag wie Gast-Sitzungen, danach löscht der Cron cleanup.
+model GuestPushSubscription {
+  id             String        @id @default(cuid())
+  eventId        String
+  event          Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  endpoint       String
+  p256dh         String
+  auth           String
+  guestSessionId String?
+  guestSession   GuestSession? @relation(fields: [guestSessionId], references: [id], onDelete: Cascade)
+  sessionId      String?
+  session        Session?      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  expiresAt      DateTime
+  createdAt      DateTime      @default(now())
+
+  @@unique([eventId, endpoint])
+  @@index([expiresAt])
+  @@index([guestSessionId])
+  @@index([sessionId])
+}
+
+enum GuestAlertKind {
+  START
+  SHIFT
+}
+
+// Gesendete Erinnerung je Punkt und Art (Idee L12, app/lib/guest-alerts/due.ts) - für alle Gäste-Geräte zugleich, damit
+// jede nur einmal kommt. start: der angekündigte Beginn (wie Gäste ihn sehen). START: "In 10 Min: …", neu, wenn der Punkt
+// danach um mehr als den Vorlauf rutscht. SHIFT: "Neue Zeit: …", neu ab der nächsten Verschiebung um die Schwelle.
+// Gelöscht nach einer Woche (Cron cleanup) bzw. mit dem Punkt.
+model GuestAlertSent {
+  itemId String
+  item   Item           @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  kind   GuestAlertKind
+  start  DateTime
+  sentAt DateTime       @default(now())
+
+  @@id([itemId, kind])
   @@index([sentAt])
 }

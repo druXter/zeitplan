@@ -16,7 +16,12 @@ export type GuestSourceItem = ScheduleItem & {
   cancelReason: string | null
   /** Ort mit Adresse (Idee L22), vom Server über das Feld "Ort" zugeordnet - für Gäste nur an öffentlichen Punkten. */
   place?: { address: string; routeUrl: string } | null
+  /** Gäste erinnern (Idee L12) - wirkt nur mit guestAlerts MARKED. */
+  guestAlert?: boolean
 }
+
+/** Erinnerungen für Gäste (Idee L12): aus, nur markierte Punkte oder alle öffentlichen Punkte. */
+export type GuestAlertMode = 'OFF' | 'MARKED' | 'ALL'
 
 export type GuestTrack = { id: string; name: string; visibility: TrackVisibility; sortOrder: number }
 
@@ -29,6 +34,8 @@ export type GuestSettings = {
   showDelayToGuests: boolean
   /** Abweichungen erst so viele Minuten vor dem geplanten Beginn zeigen (Standard 120). */
   guestHorizonMin: number
+  /** Erinnerungen für Gäste (Idee L12), fehlt = aus. */
+  guestAlerts?: GuestAlertMode
 }
 
 export const DEFAULT_GUEST_SETTINGS: GuestSettings = { guestRoundingMin: 5, hysteresisMin: 3, showDelayToGuests: false, guestHorizonMin: 120 }
@@ -57,6 +64,8 @@ export type GuestItem = {
   delayMin: number | null
   /** Nur bei ausgefallenen Punkten. */
   cancelReason: string | null
+  /** Gäste mit Abo bekommen vor diesem Punkt eine Erinnerung (Idee L12) - nicht bei ausgefallenen Punkten. */
+  reminder: boolean
 }
 
 export type GuestView = {
@@ -92,6 +101,10 @@ function roundTo(ms: number, stepMin: number): number {
  *   3. Hysterese: Liegt es weniger als hysteresisMin neben dem zuletzt gezeigten Wert, bleibt dieser.
  *   4. Sonst auf guestRoundingMin gerundet.
  * "ca." (approximate), sobald der gezeigte Beginn von der Planzeit abweicht.
+ *
+ * reminder (Idee L12): mit guestAlerts ALL jeder sichtbare Punkt, mit MARKED die markierten (guestAlert), nie
+ * ausgefallene. Die Erinnerungen selbst entstehen aus diesem Ergebnis (app/lib/guest-alerts) - so erfahren Gäste
+ * per Push nichts, was sie nicht auch in der Gästeansicht sähen.
  */
 export function toGuestView(
   projection: { items: Projected<GuestSourceItem>[]; tracks: GuestTrack[] },
@@ -137,7 +150,8 @@ export function toGuestView(
         shownStart: new Date(shownStart),
         approximate: shownStart !== planned,
         delayMin: settings.showDelayToGuests ? Math.round((shownStart - planned) / MINUTE) : null,
-        cancelReason: cancelled ? source.cancelReason : null
+        cancelReason: cancelled ? source.cancelReason : null,
+        reminder: !cancelled && (settings.guestAlerts === 'ALL' || (settings.guestAlerts === 'MARKED' && source.guestAlert === true))
       }
     })
   }

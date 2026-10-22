@@ -45,12 +45,13 @@ describe('buildGuestPayload', () => {
 
   it('enthält nur freigegebene Felder, Zeiten als ISO-Strings', () => {
     const payload = payloadFor(items)
-    expect(Object.keys(payload).sort()).toEqual(['announcement', 'event', 'items', 'showTracks'])
+    expect(Object.keys(payload).sort()).toEqual(['announcement', 'event', 'items', 'reminders', 'showTracks'])
+    expect(payload.reminders).toBeNull()
     expect(payload.announcement).toBeNull()
     expect(Object.keys(payload.event).sort()).toEqual(['date', 'description', 'series', 'status', 'timezone', 'title'])
     for (const entry of payload.items) {
       expect(Object.keys(entry).sort()).toEqual([
-        'address', 'approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'routeUrl', 'shownStart', 'status',
+        'address', 'approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'reminder', 'routeUrl', 'shownStart', 'status',
         'title', 'track'
       ])
       expect(entry.shownStart).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00\.000Z$/)

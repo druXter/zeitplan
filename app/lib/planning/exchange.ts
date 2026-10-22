@@ -16,7 +16,9 @@ import { normalizeMapUrl, placeKey, PLACE_LIMITS, type PlaceFields } from './pla
  * `date` der Eventtag. Beim Import auf einen anderen Tag rutschen alle Punkte um ganze Tage und behalten ihre
  * Uhrzeit.
  *
- * Orte mit Adresse (Idee L22) stehen optional in `places` - ältere Dateien ohne sie bleiben gültig.
+ * Orte mit Adresse (Idee L22) stehen optional in `places` - ältere Dateien ohne sie bleiben gültig. "Gäste erinnern"
+ * (Idee L12) steht als `guestAlert: true` am Punkt; ob das Event Erinnerungen überhaupt anbietet, nicht (wie der Zugang:
+ * eine Kopie oder ein Import startet ohne Erinnerungen, bis sie jemand bewusst einschaltet).
  *
  * Nicht enthalten: Live-Stand, Ursprungsplan, Freigaben, Schalter der Moderator*innen, Zugang und die
  * SECRET-Kontenliste (Konten gibt es in einer anderen Instanz nicht). Geheime Punkte, die das exportierende
@@ -46,6 +48,8 @@ export type ExportItem = {
   durationMin: number
   /** Kürzbar bis (Idee L11) - fehlt bei nicht kürzbaren Punkten und in älteren Dateien. */
   minDurationMin?: number
+  /** Gäste erinnern (Idee L12) - nur, wenn gesetzt. */
+  guestAlert?: boolean
   waitsFor: string[]
 }
 
@@ -113,6 +117,7 @@ export function buildExport(
       start: toZonedIso(item.plannedStart, event.timezone),
       durationMin: item.plannedDurationMin,
       ...(item.minDurationMin !== null ? { minDurationMin: item.minDurationMin } : {}),
+      ...(item.guestAlert && item.visibility === 'PUBLIC' ? { guestAlert: true } : {}),
       // Nur Punkte, die mit exportiert werden (alle Punkte des Events, siehe filter oben).
       waitsFor: item.waitsFor.filter(id => itemKey.has(id)).map(id => itemKey.get(id)!)
     })),
@@ -162,6 +167,7 @@ const exportSchema = z.object({
     start: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2})$/),
     durationMin: z.int().min(0).max(PLAN_LIMITS.durationMaxMin),
     minDurationMin: z.int().min(0).max(PLAN_LIMITS.durationMaxMin).optional(),
+    guestAlert: z.boolean().optional(),
     waitsFor: z.array(key).max(PLAN_LIMITS.maxWaitsFor).default([])
   })).max(PLAN_LIMITS.maxItems),
   places: z.array(z.strictObject({
@@ -178,9 +184,10 @@ export type ParsedPlan = {
   date: Date
   settings: EventOptions
   tracks: ExportTrack[]
-  items: (Omit<ExportItem, 'start' | 'location' | 'description' | 'internalNote' | 'minDurationMin'> & {
+  items: (Omit<ExportItem, 'start' | 'location' | 'description' | 'internalNote' | 'minDurationMin' | 'guestAlert'> & {
     start: Date
     minDurationMin: number | null
+    guestAlert: boolean
     location: string | null
     description: string | null
     internalNote: string | null
@@ -247,6 +254,7 @@ export function parseExport(input: unknown): ParsedExport {
       description: item.description || null,
       internalNote: item.internalNote || null,
       minDurationMin: item.minDurationMin ?? null,
+      guestAlert: item.guestAlert === true && item.visibility === 'PUBLIC',
       waitsFor: [...new Set(item.waitsFor)]
     })
   }

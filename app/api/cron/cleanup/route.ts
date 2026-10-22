@@ -21,7 +21,8 @@ const EVENT_END_GRACE_MS = 2 * 24 * 60 * 60 * 1000
  *    NICHT Admin-Konten (sie sind eine fortlaufende Identität) und nicht Konten, denen noch
  *    Events gehören.
  * 3. Räumt Technisches auf: abgelaufene Sitzungen (samt ihrer Push-Abos) und Gast-Sitzungen, abgelaufene
- *    Einladungs-/Reset-Links, veraltete Drossel-Zähler (auch die des Zugangscodes) und Vorwarnungen älter als 7 Tage.
+ *    Einladungs-/Reset-Links, veraltete Drossel-Zähler (auch die des Zugangscodes), Vorwarnungen und Erinnerungen für
+ *    Gäste älter als 7 Tage sowie Gäste-Abos ab einem Tag nach dem Event (Idee L12).
  * 4. Setzt veröffentlichte und laufende Events nach ihrem Ende auf ENDED (endIfOver, Phase 4) - falls
  *    niemand mehr die Live-Steuerung geöffnet hat.
  */
@@ -62,12 +63,16 @@ export async function GET(request: Request) {
   await prisma.loginThrottle.deleteMany({ where: { windowStart: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } } })
   // Gesendete Vorwarnungen (Idee L17) braucht es nur, solange der Punkt noch kommen kann.
   await prisma.alertSent.deleteMany({ where: { sentAt: { lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } } })
+  // Erinnerungen für Gäste (Idee L12): Abos gelten bis einen Tag nach dem Event, Versandvermerke wie oben.
+  const deletedGuestPush = await prisma.guestPushSubscription.deleteMany({ where: { expiresAt: { lt: now } } })
+  await prisma.guestAlertSent.deleteMany({ where: { sentAt: { lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) } } })
 
   return NextResponse.json({
     deletedEvents: deletedEvents.count,
     deletedUsers: deletedUsers.count,
     deletedSessions: deletedSessions.count,
     deletedGuestSessions: deletedGuestSessions.count,
+    deletedGuestPushSubscriptions: deletedGuestPush.count,
     endedEvents
   })
 }

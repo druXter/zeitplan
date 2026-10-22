@@ -313,8 +313,8 @@ GuestSession id, eventId, tokenHash, rsvpId?, createdAt, expiresAt
 * Cron täglich: abgelaufene Gast-Sitzungen, Löschfristen (suite-weit: Inhalte 18 Monate nach Eventende, Konten nach
   2 Jahren ohne Anmeldung, Admins ausgenommen).
 * Nach Eventende automatisch `ENDED` (Live-Steuerung gesperrt, Ansicht bleibt als Rückblick).
-* PWA wie Seating (installierbar für Moderator*innen, Gästeansicht funktioniert ohne Installation). Push nur als
-  Vorwarnung fürs Team (Idee L17, siehe „Entschieden“), nie an Gäste.
+* PWA wie Seating (installierbar für Moderator*innen, Gästeansicht funktioniert ohne Installation). Push als
+  Vorwarnung fürs Team (Idee L17) und als freiwillige Erinnerung für Gäste (Idee L12), siehe „Entschieden“.
 
 ---
 
@@ -341,7 +341,8 @@ Später, nicht für die Hochzeit nötig: kürzbare Punkte (Mindestdauer), SSE, P
 Ideen L11–L13 in `suite-kit/docs/IDEEN.md`, dort auch die späteren Zeitplan-Ideen L15–L25. Umgesetzt (2026-10-13):
 Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24), Orte mit Adresse (L22), Team-Link
 für Dienstleister (L18), Regieplan und Programmheft (L21), Zuständige und "Meine Punkte" (L16); (2026-10-14): kürzbare
-Punkte (L11), "Was wäre wenn" (L19), Vorwarnung fürs Team per Push (L17) - Regeln unter "Entschieden".
+Punkte (L11), "Was wäre wenn" (L19), Vorwarnung fürs Team per Push (L17); (2026-10-22): Erinnerungen für Gäste per
+Push (L12) - Regeln unter "Entschieden".
 
 ## 12. Offene Entscheidungen
 
@@ -656,4 +657,27 @@ Keine. Neue Fragen, die bei der Umsetzung auftauchen, hier ergänzen.
   Min: Titel", Uhrzeit (mit Planzeit bei Abweichung), Ort, interne Notiz gekürzt auf 140 Zeichen - Ende-zu-Ende
   verschlüsselt; Link zu "Meine Punkte" bzw. zur Team-Ansicht am Punkt. TTL bis zum erwarteten Beginn, Dringlichkeit
   hoch. Zeitgeber: `GET /api/cron/alerts?secret=CRON_SECRET` jede Minute von außen (wie die anderen Cron-Endpunkte,
-  kein Timer im Prozess). `AlertSent` wird nach 7 Tagen gelöscht. Push an Gäste (L12) bleibt offen. (Annahme)
+  kein Timer im Prozess). `AlertSent` wird nach 7 Tagen gelöscht. Push an Gäste: siehe L12. (Annahme)
+* **Erinnerungen für Gäste (Idee L12):** Die Planenden entscheiden je Event (`Event.guestAlerts`: OFF = Standard,
+  MARKED = nur Punkte mit `Item.guestAlert`, ALL = alle Punkte für Gäste; Vorlauf 5/10/15/20/30 Minuten), Gäste schalten
+  sie in der Gästeansicht nur auf ihrem Gerät ein (keine Auswahl einzelner Punkte durch Gäste - so entschieden mit dem
+  Nutzer). Optional `guestShiftAlertMin` (15/20/30/45/60): "Neue Zeit" bei Verschiebungen.
+  - **Grundlage ist allein `toGuestView`:** Es kennzeichnet `reminder` je Punkt; Auswahl (`dueGuestAlerts`,
+    `app/lib/guest-alerts/due.ts`) und Text arbeiten nur mit dem Ergebnis - Titel, angezeigte (gerundete) Zeit, Ort. So
+    erfährt kein Gast per Push etwas, das nicht in der Gästeansicht stünde; TEAM/SECRET, Team-Spuren, Notizen und
+    ausgefallene Punkte sind ausgeschlossen. Der Cron rechnet die Gästeansicht wie eine Gästeanfrage (`loadGuestView`,
+    schreibt auch `guestShownStart`).
+  - START: angezeigter Beginn in (now, now + Vorlauf], einmal je Punkt für alle Geräte (`GuestAlertSent` je Punkt und
+    Art, vor dem Senden beansprucht), neu wie bei L17, wenn der Punkt danach um mehr als den Vorlauf rutscht. Wer erst
+    danach einschaltet, bekommt diese Erinnerung nicht mehr. (Annahme)
+  - SHIFT nur bei `LIVE` und außerhalb des Vorlaufs: angezeigter Beginn weicht um mindestens die Schwelle von der Zeit ab,
+    die Gäste zuletzt kannten - letzte SHIFT-Meldung, sonst `originalStart` (Ursprungsplan beim Live-Schalten), bei
+    Einschüben die Planzeit. Vor dem Live-Schalten keine Meldungen, Planänderungen sehen Gäste in der Ansicht. (Annahme)
+  - **Abo ohne Personenbezug** (`GuestPushSubscription`, je Event und Endpoint): bei geschützten Events an die Gast-Sitzung
+    bzw. Konto-Sitzung gebunden, über die es entstand (Cascade), beim Senden zusätzlich mit denselben Regeln wie die
+    Gästeansicht geprüft (`guestSubscriptionActive`). Gültig bis Eventende + 1 Tag. Zugang ändern oder Erinnerungen
+    ausschalten löscht alle Gäste-Abos. Einschalten gedrosselt (30 je IP in 15 Minuten), höchstens 5000 Geräte je Event,
+    nur bekannte Push-Dienste. Ein vorhandenes Browser-Abo wird nicht automatisch für ein Event angemeldet; Ausschalten
+    entfernt nur den Eintrag des Events, nicht das Browser-Abo. (Annahme)
+  - Export enthält `guestAlert` am Punkt, nicht die Einstellung des Events (Kopie startet ohne Erinnerungen, wie beim
+    Zugang). (Annahme)

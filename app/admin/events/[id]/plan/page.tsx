@@ -299,6 +299,7 @@ function Row({ row, eventId, track, showTrack, showGap, clock, waitsFor, editabl
               {item.isAnchor && <Badge tone="blue">Anker</Badge>}
               {item.mayStartEarly && <Badge>darf früher beginnen</Badge>}
               {item.minDurationMin !== null && <Badge>kürzbar bis {minutes(item.minDurationMin)}</Badge>}
+              {item.guestAlert && item.visibility === 'PUBLIC' && <Badge>🔔 Gäste erinnern</Badge>}
               {item.visibility !== 'PUBLIC' && <Badge tone={item.visibility === 'SECRET' ? 'purple' : 'amber'}>{ITEM_VISIBILITY_LABELS[item.visibility]}</Badge>}
               {track?.visibility === 'TEAM' && item.visibility === 'PUBLIC' && <Badge tone="amber">Team-Spur</Badge>}
               {item.status === 'DEFERRED' && <Badge>zurückgestellt</Badge>}

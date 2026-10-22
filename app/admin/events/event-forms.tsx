@@ -2,9 +2,9 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import { createEvent, duplicateEvent, importEvent, updateEventOptions, updateEventSettings, updateGuestAccess, updateShiftsLink, type FormState } from './actions'
+import { createEvent, duplicateEvent, importEvent, updateEventOptions, updateEventSettings, updateGuestAccess, updateGuestAlerts, updateShiftsLink, type FormState } from './actions'
 import { suggestSlug, SLUG_MAX_LENGTH } from '../../lib/slugs'
-import { DESCRIPTION_MAX_LENGTH, OPTION_BOUNDS, TITLE_MAX_LENGTH, type EventOptions } from '../../lib/events/settings'
+import { DESCRIPTION_MAX_LENGTH, GUEST_ALERT_LEAD_CHOICES, GUEST_ALERT_MODE_LABELS, GUEST_SHIFT_CHOICES, OPTION_BOUNDS, TITLE_MAX_LENGTH, type EventOptions, type GuestAlertOptions } from '../../lib/events/settings'
 import { buttonClass, hintClass, inputClass, labelClass, SubmitButton, CopyableField, Notice } from '../../ui/kit'
 
 export function Feedback({ state }: { state: FormState }) {
@@ -208,6 +208,62 @@ export function EventOptionsForm({ eventId, options, modsMayEditPlan, modsMayIns
         <MinutesField name="creepNudgeMin" label="Nachfrage nach" value={options.creepNudgeMin} hint="So lange nach dem erwarteten Ende fragt die Live-Steuerung „läuft noch?“." />
         <MinutesField name="creepCapMin" label="Deckel" value={options.creepCapMin} hint="Weiter wächst die Verspätung ohne Bestätigung nicht; das Team sieht dann „unklar“." />
       </fieldset>
+      <SubmitButton disabled={pending}>Speichern</SubmitButton>
+    </form>
+  )
+}
+
+const GUEST_ALERT_HINTS = {
+  OFF: 'Gäste bekommen keine Mitteilungen.',
+  MARKED: 'Nur Punkte mit Häkchen „Gäste erinnern“ (im Punkt unter Sichtbarkeit) – z. B. Trauung, Torte, Feuerwerk. Gäste sehen sie mit 🔔.',
+  ALL: 'Jeder Punkt, den Gäste sehen.'
+} as const
+
+/**
+ * Erinnerungen für Gäste (Idee L12). Gäste schalten sie in der Gästeansicht auf ihrem Gerät ein; die Zeit ist die,
+ * die sie dort sehen (Prognose, gerundet). Ohne VAPID-Schlüssel auf dem Server (pushConfigured) nur ein Hinweis.
+ */
+export function GuestAlertsForm({ eventId, values, pushConfigured, subscriptions }: {
+  eventId: string; values: GuestAlertOptions; pushConfigured: boolean; subscriptions: number
+}) {
+  const [state, action, pending] = useActionState(updateGuestAlerts, null)
+  if (!pushConfigured) {
+    return <Notice tone="info">Auf dem Server fehlen die VAPID-Schlüssel für Push-Mitteilungen (siehe README, „Vorwarnung fürs Team“). Ohne sie gibt es keine Erinnerungen.</Notice>
+  }
+  return (
+    <form action={action} className="space-y-4">
+      <input type="hidden" name="eventId" value={eventId} />
+      <Feedback state={state} />
+      <fieldset className="space-y-2">
+        <legend className={labelClass}>Erinnern an</legend>
+        {(Object.keys(GUEST_ALERT_MODE_LABELS) as (keyof typeof GUEST_ALERT_MODE_LABELS)[]).map(mode => (
+          <label key={mode} className="flex items-start gap-2 text-sm">
+            <input type="radio" name="guestAlerts" value={mode} defaultChecked={values.guestAlerts === mode} className="mt-1" />
+            <span>{GUEST_ALERT_MODE_LABELS[mode]}<span className="block text-xs text-gray-600 dark:text-gray-400">{GUEST_ALERT_HINTS[mode]}</span></span>
+          </label>
+        ))}
+      </fieldset>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="guest-alert-lead" className={labelClass}>Vorlauf</label>
+          <select id="guest-alert-lead" name="guestAlertLeadMin" defaultValue={values.guestAlertLeadMin} className={input}>
+            {GUEST_ALERT_LEAD_CHOICES.map(minutes => <option key={minutes} value={minutes}>{minutes} Minuten vorher</option>)}
+          </select>
+          <p className={hintClass}>Vor dem Beginn, den Gäste gerade sehen – mit Verspätungen.</p>
+        </div>
+        <div>
+          <label htmlFor="guest-alert-shift" className={labelClass}>Verschiebungen melden</label>
+          <select id="guest-alert-shift" name="guestShiftAlertMin" defaultValue={values.guestShiftAlertMin ?? ''} className={input}>
+            <option value="">nein</option>
+            {GUEST_SHIFT_CHOICES.map(minutes => <option key={minutes} value={minutes}>ab {minutes} Minuten</option>)}
+          </select>
+          <p className={hintClass}>Nur live: „Neue Zeit: Abendessen jetzt ca. 19:30 statt 19:00“, sobald sich ein Punkt mit Erinnerung so weit verschiebt.</p>
+        </div>
+      </div>
+      <p className="text-xs text-gray-600 dark:text-gray-400">
+        Gäste schalten die Erinnerungen in der Gästeansicht auf ihrem Gerät ein (auf dem iPhone nur, wenn sie die Seite als App installieren).
+        {values.guestAlerts !== 'OFF' && ` Eingeschaltet auf ${subscriptions === 1 ? '1 Gerät' : `${subscriptions} Geräten`}.`} Ausschalten löscht die Abos der Gäste.
+      </p>
       <SubmitButton disabled={pending}>Speichern</SubmitButton>
     </form>
   )

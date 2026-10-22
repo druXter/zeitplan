@@ -21,6 +21,8 @@ export type PlanItem = {
   plannedStart: Date
   plannedDurationMin: number
   minDurationMin: number | null
+  /** Gäste erinnern (Idee L12) - nur an öffentlichen Punkten. */
+  guestAlert: boolean
   status: ItemStatus
   insertedLive: boolean
   actualStart: Date | null
@@ -73,6 +75,7 @@ export type ItemFields = {
   visibility: ItemVisibility
   isAnchor: boolean
   mayStartEarly: boolean
+  guestAlert: boolean
   waitsFor: string[]
   secretViewerIds: string[]
   assigneeIds: string[]
@@ -184,6 +187,8 @@ export function parseItemForm(formData: FormData, ctx: ItemFormContext): ParsedI
       visibility,
       isAnchor: formData.get('isAnchor') === 'on',
       mayStartEarly: formData.get('mayStartEarly') === 'on',
+      // Erinnerung für Gäste (Idee L12) gibt es nur an Punkten, die Gäste sehen.
+      guestAlert: visibility === 'PUBLIC' && formData.get('guestAlert') === 'on',
       waitsFor,
       secretViewerIds,
       assigneeIds: assignees

@@ -73,7 +73,7 @@ describe('Sichtbarkeit', () => {
       expect(json, key).not.toContain(`"${key}"`)
     }
     expect(Object.keys(result.items[0]).sort()).toEqual(
-      ['address', 'approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'routeUrl', 'shownStart', 'status', 'title', 'track'].sort()
+      ['address', 'approximate', 'cancelReason', 'delayMin', 'description', 'id', 'location', 'plannedStart', 'reminder', 'routeUrl', 'shownStart', 'status', 'title', 'track'].sort()
     )
   })
 

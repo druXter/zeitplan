@@ -28,9 +28,17 @@ describe('parseItemForm', () => {
       fields: {
         title: 'Trauung', location: 'Kirche', description: null, internalNote: null, trackId: 't1',
         plannedStart: zonedInputToUtc('2026-06-20T14:00')!, plannedDurationMin: 45, minDurationMin: null, visibility: 'PUBLIC',
-        isAnchor: true, mayStartEarly: false, waitsFor: ['a', 'b'], secretViewerIds: [], assigneeIds: []
+        isAnchor: true, mayStartEarly: false, guestAlert: false, waitsFor: ['a', 'b'], secretViewerIds: [], assigneeIds: []
       }
     })
+  })
+
+  it('Gäste erinnern (Idee L12) nur an öffentlichen Punkten', () => {
+    const marked = parseItemForm(form({ ...valid, guestAlert: 'on' }), ctx)
+    expect(marked.ok && marked.fields.guestAlert).toBe(true)
+    const team = parseItemForm(form({ ...valid, visibility: 'TEAM', guestAlert: 'on' }), ctx)
+    expect(team.ok && team.fields.guestAlert).toBe(false)
+    expect(parseItemForm(form(valid), ctx).ok && parseItemForm(form(valid), ctx)).toMatchObject({ fields: { guestAlert: false } })
   })
 
   it('Zuständige (Idee L16): nur Konten mit Zugriff, bei SECRET nur aus „Geheim für“', () => {
@@ -104,7 +112,7 @@ describe('redactItem', () => {
   const secret: StoredItem = {
     id: 'x', trackId: 't1', sortOrder: 1, title: 'Überraschung', location: 'Garten', description: 'Feuerwerk',
     internalNote: 'Zünder bei Tom', visibility: 'SECRET', isAnchor: false, mayStartEarly: false,
-    plannedStart: new Date('2026-06-20T20:00:00Z'), plannedDurationMin: 10, minDurationMin: null, status: 'CANCELLED', insertedLive: false,
+    plannedStart: new Date('2026-06-20T20:00:00Z'), plannedDurationMin: 10, minDurationMin: null, guestAlert: false, status: 'CANCELLED', insertedLive: false,
     actualStart: null, actualEnd: null, reportedDelayMin: null, cancelReason: 'Regen', version: 3, waitsFor: ['a'],
     secretViewerIds: ['u1'], assigneeIds: ['u1']
   }

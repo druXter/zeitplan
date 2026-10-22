@@ -23,6 +23,7 @@ Fachliche Grundlage und Fahrplan: [docs/KONZEPT.md](docs/KONZEPT.md). Referenz f
 | 8 | Abschluss: README, Lasttest (200 Gäste), Handy-Layout-Test, Vorschlag für das suite-kit-README | ✅ umgesetzt – Test auf echtem Handy und Fernseher steht noch aus (Checkliste unter „Vor dem Einsatz“) |
 | – | Ergänzungen aus der Ideensammlung der Suite (`suite-kit/docs/IDEEN.md`): Durchsagen (L15), Block verschieben (L20), Rückblick mit Protokollnotizen (L24), Orte mit Adresse (L22), Team-Link für Dienstleister (L18), Regieplan und Programmheft (L21), Zuständige und „Meine Punkte“ (L16) | ✅ umgesetzt (2026-10-13) |
 | – | Kürzbare Programmpunkte mit Mindestdauer (L11), „Was wäre wenn“-Vorschau (L19), Vorwarnung fürs Team per Push (L17) | ✅ umgesetzt (2026-10-14) |
+| – | Erinnerungen für Gäste per Push (L12): fürs ganze Event oder einzelne Punkte, optional bei Verschiebungen | ✅ umgesetzt (2026-10-22) |
 
 **Im Überblick:** Planende legen Events an (leer oder mit der Vorlage „Hochzeit“), planen Programmpunkte in Spuren mit
 Ankern, Puffern, Team- und geheimen Punkten und bündeln mehrere Events zu einer Reihe. Am Tag selbst melden
@@ -36,7 +37,8 @@ gegen Ist mit Protokollnotizen, zum Drucken und als CSV. **Orte mit Adresse** br
 finden ihre Punkte unter „Meine Punkte“, Dienstleister lesen über einen **Team-Link** ohne Konto mit, und der
 **Regieplan** (fürs Team) bzw. das **Programmheft** (für Gäste) lassen sich ausdrucken. **Kürzbare Punkte** (Kaffee,
 Reden) fangen Verspätungen auf, bevor sie weiterwandern; **„Was wäre wenn?“** spielt eine Verspätung durch, ohne etwas zu
-speichern; die **Vorwarnung** schickt Zuständigen kurz vor ihrem Punkt eine Push-Mitteilung nach der erwarteten Zeit.
+speichern; die **Vorwarnung** schickt Zuständigen kurz vor ihrem Punkt eine Push-Mitteilung nach der erwarteten Zeit,
+die **Erinnerungen für Gäste** tun dasselbe für Gäste, die sie einschalten – fürs ganze Event oder nur für markierte Punkte.
 
 **Oberfläche:** aufgebaut wie rsvp-app, Abstimmungstool und Schichten – Kopfzeile mit Konto-Menü, Übersicht der Events
 als Karten, pro Event eine Seite mit Reitern (Übersicht, Ablauf, Live, Team-Ansicht, Rückblick, Einstellungen) und
@@ -481,7 +483,8 @@ Verwaltungsbereich. Gäste brauchen das nicht, die Gästeansicht funktioniert im
   Offline-Seite liest ihn, wenn eine Gästeansicht ohne Verbindung neu geladen wird.
 * `sw.js` wird nie zwischengespeichert (Header in `next.config.ts`). Registriert wird der Worker nur in der Produktion
   (`app/ui/pwa-register.tsx`).
-* **Push nur fürs Team** (Vorwarnung, siehe „Vorwarnung fürs Team“) – Gäste bekommen keine Mitteilungen.
+* **Push** für das Team (siehe „Vorwarnung fürs Team“) und für Gäste, die Erinnerungen einschalten (siehe „Erinnerungen
+  für Gäste“). Der Worker zeigt Mitteilungen nur an und öffnet beim Antippen die Adresse auf dieser Herkunft.
 
 ## Vorwarnung fürs Team
 
@@ -509,6 +512,39 @@ Eröffnungstanz“, darunter Uhrzeit (mit Planzeit, falls abweichend), Ort und i
   `VAPID_SUBJECT`) in die `.env`. Ohne sie gibt es keine Vorwarnung (die Team-Ansicht zeigt den Kasten dann nicht).
   Ein Schlüsselwechsel macht alle Abos ungültig – danach muss jedes Gerät Mitteilungen neu einschalten.
 * **iPhone/iPad:** Push nur, wenn Zeitplan als App installiert ist (iOS 16.4+, Safari → Teilen → „Zum Home-Bildschirm“).
+
+## Erinnerungen für Gäste
+
+Gäste können sich kurz vor Programmpunkten aufs Handy erinnern lassen (Idee L12) – „In 10 Min: Trauung“, darunter
+Uhrzeit und Ort, genau so, wie sie in der Gästeansicht stehen. Antippen öffnet die Gästeansicht beim Punkt.
+
+* **Einstellen (Planende):** Einstellungen → „Erinnerungen für Gäste“: **aus** (Standard), **nur markierte Punkte** oder
+  **alle Punkte für Gäste**, 5/10/15/20/30 Minuten vorher. Markiert wird im Punkt mit dem Häkchen „🔔 Gäste erinnern“
+  (nur bei öffentlichen Punkten; in der Planung als Abzeichen sichtbar). Optional **Verschiebungen melden** ab 15/20/30/45/60
+  Minuten: Verschiebt sich ein Punkt mit Erinnerung live so weit gegenüber der Zeit, die Gäste zuletzt kannten
+  (Ursprungsplan bzw. letzte Meldung), kommt „Neue Zeit: Abendessen – jetzt ca. 19:30 Uhr statt 19:00 Uhr“.
+* **Einschalten (Gäste):** Bietet das Event Erinnerungen an, steht in der Gästeansicht unter dem Kopf der Kasten
+  „Erinnerungen aufs Handy“ mit „Erinnerungen einschalten“; bei „nur markierte Punkte“ tragen die Punkte eine 🔔. Ein
+  schon vorhandenes Browser-Abo (anderes Event, Team) meldet die Seite nicht von selbst an, Ausschalten löscht nur die
+  Erinnerungen dieses Events. Eingebettet (iFrame) fragen Browser nicht nach Mitteilungen – dort öffnet der Kasten den
+  Ablauf in einem neuen Tab. Auf dem iPhone nur in der installierten App (wie beim Team).
+* **Was Gäste bekommen:** ausschließlich, was `toGuestView` für Gäste freigibt (Titel, gerundete Zeit, Ort) – nie
+  TEAM- oder SECRET-Punkte, Team-Spuren, interne Notizen oder ausgefallene Punkte. Zeitpunkt nach der Zeit, die Gäste
+  sehen (Prognose, gerundet, mit Hysterese und Horizont). Jede Erinnerung einmal je Punkt für alle Geräte; rutscht der
+  Punkt danach um mehr als den Vorlauf, kommt eine neue. Nur bei veröffentlichten und laufenden Events, Verschiebungen
+  nur live.
+* **Zugang:** Bei öffentlichen Events gilt ein Abo bis einen Tag nach dem Event. Bei geschützten Events hängt es am Zugang,
+  über den es entstand (Gast-Sitzung nach Zugangscode bzw. rsvp-Link, Konto-Sitzung bei „nur mit Konto“ oder als Team in
+  der Vorschau) und endet mit ihm – auch eine Absage in rsvp-app beendet die Erinnerungen. Zugang ändern oder Erinnerungen
+  ausschalten löscht alle Gäste-Abos des Events.
+* **Grenzen gegen Missbrauch:** Einschalten ist pro IP gedrosselt (30 in 15 Minuten), höchstens 5000 Geräte je Event,
+  gespeichert werden nur Endpoints bekannter Push-Dienste (wie beim Team).
+* **Technik:** dieselbe Push-Strecke wie die Vorwarnung (`app/lib/push.ts`, bis zu 10 Zustellungen parallel), derselbe
+  minütliche Aufruf `/api/cron/alerts`. Auswahl als reine Funktion `dueGuestAlerts` (`app/lib/guest-alerts/due.ts`) auf der
+  Gästeansicht, Versand `app/lib/guest-alerts/send.ts`, Abos in `GuestPushSubscription`, Versandvermerke je Punkt in
+  `GuestAlertSent`. Ohne VAPID-Schlüssel gibt es keine Erinnerungen (Einstellungen zeigen dann einen Hinweis).
+* **Export/Kopie:** Das Häkchen am Punkt geht mit; ob das Event Erinnerungen anbietet, nicht – eine Kopie startet wie
+  beim Zugang ohne Erinnerungen.
 
 ## Sicherheit
 
@@ -572,8 +608,8 @@ Was das Tool bewusst nicht kann oder wo es an Grenzen stößt – vor dem Einsat
 * **Gast-Sitzung pro Browser:** Wer den Ablauf auf einem zweiten Gerät öffnet, gibt den Code dort erneut ein (bzw. öffnet
   ihn erneut über rsvp-app). Eingebettet (iFrame) funktionieren geschützte Events nur über „in neuem Tab öffnen“.
 * **Aktualisierung per Abfrage, nicht in Echtzeit:** Gäste und Tafel fragen alle 20–30 Sekunden; eine Meldung ist also
-  bis zu einer halben Minute später überall zu sehen (sofort beim Zurückkehren in den Tab). Push gibt es nur als
-  Vorwarnung fürs Team, höchstens minütlich (Takt des Cron-Aufrufs).
+  bis zu einer halben Minute später überall zu sehen (sofort beim Zurückkehren in den Tab). Push gibt es als
+  Vorwarnung fürs Team und als Erinnerung für Gäste, höchstens minütlich (Takt des Cron-Aufrufs).
 * **Uhren:** Live-Aktionen nutzen immer die Serverzeit. Die Uhr auf der Tafel ist die des Geräts – am Fernseher die
   Zeit einstellen lassen (automatisch).
 * **Eine Instanz, SQLite:** Das Tool läuft als ein Prozess mit einer SQLite-Datei; horizontal skalieren geht nicht.
@@ -582,15 +618,17 @@ Was das Tool bewusst nicht kann oder wo es an Grenzen stößt – vor dem Einsat
   Sekunden.
 * **Zeitzone:** vorerst immer Europe/Berlin. Punkte liegen höchstens einen Tag vor und drei Tage nach dem Eventtag,
   Dauer höchstens 24 Stunden – längere Abläufe sind mehrere Events in einer Reihe.
-* **Durchsagen** erreichen nur, wer Gästeansicht oder Tafel offen hat – Gäste bekommen keine Push-Nachrichten.
+* **Durchsagen** erreichen nur, wer Gästeansicht oder Tafel offen hat – Push gibt es für Gäste nur als Erinnerung an
+  Programmpunkte. Ein ausgefallener Punkt löst keine Mitteilung aus.
 * **Kürzen ist eine Annahme der Prognose:** Ob ein Punkt wirklich kürzer wird, entscheidet das Team vor Ort. Läuft ein
   gekürzter Punkt länger, greifen die üblichen Regeln (Fortschreiben, „läuft noch?“ fünf Minuten nach dem gekürzten Ende).
-* **Vorwarnung ist best-effort:** Push-Dienste stellen meist in Sekunden zu, garantieren aber nichts; ohne Netz,
-  im Energiesparmodus oder ohne Erlaubnis kommt nichts an. Fällt der minütliche Aufruf aus, fällt die Vorwarnung aus.
+* **Vorwarnung und Erinnerungen sind best-effort:** Push-Dienste stellen meist in Sekunden zu, garantieren aber nichts;
+  ohne Netz, im Energiesparmodus oder ohne Erlaubnis kommt nichts an. Fällt der minütliche Aufruf aus, fallen beide aus.
+  Wer Erinnerungen erst einschaltet, nachdem die eines Punkts verschickt wurde, bekommt sie für diesen Punkt nicht mehr.
 * **Orte:** Die Zuordnung läuft über den Namen im Feld „Ort“ – ein Tippfehler dort bedeutet „keine Adresse“. Die Route
   führt standardmäßig zu Google Maps (ein eigener Kartenlink pro Ort ersetzt das, z. B. OpenStreetMap).
 * **Nicht umgesetzt** (siehe Konzept „Später“ und die Ideen in `suite-kit/docs/IDEEN.md`): Echtzeit per SSE,
-  Push-Benachrichtigungen und Mails an Gäste, weitere Vorlagen, Kalender-Export.
+  Mails an Gäste, weitere Vorlagen, Kalender-Export.
 
 ## Automatische Löschung
 
@@ -601,11 +639,11 @@ Ein externer Scheduler (z. B. Uptime Kuma) ruft **einmal täglich** auf:
 Ein leeres oder fehlendes `CRON_SECRET` lässt niemanden durch. Gelöscht werden (suite-weit gleiche Fristen): Events
 18 Monate nach ihrem Ende (samt Ablauf, Verlauf, Freigaben und Gast-Sitzungen; als Ende gilt der Eventtag plus zwei
 Tage Spielraum für Feiern über Mitternacht), Konten nach 2 Jahren ohne Anmeldung (Konten mit Admin-Rolle und Konten, denen noch Events gehören, ausgenommen),
-abgelaufene Sitzungen (samt ihrer Push-Abos) und Gast-Sitzungen, Einladungs-/Reset-Links, Drossel-Zähler und
-gesendete Vorwarnungen nach 7 Tagen.
+abgelaufene Sitzungen (samt ihrer Push-Abos) und Gast-Sitzungen, Einladungs-/Reset-Links, Drossel-Zähler,
+Push-Abos von Gästen (einen Tag nach dem Event) sowie gesendete Vorwarnungen und Erinnerungen nach 7 Tagen.
 
-Für die Vorwarnung fürs Team kommt ein zweiter Aufruf **jede Minute** dazu: `GET …/api/cron/alerts?secret=<CRON_SECRET>`
-(siehe „Vorwarnung fürs Team“).
+Für die Vorwarnung fürs Team und die Erinnerungen für Gäste kommt ein zweiter Aufruf **jede Minute** dazu:
+`GET …/api/cron/alerts?secret=<CRON_SECRET>` (siehe „Vorwarnung fürs Team“).
 
 ## Setup
 
@@ -632,7 +670,9 @@ npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, For
                     # Föderation (tests/unit/suite.test.ts: Rollen, Zwischenseite, state-Cookie, Konfiguration),
                     # Vertrag mit rsvp-app (tests/unit/rsvp: Signatur, Art, Empfänger, Frist, Verknüpfung),
                     # kürzbare Punkte und „Was wäre wenn“ (tests/unit/schedule), Vorwarnung (tests/unit/alerts.test.ts:
-                    # Fenster, Prognose statt Plan, MINE/ALL, SECRET, einmalig und neu nach Verschiebung, Text)
+                    # Fenster, Prognose statt Plan, MINE/ALL, SECRET, einmalig und neu nach Verschiebung, Text),
+                    # Erinnerungen für Gäste (tests/unit/guest-alerts.test.ts: markiert/alle, nie TEAM, gezeigte
+                    # Zeit, einmalig, "Neue Zeit" nur live ab Schwelle, Text ohne Notiz, Abo nur mit gültigem Zugang)
 npm run test:e2e    # Playwright gegen eine frisch gebaute Instanz auf http://127.0.0.1:3801
 npm run test:load   # Lasttest: 200 pollende Gäste gegen eine eigene Instanz (vorher npm run build, siehe unten)
 npm run build
@@ -721,7 +761,10 @@ nicht, Export enthält die Mindestdauer. Vorwarnung fürs Team (`tests/e2e/alert
 `tests/e2e/push-server.ts` auf Port 2651, wie im Abstimmungstool): Einstellung in der Team-Ansicht, VAPID-Signatur
 geprüft und Inhalt mit einer unabhängigen Implementierung entschlüsselt (Paket `http_ece`), nur eigene Punkte bzw.
 alle, kein Duplikat beim zweiten Lauf, neue Mitteilung nach Verschiebung, geheime Punkte nur für Eingetragene, nichts
-ohne Gerät, ohne Freigabe oder im Entwurf (Positivkontrolle live), Abmelden löscht das Abo; nachgespielte Formulare
+ohne Gerät, ohne Freigabe oder im Entwurf (Positivkontrolle live), Abmelden löscht das Abo. Erinnerungen für Gäste
+(`tests/e2e/guest-alerts.spec.ts`): Einstellung und Häkchen am Punkt, Kasten und 🔔 in der Gästeansicht, Mitteilung nur
+für markierte öffentliche Punkte ohne interne Notiz, kein Duplikat, „alle Punkte“, „Neue Zeit“ erst live, bei Zugangscode
+nur Geräte mit gültiger Gast-Sitzung, Zugangswechsel und Ausschalten löschen die Abos; nachgespielte Formulare
 mit ungültigen Werten oder von einem Konto ohne Zugriff ohne Wirkung; Cron ohne Secret `401`.
 
 Mails fängt ein Test-SMTP ab (`tests/e2e/mail-server.ts`, Port 2527, Pakete `smtp-server` und `mailparser`, nur für die
@@ -792,8 +835,9 @@ docker compose run --rm zeitplan node create-user.js deine-email@domain.de ADMIN
 * Beim Start synchronisiert `prisma db push` das Schema, dann startet `next start` auf Port 3000 im Container.
   Voreingestellt ist Host-Port 3008 (3005–3007 sind von rsvp-app, Abstimmungstool und Seating belegt).
 * **Vor jedem Update die Daten sichern** (`data/prod.db` kopieren).
-* **Vorwarnung fürs Team:** VAPID-Schlüssel in die `.env` (siehe „Vorwarnung fürs Team“) und den minütlichen Aufruf
-  einrichten, z. B. in der crontab des Hosts (das Secret aus der `.env` lesen, nicht in die crontab schreiben):
+* **Vorwarnung fürs Team und Erinnerungen für Gäste:** VAPID-Schlüssel in die `.env` (siehe „Vorwarnung fürs Team“)
+  und den minütlichen Aufruf einrichten, z. B. in der crontab des Hosts (das Secret aus der `.env` lesen, nicht in die
+  crontab schreiben):
   `* * * * * curl -fsS -m 50 "http://127.0.0.1:3008/api/cron/alerts?secret=$(grep -E '^CRON_SECRET=' /pfad/zu/zeitplan/.env | cut -d= -f2-)" > /dev/null`
 
 ## Umgebungsvariablen

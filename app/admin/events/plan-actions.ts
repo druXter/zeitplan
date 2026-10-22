@@ -111,6 +111,7 @@ export async function saveItem(_previous: ItemFormState, formData: FormData): Pr
         plannedStart: fields.plannedStart,
         plannedDurationMin: fields.plannedDurationMin,
         minDurationMin: fields.minDurationMin,
+        guestAlert: fields.guestAlert,
         trackId: fields.trackId,
         sortOrder
       }

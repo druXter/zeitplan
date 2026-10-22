@@ -3,19 +3,9 @@
 
 import { useEffect, useState } from 'react'
 import { deletePushSubscription, savePushSubscription } from '../push-actions'
+import { keyToBytes, pushSupported, registration } from './push-client'
 
 type State = 'loading' | 'unsupported' | 'denied' | 'off' | 'on' | 'error'
-
-function keyToBytes(base64url: string): Uint8Array<ArrayBuffer> {
-  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (base64url.length % 4)) % 4)
-  return Uint8Array.from(atob(base64), c => c.charCodeAt(0))
-}
-
-async function registration() {
-  // Derselbe Worker wie für die Installierbarkeit (app/ui/pwa-register.tsx) - register ist
-  // idempotent; hier auch in der Entwicklung, sonst ließe sich Push nicht ausprobieren.
-  return navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
-}
 
 /**
  * Push-Mitteilungen auf DIESEM Gerät an- und ausschalten (app/lib/push.ts, Vorwarnung fürs Team, Idee L17) - wie im
@@ -29,7 +19,7 @@ export default function PushToggle({ publicKey }: { publicKey: string }) {
   useEffect(() => {
     let active = true
     ;(async () => {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported'
+      if (!pushSupported()) return 'unsupported'
       if (Notification.permission === 'denied') return 'denied'
       const subscription = await (await registration()).pushManager.getSubscription()
       if (!subscription) return 'off'

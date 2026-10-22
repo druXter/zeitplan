@@ -22,7 +22,8 @@ export async function itemFormOptions(event: LoadedEvent, user: CurrentUser, tra
       .sort((a, b) => a.plannedStart.getTime() - b.plannedStart.getTime())
       .map(item => ({ id: item.id, label: `${formatShort(item.plannedStart, event.timezone).slice(-5)} ${item.title} (${trackName.get(item.trackId) ?? '?'})` })),
     accounts: accounts.map(account => ({ id: account.id, label: account.id === user.id ? `${account.name || account.email} (du)` : account.name || account.email })),
-    places: places.map(place => place.name)
+    places: places.map(place => place.name),
+    guestAlerts: event.guestAlerts
   }
   return {
     options,

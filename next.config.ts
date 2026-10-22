@@ -21,7 +21,8 @@ const LIVE = "admin/events/[^/]+/live/?$";
 
 // Einbettbar wie die Eventseiten in Seating und rsvp-app (z.B. als iFrame in die Hochzeits-Website,
 // docs/KONZEPT.md "Entschieden"): nur /<slug>. Die Gästeansicht löst keine Aktionen aus, Clickjacking hat
-// dort kein Ziel. Fest im Code statt per Env: Die Regeln werden beim Build festgeschrieben, eine
+// dort kein Ziel (Erinnerungen für Gäste, Idee L12, lassen sich eingebettet nicht einschalten - Browser fragen in
+// fremden iFrames nicht nach Mitteilungen, die Seite verweist auf einen neuen Tab). Fest im Code statt per Env: Die Regeln werden beim Build festgeschrieben, eine
 // Env-Variable im laufenden Container würde nicht greifen. Wer nur bestimmte Seiten einbetten lassen
 // will, ersetzt `*` durch deren Origin(s) und baut neu.
 const EMBEDDABLE = [{ key: "Content-Security-Policy", value: "frame-ancestors *" }];

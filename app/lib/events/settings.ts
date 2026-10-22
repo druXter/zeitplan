@@ -1,5 +1,5 @@
 // app/lib/events/settings.ts
-import type { EventStatus } from '@prisma/client'
+import type { EventStatus, GuestAlertMode } from '@prisma/client'
 import { formString } from '../form'
 import { validateSlug } from '../slugs'
 import { DEFAULT_TIMEZONE, zonedDateToUtc } from '../timezone'
@@ -98,6 +98,34 @@ export function parseEventOptions(formData: FormData): ParsedEventOptions {
     modsMayEditPlan: flag('modsMayEditPlan'),
     modsMayInsert: flag('modsMayInsert')
   }
+}
+
+export const GUEST_ALERT_MODE_LABELS: Record<GuestAlertMode, string> = {
+  OFF: 'aus',
+  MARKED: 'nur markierte Punkte',
+  ALL: 'alle Punkte für Gäste'
+}
+
+/** Vorlauf der Erinnerung und Schwelle für "Neue Zeit" in Minuten - Auswahl im Formular. */
+export const GUEST_ALERT_LEAD_CHOICES = [5, 10, 15, 20, 30] as const
+export const GUEST_SHIFT_CHOICES = [15, 20, 30, 45, 60] as const
+
+export type GuestAlertOptions = { guestAlerts: GuestAlertMode; guestAlertLeadMin: number; guestShiftAlertMin: number | null }
+
+export type ParsedGuestAlertOptions = { ok: true; options: GuestAlertOptions } | { ok: false; errors: string[] }
+
+/** Formular "Erinnerungen für Gäste" (Idee L12): Umfang, Vorlauf und Schwelle für Verschiebungen (leer = aus). */
+export function parseGuestAlertOptions(formData: FormData): ParsedGuestAlertOptions {
+  const errors: string[] = []
+  const mode = formString(formData, 'guestAlerts', 10)
+  if (!(mode in GUEST_ALERT_MODE_LABELS)) errors.push('Erinnerungen: Bitte wähle aus, wofür Gäste erinnert werden.')
+  const lead = Number(formString(formData, 'guestAlertLeadMin', 5))
+  if (!(GUEST_ALERT_LEAD_CHOICES as readonly number[]).includes(lead)) errors.push('Vorlauf: Bitte wähle einen der angebotenen Werte.')
+  const shiftInput = formString(formData, 'guestShiftAlertMin', 5)
+  const shift = shiftInput === '' ? null : Number(shiftInput)
+  if (shift !== null && !(GUEST_SHIFT_CHOICES as readonly number[]).includes(shift)) errors.push('Verschiebungen: Bitte wähle einen der angebotenen Werte.')
+  if (errors.length > 0) return { ok: false, errors }
+  return { ok: true, options: { guestAlerts: mode as GuestAlertMode, guestAlertLeadMin: lead, guestShiftAlertMin: shift } }
 }
 
 /**

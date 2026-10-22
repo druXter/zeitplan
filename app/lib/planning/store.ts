@@ -34,6 +34,7 @@ export async function loadPlan(eventId: string, userId: string, db: Db = prisma)
     plannedStart: row.plannedStart,
     plannedDurationMin: row.plannedDurationMin,
     minDurationMin: row.minDurationMin,
+    guestAlert: row.guestAlert,
     status: row.status,
     insertedLive: row.insertedLive,
     actualStart: row.actualStart,

@@ -138,3 +138,11 @@ export function accessCodeRules(ip: string, eventId: string): { ip: ThrottleRule
     event: { scope: 'code:event', identifier: eventId, limit: 100, windowMs: LOGIN_WINDOW_MS }
   }
 }
+
+/**
+ * Regel für Erinnerungen an Gäste (Idee L12): Ein- und Ausschalten auf der öffentlichen Gästeseite, 30 in 15 Minuten
+ * pro IP - großzügig, weil Gäste im Saal eine IP teilen; MAX_GUEST_SUBSCRIPTIONS begrenzt zusätzlich je Event.
+ */
+export function guestPushRule(ip: string): ThrottleRule {
+  return { scope: 'guestpush:ip', identifier: ip, limit: 30, windowMs: LOGIN_WINDOW_MS }
+}

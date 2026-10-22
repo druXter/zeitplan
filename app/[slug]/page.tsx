@@ -8,8 +8,11 @@ import { loadGuestPayload, payloadEtag, resolveGuestEvent } from '../lib/guest/s
 import { loadPublicSeries } from '../lib/guest/series'
 import { formatDate } from '../lib/timezone'
 import { accessCodeConfigured } from '../lib/guest/tokens'
+import { reminderSummary } from '../lib/guest/payload'
+import { vapidPublicKey } from '../lib/push'
 import GuestTimeline from './guest-timeline'
 import AccessGate from './access-gate'
+import ReminderToggle from './reminder-toggle'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +23,7 @@ export const dynamic = 'force-dynamic'
  * Gästeansicht: Sichtbarkeit nach app/lib/guest/access.ts. Der Ablauf kommt ausschließlich aus
  * loadGuestPayload (toGuestView) - dieselben Daten wie der Polling-Endpunkt, mit dem die Seite sich aktualisiert.
  * Geschützte Events ohne gültigen Zugang zeigen nur Titel und den Weg hinein (AccessGate) - nie den Ablauf.
+ * Bietet das Event Erinnerungen an (Idee L12), steht unter dem Kopf der Schalter dafür (ReminderToggle).
  */
 async function resolve(slug: string) {
   const event = await resolveGuestEvent(slug)
@@ -82,6 +86,7 @@ export default async function GuestPage({ params }: { params: Promise<{ slug: st
 
   const payload = await loadGuestPayload(event, new Date())
   const preview = visibility === 'preview'
+  const publicKey = vapidPublicKey()
   return (
     <GuestMain>
       {preview && (
@@ -100,6 +105,7 @@ export default async function GuestPage({ params }: { params: Promise<{ slug: st
         <p className="mt-2 text-sm text-gray-700 dark:text-gray-300"><span aria-hidden>📅 </span>{formatDate(event.date, event.timezone)}</p>
         {event.description && <p className="mt-4 whitespace-pre-line text-gray-700 dark:text-gray-300">{event.description}</p>}
       </header>
+      {payload.reminders && publicKey && <ReminderToggle slug={event.slug} publicKey={publicKey} summary={reminderSummary(payload.reminders)} />}
       <GuestTimeline slug={event.slug} initial={payload} etag={payloadEtag(payload)} remember={!preview} />
     </GuestMain>
   )

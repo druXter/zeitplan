@@ -11,7 +11,7 @@ import Link from 'next/link'
 // Zugang über eine Zusage in rsvp-app; Abruf der Programmpunkte durch Schichten; Durchsagen, Protokollnotizen und
 // Rückblick als CSV; Orte mit Adresse und Routen-Link, Zuständige je Punkt, Team-Link für Dienstleister, Druckansichten;
 // Vorwarnung fürs Team per Push mit Push-Abo, Einstellung und Versandprotokoll; Protokoll von Sitzungen aus rsvp-app im
-// Rückblick, nur angezeigt).
+// Rückblick, nur angezeigt; Erinnerungen für Gäste per Push mit Push-Abo ohne Namen, gebunden an den Zugang).
 //
 // Liest Verantwortlichen- und Infrastruktur-Angaben zur Laufzeit aus der (nicht
 // versionierten) .env, analog zu app/impressum/page.tsx - force-dynamic verhindert, dass
@@ -199,13 +199,27 @@ export default function DatenschutzPage() {
             sehen, für höchstens fünf Veranstaltungen, keine personenbezogenen Daten. Diese Daten verlassen dein Gerät
             nicht; du kannst sie über die Website-Einstellungen deines Browsers jederzeit löschen.
           </p>
+          <p className="mt-2">
+            <strong>Erinnerungen aufs Handy (freiwillig):</strong> Bieten die Veranstalter*innen Erinnerungen an und
+            schaltest du sie in der Ansicht des Ablaufs ein, speichern wir das Push-Abo deines Browsers (eine Adresse beim
+            Push-Dienst des Browser-Herstellers und zwei Schlüssel) zu dieser Veranstaltung – keinen Namen, keine
+            E-Mail-Adresse. Ist der Ablauf geschützt, verknüpfen wir das Abo mit deinem Zugang (Zugangscode, Zusage in
+            rsvp-app oder Anmeldung); endet der Zugang, wird es gelöscht. Kurz vor Programmpunkten (und, wenn
+            eingestellt, bei größeren Verschiebungen) schicken wir dir eine Mitteilung mit Titel, Uhrzeit und Ort des
+            Punkts – nur, was ohnehin im Ablauf für Gäste steht. Damit jede Mitteilung nur einmal kommt, speichern wir je
+            Programmpunkt, wann sie verschickt wurde (für alle Gäste gemeinsam, 7 Tage). Das Abo löschen wir, wenn du die
+            Erinnerungen ausschaltest, die Veranstalter*innen sie oder den Zugang ändern, spätestens einen Tag nach der
+            Veranstaltung. Zustellung und Verschlüsselung wie unter Punkt 8 beschrieben. Rechtsgrundlage ist deine
+            Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit durch Ausschalten widerrufen kannst.
+          </p>
         </div>
 
         <div>
           <h2 className="font-semibold text-lg">6. Schutz vor Missbrauch (Drosselung)</h2>
           <p className="mt-2">
             Um das Erraten von Passwörtern und das massenhafte Auslösen von Mails zu verhindern, zählen wir
-            fehlgeschlagene Anmeldeversuche, Passwort-Reset-Anfragen und falsch eingegebene Zugangscodes. Dazu wird
+            fehlgeschlagene Anmeldeversuche, Passwort-Reset-Anfragen, falsch eingegebene Zugangscodes und das Einschalten
+            von Erinnerungen für Gäste. Dazu wird
             deine <strong>IP-Adresse</strong> ausgelesen und – zusammen mit der eingegebenen E-Mail-Adresse bzw. der
             Veranstaltung – <strong>nur als nicht umkehrbarer Hash</strong> für ein kurzes Zeitfenster (15 Minuten bzw.
             1 Stunde) gespeichert; veraltete Zähler werden nach spätestens
@@ -251,7 +265,7 @@ export default function DatenschutzPage() {
             jederzeit entfernbar.
           </p>
           <p className="mt-2">
-            <strong>Push-Mitteilungen (nur mit Konto, freiwillig):</strong> Schaltest du in der Team-Ansicht oder unter
+            <strong>Push-Mitteilungen fürs Team (mit Konto, freiwillig):</strong> Schaltest du in der Team-Ansicht oder unter
             &quot;Mein Konto&quot; Mitteilungen auf einem Gerät ein, speichern wir das Push-Abo deines Browsers (eine Adresse
             beim Push-Dienst des Browser-Herstellers und zwei Schlüssel) verknüpft mit deinem Konto und deiner aktuellen
             Anmeldung. Meldest du dich ab, läuft die Anmeldung ab oder schaltest du Mitteilungen aus, wird das Abo gelöscht.
@@ -259,7 +273,8 @@ export default function DatenschutzPage() {
             den Push-Dienst deines Browsers zugestellt (z.B. Google, Mozilla oder Apple, ggf. auch außerhalb der EU). Ihr
             Inhalt ist Ende-zu-Ende verschlüsselt - der Push-Dienst sieht nur, dass eine Nachricht an dein Gerät geht,
             nicht was darin steht. Rechtsgrundlage ist deine Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du jederzeit
-            durch Ausschalten widerrufen kannst. Gäste bekommen keine Mitteilungen.
+            durch Ausschalten widerrufen kannst. Erinnerungen für Gäste (ohne Konto) siehe Punkt 5; sie gehen auf
+            demselben Weg und ebenso verschlüsselt an den Push-Dienst deines Browsers.
           </p>
         </div>
 
@@ -310,7 +325,8 @@ export default function DatenschutzPage() {
           <p className="mt-2">
             Sitzungen laufen nach 30 Tagen ab (mit ihnen die Push-Abos des Geräts), Einladungs- und Reset-Links nach 7 Tagen
             bzw. 1 Stunde, Gast-Zugänge einen Tag nach der Veranstaltung; sie werden dann entfernt. Drossel-Zähler siehe
-            Punkt 6, verschickte Vorwarnungen nach 7 Tagen.
+            Punkt 6, verschickte Vorwarnungen und Erinnerungen nach 7 Tagen, Push-Abos für Erinnerungen an Gäste einen Tag
+            nach der Veranstaltung.
           </p>
           <p className="mt-2">
             Veranstaltungen werden <strong>18 Monate nach ihrem Ende</strong> automatisch gelöscht, samt Ablauf,

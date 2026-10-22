@@ -23,14 +23,28 @@ export function guestCookieName(eventId: string): string {
 
 /** Gültige Gast-Sitzung dieses Browsers für das Event - passend zum aktuellen Zugang (sessionMatchesAccess). */
 export async function hasGuestSession(event: { id: string; access: GuestAccess }, now: Date): Promise<boolean> {
-  if (event.access !== 'CODE' && event.access !== 'RSVP') return false
+  return (await currentGuestSessionId(event, now)) !== null
+}
+
+/** id der gültigen Gast-Sitzung dieses Browsers fürs Event, sonst null - z. B. für Gäste-Abos (Idee L12). */
+export async function currentGuestSessionId(event: { id: string; access: GuestAccess }, now: Date): Promise<string | null> {
+  if (event.access !== 'CODE' && event.access !== 'RSVP') return null
   const token = (await cookies()).get(guestCookieName(event.id))?.value
-  if (!token || token.length > 100) return false
+  if (!token || token.length > 100) return null
   const session = await prisma.guestSession.findUnique({
     where: { tokenHash: hashToken(token) },
-    select: { eventId: true, rsvpId: true, expiresAt: true }
+    select: { id: true, eventId: true, rsvpId: true, expiresAt: true }
   })
-  return session !== null && session.eventId === event.id && session.expiresAt > now && sessionMatchesAccess(event.access, session)
+  return session !== null && session.eventId === event.id && session.expiresAt > now && sessionMatchesAccess(event.access, session) ? session.id : null
+}
+
+/** Eventende + 1 Tag (guestSessionExpiresAt) - so lange gelten Gast-Sitzungen und Gäste-Abos (Idee L12). */
+export async function guestAccessExpiresAt(event: { id: string; date: Date }, now: Date): Promise<Date> {
+  const items = await prisma.item.findMany({
+    where: { eventId: event.id },
+    select: { id: true, trackId: true, sortOrder: true, plannedStart: true, plannedDurationMin: true, minDurationMin: true, isAnchor: true, mayStartEarly: true, status: true, actualStart: true, actualEnd: true, reportedDelayMin: true }
+  })
+  return guestSessionExpiresAt(autoEndAt(items.map(item => ({ ...item, waitsFor: [] })), event.date), now)
 }
 
 /**
@@ -45,11 +59,7 @@ export async function issueGuestSession(event: { id: string; date: Date }, now: 
   if (previous) await prisma.guestSession.deleteMany({ where: { tokenHash: hashToken(previous) } })
   await prisma.guestSession.deleteMany({ where: { expiresAt: { lt: now } } })
 
-  const items = await prisma.item.findMany({
-    where: { eventId: event.id },
-    select: { id: true, trackId: true, sortOrder: true, plannedStart: true, plannedDurationMin: true, minDurationMin: true, isAnchor: true, mayStartEarly: true, status: true, actualStart: true, actualEnd: true, reportedDelayMin: true }
-  })
-  const expiresAt = guestSessionExpiresAt(autoEndAt(items.map(item => ({ ...item, waitsFor: [] })), event.date), now)
+  const expiresAt = await guestAccessExpiresAt(event, now)
 
   const token = generateToken()
   await prisma.guestSession.create({ data: { eventId: event.id, tokenHash: hashToken(token), rsvpId, expiresAt } })

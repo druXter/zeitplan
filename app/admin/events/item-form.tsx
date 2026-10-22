@@ -2,7 +2,7 @@
 
 import { SubmitButton } from '../../ui/kit'
 import { useActionState, useState } from 'react'
-import type { ItemVisibility } from '@prisma/client'
+import type { GuestAlertMode, ItemVisibility } from '@prisma/client'
 import { saveItem } from './plan-actions'
 import { ITEM_VISIBILITY_LABELS, PLAN_LIMITS } from '../../lib/planning/rules'
 import { Feedback, input, labelClass } from './event-forms'
@@ -19,6 +19,7 @@ export type ItemFormValues = {
   visibility: ItemVisibility
   isAnchor: boolean
   mayStartEarly: boolean
+  guestAlert: boolean
   waitsFor: string[]
   secretViewers: string[]
   assignees: string[]
@@ -31,6 +32,8 @@ export type ItemFormOptions = {
   accounts: { id: string; label: string }[]
   /** Namen der Orte mit Adresse (Idee L22) - Vorschläge fürs Feld "Ort". */
   places: string[]
+  /** Erinnerungen für Gäste im Event (Idee L12) - das Häkchen wirkt nur bei MARKED. */
+  guestAlerts: GuestAlertMode
 }
 
 /**
@@ -116,6 +119,20 @@ export default function ItemForm({ eventId, itemId, version, values, options, mi
           </label>
         ))}
       </fieldset>
+
+      {visibility === 'PUBLIC' && (
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="guestAlert" defaultChecked={values.guestAlert} className="mt-1" />
+          <span>
+            <span aria-hidden>🔔 </span>Gäste erinnern
+            <span className="block text-xs text-gray-600 dark:text-gray-400">
+              {options.guestAlerts === 'MARKED' && 'Gäste mit eingeschalteten Erinnerungen bekommen kurz vor dem Punkt eine Mitteilung.'}
+              {options.guestAlerts === 'ALL' && 'Im Event sind gerade Erinnerungen für alle Punkte eingeschaltet – das Häkchen zählt erst bei „nur markierte Punkte“.'}
+              {options.guestAlerts === 'OFF' && 'Wirkt erst, wenn in den Einstellungen unter „Erinnerungen für Gäste“ „nur markierte Punkte“ gewählt ist.'}
+            </span>
+          </span>
+        </label>
+      )}
 
       {visibility === 'SECRET' && (
         <fieldset className="space-y-1 border border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/50 rounded-lg p-3">

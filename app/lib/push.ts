@@ -125,7 +125,7 @@ export async function sendPush(targets: PushTarget[], message: PushMessage, opti
             Authorization: vapidAuthorization(target.endpoint, keys!)
           },
           body: new Uint8Array(encryptPayload(body, target)),
-          signal: AbortSignal.timeout(5000)
+          redirect: 'error', signal: AbortSignal.timeout(5000)
         })
         if (response.status === 404 || response.status === 410) gone.push(target.id)
         else if (response.ok) delivered++

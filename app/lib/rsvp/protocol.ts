@@ -90,7 +90,7 @@ export async function loadProtocol(event: { id: string; rsvpLink: unknown }): Pr
   const body = signMessage({ typ: 'protocol-request', aud: origin, timelineEventId: event.id, rsvpEventId, iat, exp: iat + 300 }, secret)
   try {
     const response = await fetch(`${origin}/api/timeline/protocol`, {
-      method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, signal: AbortSignal.timeout(5000), cache: 'no-store'
+      method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, redirect: 'error', signal: AbortSignal.timeout(5000), cache: 'no-store'
     })
     // 404: rsvp-app kennt die Verknüpfung (noch) nicht oder hat die Anbindung nicht eingerichtet
     if (response.status === 404) return { state: 'off' }

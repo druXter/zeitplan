@@ -572,7 +572,7 @@ Uhrzeit und Ort, genau so, wie sie in der Gästeansicht stehen. Antippen öffnet
   `X-Robots-Tag` und `no-store`. Login, Konto und Verwaltung zusätzlich `X-Robots-Tag: noindex` und `Cache-Control: no-store`;
   Reset-Links `Referrer-Policy: no-referrer`. Die Reihenfolge der Regeln ist wichtig (die spätere gewinnt, ein Header
   lässt sich nur überschreiben, nicht entfernen) und in der Datei kommentiert.
-* **Gemeinsame Helfer** aus suite-kit statt eigener Kopien (Regeln in `suite-kit/docs/KONVENTIONEN.md`): `escapeHtml`
+* **Gemeinsame Helfer** aus suite-kit statt eigener Kopien (Regeln in `suite-kit/docs/KONVENTIONEN.md`): `renderMail` (gemeinsame Mail-Vorlage, escapet selbst)
   für Mails, `csvResponse` für den Rückblick (Format aller Tools, Formel-Schutz), `readLimitedText` für die Bodies von
   rsvp-app und Schichten (schon beim Lesen begrenzt, 413 darüber), `safeEqual` für Geheimnisse.
 * **Reservierte Adressen:** Events und Reihen liegen unter `/<slug>` und teilen sich den Namensraum. Alle Pfade des

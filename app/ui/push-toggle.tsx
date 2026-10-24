@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { buttonClass } from './kit'
 import { deletePushSubscription, savePushSubscription } from '../push-actions'
 import { keyToBytes, pushSupported, registration } from './push-client'
 
@@ -56,19 +57,18 @@ export default function PushToggle({ publicKey }: { publicKey: string }) {
     }
   }
 
-  const button = 'text-sm font-medium px-3.5 py-2 rounded-lg transition disabled:opacity-60'
   return (
     <div className="space-y-2 text-sm">
       {state === 'unsupported' && <p className="text-gray-600 dark:text-gray-400">Dieser Browser unterstützt keine Push-Mitteilungen. Auf dem iPhone/iPad gehen sie nur, wenn das Tool als App installiert ist (Safari → Teilen → „Zum Home-Bildschirm“).</p>}
       {state === 'denied' && <p className="text-gray-600 dark:text-gray-400">Mitteilungen sind für diese Seite im Browser blockiert. Du kannst sie in den Website-Einstellungen des Browsers wieder erlauben.</p>}
       {state === 'error' && <p className="text-red-700 dark:text-red-300">Das hat nicht geklappt. Bitte versuche es später erneut.</p>}
       {(state === 'off' || state === 'error') && (
-        <button type="button" onClick={enable} className={`${button} bg-blue-600 text-white hover:bg-blue-700`}>Mitteilungen auf diesem Gerät einschalten</button>
+        <button type="button" onClick={enable} className={buttonClass('primary')}>Mitteilungen auf diesem Gerät einschalten</button>
       )}
       {state === 'on' && (
         <>
           <p className="text-green-800 dark:text-green-200">Mitteilungen sind auf diesem Gerät eingeschaltet.</p>
-          <button type="button" onClick={disable} className={`${button} bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600`}>Ausschalten</button>
+          <button type="button" onClick={disable} className={buttonClass('secondary')}>Ausschalten</button>
         </>
       )}
       {state === 'loading' && <p className="text-gray-500 dark:text-gray-400">…</p>}

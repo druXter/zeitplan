@@ -8,7 +8,7 @@ import { decisionNames, describeProtocolEntry, loadProtocol, type ProtocolEntry 
 import { loadReview, type ReviewItem } from '../../../../lib/review/store'
 import { formatDate, formatDuration, formatItemClock } from '../../../../lib/timezone'
 import Badge from '../../../../ui/badge'
-import { buttonClass, Notice, PrintButton } from '../../../../ui/kit'
+import { buttonClass, inputClass, Notice, PrintButton } from '../../../../ui/kit'
 import { saveResultNote } from '../../review-actions'
 
 export const dynamic = 'force-dynamic'
@@ -240,8 +240,8 @@ function ReviewEntry({ row, eventId, clock, trackName, protocol }: {
               <input type="hidden" name="itemId" value={item.id} />
               <input type="hidden" name="previous" value={item.resultNote ?? ''} />
               <label htmlFor={`note-${item.id}`} className="sr-only">Protokollnotiz zu „{item.title}“</label>
-              <textarea id={`note-${item.id}`} name="note" defaultValue={item.resultNote ?? ''} maxLength={PLAN_LIMITS.noteMax} rows={3} placeholder="z. B. Ergebnis, Beschluss" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900" />
-              <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">Notiz speichern</button>
+              <textarea id={`note-${item.id}`} name="note" defaultValue={item.resultNote ?? ''} maxLength={PLAN_LIMITS.noteMax} rows={3} placeholder="z. B. Ergebnis, Beschluss" className={inputClass} />
+              <button type="submit" className={buttonClass('secondary')}>Notiz speichern</button>
             </form>
           </details>
         )}

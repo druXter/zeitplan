@@ -1,6 +1,6 @@
 'use client'
 
-import { SubmitButton, Notice } from '../ui/kit'
+import { buttonClass, labelClass, Notice, SubmitButton } from '../ui/kit'
 import Link from 'next/link'
 import { useActionState, useSyncExternalStore } from 'react'
 import type { GuestAccess } from '@prisma/client'
@@ -22,7 +22,7 @@ export default function AccessGate({ slug, access, codeAvailable }: { slug: stri
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-2">
         <p className="text-gray-700 dark:text-gray-300">Den Ablauf siehst du nach der Eingabe deines Zugangs auf unserer Seite.</p>
-        <a href={`/${slug}`} target="_blank" rel="noopener" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 border border-blue-600">
+        <a href={`/${slug}`} target="_blank" rel="noopener" className={buttonClass('primary')}>
           Ablauf in neuem Tab öffnen
         </a>
       </div>
@@ -38,7 +38,7 @@ export default function AccessGate({ slug, access, codeAvailable }: { slug: stri
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-2">
         <p className="text-gray-700 dark:text-gray-300">Melde dich mit deinem Konto an, um den Ablauf zu sehen.</p>
-        <Link href={`/login?next=${encodeURIComponent(`/${slug}`)}`} className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 border border-blue-600">
+        <Link href={`/login?next=${encodeURIComponent(`/${slug}`)}`} className={buttonClass('primary')}>
           Anmelden
         </Link>
       </div>
@@ -58,7 +58,7 @@ function CodeForm({ slug }: { slug: string }) {
       <input type="hidden" name="slug" value={slug} />
       {state && <Notice tone="error">{state.error}</Notice>}
       <div>
-        <label htmlFor="access-code" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Zugangscode</label>
+        <label htmlFor="access-code" className={labelClass}>Zugangscode</label>
         <input
           id="access-code" name="code" required maxLength={60} autoComplete="off" autoCapitalize="characters" spellCheck={false}
           className="w-full rounded-lg border border-gray-300 bg-white p-3 text-lg text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900 tracking-wider" aria-describedby="access-code-hint"

@@ -1,4 +1,4 @@
-import { Notice } from '../../../../ui/kit'
+import { buttonClass, inputClass, labelClass, Notice } from '../../../../ui/kit'
 import { requireUser } from '../../../../lib/auth'
 import { loadEventOr404 } from '../../../../lib/events/store'
 import { loadPlan } from '../../../../lib/planning/store'
@@ -66,8 +66,8 @@ export default async function WhatIfPage({ params, searchParams }: { params: Pro
         <form method="get" className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
             <div>
-              <label htmlFor="whatif-item" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Punkt</label>
-              <select id="whatif-item" name="punkt" defaultValue={itemId || choices[0].id} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900">
+              <label htmlFor="whatif-item" className={labelClass}>Punkt</label>
+              <select id="whatif-item" name="punkt" defaultValue={itemId || choices[0].id} className={inputClass}>
                 {choices.map(item => (
                   <option key={item.id} value={item.id}>
                     {clock(item.expectedStart)} {item.title}{tracks.length > 1 ? ` (${trackName.get(item.trackId)})` : ''}{item.actualStart ? ' – läuft' : ''}
@@ -76,14 +76,14 @@ export default async function WhatIfPage({ params, searchParams }: { params: Pro
               </select>
             </div>
             <div>
-              <label htmlFor="whatif-plus" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Minuten später</label>
-              <input id="whatif-plus" name="plus" type="number" inputMode="numeric" min={1} max={LIVE_LIMITS.maxDelayMin} step={1} defaultValue={plus} className="w-full sm:w-28 rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900" />
+              <label htmlFor="whatif-plus" className={labelClass}>Minuten später</label>
+              <input id="whatif-plus" name="plus" type="number" inputMode="numeric" min={1} max={LIVE_LIMITS.maxDelayMin} step={1} defaultValue={plus} className={`${inputClass} sm:w-28`} />
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 border border-blue-600">Durchspielen</button>
+            <button type="submit" className={buttonClass('primary')}>Durchspielen</button>
             {QUICK.map(minutes => (
-              <button key={minutes} type="submit" name="schnell" value={minutes} className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">+{minutes}</button>
+              <button key={minutes} type="submit" name="schnell" value={minutes} className={buttonClass('secondary')}>+{minutes}</button>
             ))}
           </div>
           <p className="text-xs text-gray-600 dark:text-gray-400">Bei einem laufenden Punkt heißt „+X“: Er dauert X Minuten länger.</p>

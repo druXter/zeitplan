@@ -1,4 +1,4 @@
-import { Notice } from '../../ui/kit'
+import { buttonClass, inputClass, labelClass, Notice } from '../../ui/kit'
 import type { AlertSetting } from '@prisma/client'
 import { saveAlertSetting } from './alert-actions'
 import { ALERT_LEAD_OPTIONS, ALERT_SCOPE_LABELS } from '../../lib/alerts/due'
@@ -37,20 +37,20 @@ export default function AlertSettings({ eventId, setting, publicKey, mineOnly, n
           <input type="hidden" name="eventId" value={eventId} />
           {mineOnly && <input type="hidden" name="mine" value="1" />}
           <div>
-            <label htmlFor="alert-scope" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Für</label>
-            <select id="alert-scope" name="scope" defaultValue={setting?.scope ?? 'MINE'} className="rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900">
+            <label htmlFor="alert-scope" className={labelClass}>Für</label>
+            <select id="alert-scope" name="scope" defaultValue={setting?.scope ?? 'MINE'} className={inputClass}>
               <option value="MINE">{ALERT_SCOPE_LABELS.MINE}</option>
               <option value="ALL">{ALERT_SCOPE_LABELS.ALL}</option>
               <option value="OFF">aus</option>
             </select>
           </div>
           <div>
-            <label htmlFor="alert-lead" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Wie lange vorher</label>
-            <select id="alert-lead" name="leadMin" defaultValue={String(setting?.leadMin ?? 10)} className="rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900">
+            <label htmlFor="alert-lead" className={labelClass}>Wie lange vorher</label>
+            <select id="alert-lead" name="leadMin" defaultValue={String(setting?.leadMin ?? 10)} className={inputClass}>
               {ALERT_LEAD_OPTIONS.map(minutes => <option key={minutes} value={minutes}>{minutes} Min</option>)}
             </select>
           </div>
-          <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 border border-blue-600">Speichern</button>
+          <button type="submit" className={buttonClass('primary')}>Speichern</button>
         </form>
         <div className="border-t border-gray-200 dark:border-gray-700 pt-3 space-y-1">
           <p className="text-sm font-medium">Dieses Gerät</p>

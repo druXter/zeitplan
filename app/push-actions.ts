@@ -4,17 +4,17 @@
 import { prisma } from './lib/prisma'
 import { getCurrentSessionId, getCurrentUser } from './lib/auth'
 import { isPushConfigured } from './lib/push'
-import { validSubscription, type SubscriptionInput } from './lib/push-subscription'
+import { type PushSubscriptionInput, validPushSubscription } from 'suite-kit/web'
 
 /**
  * Speichert das Push-Abo dieses Geräts für das eingeloggte Konto, gebunden an die aktuelle
  * Sitzung (siehe PushSubscription in schema.prisma). Aufgerufen von app/ui/push-toggle.tsx.
  * Übernommen aus dem Abstimmungstool.
  */
-export async function savePushSubscription(input: SubscriptionInput): Promise<boolean> {
+export async function savePushSubscription(input: PushSubscriptionInput): Promise<boolean> {
   if (!isPushConfigured()) return false
   const [user, sessionId] = await Promise.all([getCurrentUser(), getCurrentSessionId()])
-  const subscription = validSubscription(input)
+  const subscription = validPushSubscription(input)
   if (!user || !sessionId || !subscription) return false
 
   // Ein Endpoint gehört genau einem Gerät - meldet sich dort jemand anderes an, zieht das Abo um.

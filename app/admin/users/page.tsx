@@ -1,5 +1,5 @@
 // app/admin/users/page.tsx
-import { SubmitButton, Notice, ConfirmForm, CopyableField } from '../../ui/kit'
+import { buttonClass, ConfirmForm, CopyableField, inputClass, labelClass, Notice, SubmitButton } from '../../ui/kit'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { prisma } from '../../lib/prisma'
@@ -59,17 +59,17 @@ export default async function UsersPage({
 
           <form action={createUser} className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">E-Mail</label>
-              <input id="email" type="email" name="email" required maxLength={254} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900" />
+              <label htmlFor="email" className={labelClass}>E-Mail</label>
+              <input id="email" type="email" name="email" required maxLength={254} className={inputClass} />
             </div>
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Name (optional)</label>
-              <input id="name" type="text" name="name" maxLength={100} className="w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900" />
+              <label htmlFor="name" className={labelClass}>Name (optional)</label>
+              <input id="name" type="text" name="name" maxLength={100} className={inputClass} />
             </div>
             {isAdmin && (
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Rolle</label>
-                <select id="role" name="role" defaultValue="CREATOR" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900">
+                <label htmlFor="role" className={labelClass}>Rolle</label>
+                <select id="role" name="role" defaultValue="CREATOR" className={inputClass}>
                   <option value="CREATOR">Creator (legt eigene Events an)</option>
                   <option value="MODERATOR">Moderator*in (nur freigegebene Events)</option>
                   <option value="ADMIN">Administrator*in</option>
@@ -117,13 +117,13 @@ export default async function UsersPage({
                             <option value="MODERATOR">Moderator*in</option>
                             <option value="ADMIN">Administrator*in</option>
                           </select>
-                          <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-2.5 py-1 text-xs bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">Ändern</button>
+                          <button type="submit" className={buttonClass('secondary', 'sm')}>Ändern</button>
                         </form>
 
                         {pending && (
                           <form action={resendInvite}>
                             <input type="hidden" name="userId" value={u.id} />
-                            <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-2.5 py-1 text-xs bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">Einladung erneuern</button>
+                            <button type="submit" className={buttonClass('secondary', 'sm')}>Einladung erneuern</button>
                           </form>
                         )}
 

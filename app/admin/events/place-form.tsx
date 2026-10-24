@@ -4,8 +4,9 @@ import { useActionState } from 'react'
 import { savePlace } from './place-actions'
 import { PLACE_LIMITS } from '../../lib/planning/places'
 import { Feedback } from './event-forms'
+import { buttonClass, inputClass } from '../../ui/kit'
 
-const field = 'w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900'
+const field = inputClass
 
 /** Ort anlegen (ohne place) oder ändern (Idee L22). Geprüft wird in savePlace. */
 export default function PlaceForm({ eventId, place }: { eventId: string; place?: { id: string; name: string; address: string; mapUrl: string | null } }) {
@@ -30,7 +31,7 @@ export default function PlaceForm({ eventId, place }: { eventId: string; place?:
         <label htmlFor={`${prefix}-map`} className="block text-xs font-medium mb-1">Eigener Kartenlink (optional, sonst Route über Google Maps)</label>
         <input id={`${prefix}-map`} name="mapUrl" type="url" maxLength={PLACE_LIMITS.mapUrlMax} defaultValue={place?.mapUrl ?? ''} placeholder="https://…" className={field} />
       </div>
-      <button type="submit" disabled={pending} className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">
+      <button type="submit" disabled={pending} className={buttonClass('secondary')}>
         {place ? 'Ort speichern' : 'Ort anlegen'}
       </button>
     </form>

@@ -1,4 +1,4 @@
-import { Notice } from '../../../../ui/kit'
+import { labelClass, Notice } from '../../../../ui/kit'
 import Link from 'next/link'
 import { prisma } from '../../../../lib/prisma'
 import { requireUser } from '../../../../lib/auth'
@@ -65,6 +65,8 @@ const NOTE_ERRORS: Record<string, string> = {
 
 const DURATION_LABELS: Record<number, string> = { 15: '15 Minuten', 30: '30 Minuten', 60: '1 Stunde', 120: '2 Stunden', 0: 'bis ich sie entferne' }
 
+// Bewusst eigene, größere Bedienelemente statt buttonClass/inputClass aus dem Kit: Die Live-Steuerung wird während des
+// Events mit einer Hand am Handy bedient (Daumen, wenig Zeit) - Knöpfe ab 48 px Höhe, Felder mit mehr Innenabstand.
 const PRIMARY = 'w-full min-h-14 rounded-xl border border-blue-600 bg-blue-600 px-4 text-lg font-semibold text-white shadow-sm transition hover:bg-blue-700'
 const SECONDARY = 'w-full min-h-12 rounded-lg border border-gray-300 bg-white px-3 font-medium text-gray-800 transition hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700'
 const DANGER = 'w-full min-h-12 rounded-lg border border-red-300 bg-white px-3 font-medium text-red-700 transition hover:bg-red-50 dark:border-red-800 dark:bg-gray-800 dark:text-red-300 dark:hover:bg-red-950'
@@ -358,16 +360,16 @@ export default async function LivePage({ params, searchParams }: { params: Promi
                 <Cmd ctx={ctx} command="insert" fields={{ trackId: current.id }} className="space-y-3 pt-2">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Kommt direkt nach „{reference.title}“; die folgenden Punkte rutschen nach.</p>
                   <div>
-                    <label htmlFor="insert-title" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Titel</label>
+                    <label htmlFor="insert-title" className={labelClass}>Titel</label>
                     <input id="insert-title" name="title" required maxLength={PLAN_LIMITS.titleMax} className={`w-full p-3 ${FIELD}`} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label htmlFor="insert-duration" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Dauer (Min)</label>
+                      <label htmlFor="insert-duration" className={labelClass}>Dauer (Min)</label>
                       <input id="insert-duration" name="durationMin" type="number" inputMode="numeric" min={1} max={LIVE_LIMITS.maxInsertMin} required defaultValue={10} className={`w-full p-3 ${FIELD}`} />
                     </div>
                     <div>
-                      <label htmlFor="insert-visibility" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Sichtbarkeit</label>
+                      <label htmlFor="insert-visibility" className={labelClass}>Sichtbarkeit</label>
                       <select id="insert-visibility" name="visibility" defaultValue="PUBLIC" className={`w-full p-3 ${FIELD}`}>
                         <option value="PUBLIC">Öffentlich</option>
                         <option value="TEAM">Nur Team</option>
@@ -393,11 +395,11 @@ export default async function LivePage({ params, searchParams }: { params: Promi
               Erscheint oben in der Gästeansicht und auf der Tafel{announcement ? ' und ersetzt die jetzige Durchsage' : ''}.
             </p>
             <div>
-              <label htmlFor="announce-text" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Text</label>
+              <label htmlFor="announce-text" className={labelClass}>Text</label>
               <textarea id="announce-text" name="text" required maxLength={ANNOUNCEMENT_LIMITS.textMax} rows={2} placeholder="z. B. Bitte zum Gruppenfoto in den Garten" className={`w-full p-3 ${FIELD}`} />
             </div>
             <div>
-              <label htmlFor="announce-duration" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Anzeigen für</label>
+              <label htmlFor="announce-duration" className={labelClass}>Anzeigen für</label>
               <select id="announce-duration" name="durationMin" defaultValue="30" className={`w-full p-3 ${FIELD}`}>
                 {ANNOUNCEMENT_LIMITS.durations.map(minutes => <option key={minutes} value={minutes}>{DURATION_LABELS[minutes]}</option>)}
               </select>

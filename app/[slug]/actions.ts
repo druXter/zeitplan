@@ -12,7 +12,7 @@ import { accessCodeConfigured, accessCodeMatches } from '../lib/guest/tokens'
 import { resolveGuestEvent } from '../lib/guest/store'
 import { guestReminders } from '../lib/guest/payload'
 import { getCurrentSessionId } from '../lib/auth'
-import { validSubscription, type SubscriptionInput } from '../lib/push-subscription'
+import { type PushSubscriptionInput, validPushSubscription } from 'suite-kit/web'
 import { MAX_GUEST_SUBSCRIPTIONS } from '../lib/guest-alerts/due'
 
 export type AccessCodeState = { error: string } | null
@@ -68,10 +68,10 @@ async function reminderEvent(slug: unknown) {
  * Konto -, bei geschützten Events gebunden an den Zugang dieses Browsers (Gast-Sitzung bzw. Konto-Sitzung), damit es
  * mit dem Zugang endet. Gedrosselt pro IP, höchstens MAX_GUEST_SUBSCRIPTIONS Geräte je Event.
  */
-export async function subscribeGuestReminders(slug: unknown, input: SubscriptionInput): Promise<GuestReminderResult> {
+export async function subscribeGuestReminders(slug: unknown, input: PushSubscriptionInput): Promise<GuestReminderResult> {
   const event = await reminderEvent(slug)
   if (!event) return 'unavailable'
-  const subscription = validSubscription(input)
+  const subscription = validPushSubscription(input)
   if (!subscription) return 'error'
   if (!(await reserve([guestPushRule(await clientIp())]))) return 'throttled'
 

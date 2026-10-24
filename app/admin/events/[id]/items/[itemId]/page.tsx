@@ -1,4 +1,4 @@
-import { Notice, ConfirmForm } from '../../../../../ui/kit'
+import { buttonClass, ConfirmForm, fieldClass, inputClass, labelClass, Notice } from '../../../../../ui/kit'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { requireUser } from '../../../../../lib/auth'
@@ -73,24 +73,24 @@ export default async function EditItemPage({ params, searchParams }: {
           <input type="hidden" name="itemId" value={item.id} />
           <input type="hidden" name="version" value={item.version} />
           <div>
-            <label htmlFor="shift-minutes" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Minuten</label>
-            <input id="shift-minutes" name="minutes" type="number" inputMode="numeric" min={1} max={MAX_SHIFT_MIN} required defaultValue={15} className="w-24 rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900" />
+            <label htmlFor="shift-minutes" className={labelClass}>Minuten</label>
+            <input id="shift-minutes" name="minutes" type="number" inputMode="numeric" min={1} max={MAX_SHIFT_MIN} required defaultValue={15} className={`${fieldClass} w-24`} />
           </div>
           <div>
-            <label htmlFor="shift-direction" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Richtung</label>
-            <select id="shift-direction" name="direction" defaultValue="later" className="rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900">
+            <label htmlFor="shift-direction" className={labelClass}>Richtung</label>
+            <select id="shift-direction" name="direction" defaultValue="later" className={fieldClass}>
               <option value="later">später</option>
               <option value="earlier">früher</option>
             </select>
           </div>
           <div className="grow min-w-48">
-            <label htmlFor="shift-scope" className="block text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Bis</label>
-            <select id="shift-scope" name="scope" defaultValue="until-anchor" className="w-full rounded-lg border border-gray-300 bg-white p-2 text-base sm:text-sm text-gray-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100 dark:focus:ring-blue-900">
+            <label htmlFor="shift-scope" className={labelClass}>Bis</label>
+            <select id="shift-scope" name="scope" defaultValue="until-anchor" className={inputClass}>
               <option value="until-anchor">vor den nächsten Anker (Anker bleibt)</option>
               <option value="track-end">zum Ende der Spur (Anker mit)</option>
             </select>
           </div>
-          <button type="submit" className="inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition disabled:opacity-60 whitespace-nowrap px-3.5 py-2 text-sm bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 dark:bg-gray-800 dark:text-gray-100 dark:border-gray-600 dark:hover:bg-gray-700">Verschieben</button>
+          <button type="submit" className={buttonClass('secondary')}>Verschieben</button>
         </form>
       </div>}
       {canAddRemoveItems(event.level, event) && (

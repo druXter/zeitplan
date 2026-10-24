@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildReview, formatDeviation, placeByTime, reviewTable, type ReviewCsvItem } from '../../app/lib/review/review'
-import { toCsv } from '../../app/lib/csv'
+import { toCsv } from 'suite-kit/web'
 import { at, hhmm } from './schedule/fixtures'
 
 let order = 0
@@ -79,7 +79,7 @@ describe('reviewTable + toCsv', () => {
       '2026-06-20 18:10', '2026-06-20 18:40', 30, '2026-06-20 18:12', '2026-06-20 18:57', 45, 2, 15,
       'Tagesordnung', 'top2', 'öffentlich', 'stattgefunden', null, null, null, '=HYPERLINK("x")'
     ])
-    const csv = toCsv(table.header, table.rows)
+    const csv = toCsv([table.header, ...table.rows])
     expect(csv.startsWith('﻿Beginn geplant;')).toBe(true)
     expect(csv).toContain(';"\'=HYPERLINK(""x"")"\r\n')
     expect(csv).toContain(';-9;') // negative Abweichung bleibt eine Zahl

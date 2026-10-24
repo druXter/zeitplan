@@ -1,7 +1,6 @@
+import { safeEqual } from 'suite-kit'
 import { describe, expect, it } from 'vitest'
-import {
-  canAddRemoveItems, canCreateEvents, canEditItem, canEditPlan, canInviteUsers, canManageEvent, eventLevel, safeEqual, seesItemContent
-} from '../../app/lib/permissions'
+import { canAddRemoveItems, canCreateEvents, canEditItem, canEditPlan, canInviteUsers, canManageEvent, eventLevel, seesItemContent } from '../../app/lib/permissions'
 import type { CurrentUser } from '../../app/lib/auth'
 
 describe('safeEqual', () => {

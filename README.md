@@ -565,13 +565,16 @@ Uhrzeit und Ort, genau so, wie sie in der Gästeansicht stehen. Antippen öffnet
 * **Berechtigungen** prüft jede Server Action selbst (`loadEventForUser` → `eventLevel`, dazu `canEditPlan`,
   `canAddRemoveItems`, `canManageEvent` und `canEditItem` in `app/lib/permissions.ts`), nie nur die Oberfläche. Server
   Actions prüfen zusätzlich den Origin (CSRF, Next.js-Standard).
-* **Header** (`next.config.ts`): `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS für alle Seiten. **Nur die
+* **Header** (`next.config.ts`, Bausteine aus `suite-kit/web`): `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS für alle Seiten. **Nur die
   Gästeansicht bzw. Reihen-Übersicht `/<adresse>` ist einbettbar** (`frame-ancestors *`, wie in Seating); alle anderen
   Seiten – auch Tafel, Polling-Endpunkt, Impressum und Datenschutz – nicht (`frame-ancestors 'none'`,
   `X-Frame-Options: DENY`); einzige Ausnahme ist die Live-Steuerung für die Seiten aus `LIVE_EMBED_ORIGINS` (`proxy.ts`). Gästeansicht und Tafel sind per `<meta name="robots">` nicht indexiert, der Polling-Endpunkt per
   `X-Robots-Tag` und `no-store`. Login, Konto und Verwaltung zusätzlich `X-Robots-Tag: noindex` und `Cache-Control: no-store`;
   Reset-Links `Referrer-Policy: no-referrer`. Die Reihenfolge der Regeln ist wichtig (die spätere gewinnt, ein Header
   lässt sich nur überschreiben, nicht entfernen) und in der Datei kommentiert.
+* **Gemeinsame Helfer** aus suite-kit statt eigener Kopien (Regeln in `suite-kit/docs/KONVENTIONEN.md`): `escapeHtml`
+  für Mails, `csvResponse` für den Rückblick (Format aller Tools, Formel-Schutz), `readLimitedText` für die Bodies von
+  rsvp-app und Schichten (schon beim Lesen begrenzt, 413 darüber), `safeEqual` für Geheimnisse.
 * **Reservierte Adressen:** Events und Reihen liegen unter `/<slug>` und teilen sich den Namensraum. Alle Pfade des
   Tools stehen in `app/lib/slugs.ts`; ein Test schlägt fehl, sobald eine neue Route oder eine Datei unter `public/`
   dort fehlt.
@@ -828,17 +831,23 @@ docker compose up -d --build
 docker compose run --rm zeitplan node create-user.js deine-email@domain.de ADMIN --invite
 ```
 
-* Der Container läuft **nicht als root**, sondern als Nutzer `node` (UID 1000). Das gemountete Verzeichnis `./data`
+* Der Container (`node:22-alpine`) läuft **nicht als root**, sondern als Nutzer `node` (UID 1000). Das gemountete Verzeichnis `./data`
   (SQLite-Datenbank) muss ihm gehören – legt Docker es selbst an, gehört es root und der Start scheitert.
 * Installiert wird mit `npm ci` exakt nach `package-lock.json`. Das gemeinsame Paket `suite-kit` kommt direkt von
   GitHub, das Dockerfile installiert dafür `git`.
 * Beim Start synchronisiert `prisma db push` das Schema, dann startet `next start` auf Port 3000 im Container.
   Voreingestellt ist Host-Port 3008 (3005–3007 sind von rsvp-app, Abstimmungstool und Seating belegt).
+* Der Port ist nur an `127.0.0.1` gebunden (`127.0.0.1:3008:3000`): Von außen kommt alles über den Cloudflare-Tunnel
+  (`cloudflared` auf dem Host, Ziel `http://127.0.0.1:3008`). Auf allen Schnittstellen wäre das Tool über die öffentliche
+  IPv6 des Servers am Tunnel vorbei erreichbar, mit selbst gesetztem `X-Forwarded-For` an der IP-Drosselung vorbei.
+  Zusätzlich hängt der Container im Docker-Netz `proxy_net`, damit Uptime Kuma intern `http://zeitplan:3000` prüfen kann.
 * **Vor jedem Update die Daten sichern** (`data/prod.db` kopieren).
 * **Vorwarnung fürs Team und Erinnerungen für Gäste:** VAPID-Schlüssel in die `.env` (siehe „Vorwarnung fürs Team“)
   und den minütlichen Aufruf einrichten, z. B. in der crontab des Hosts (das Secret aus der `.env` lesen, nicht in die
   crontab schreiben):
-  `* * * * * curl -fsS -m 50 "http://127.0.0.1:3008/api/cron/alerts?secret=$(grep -E '^CRON_SECRET=' /pfad/zu/zeitplan/.env | cut -d= -f2-)" > /dev/null`
+  `* * * * * curl -fsS -m 50 "http://127.0.0.1:3008/api/cron/alerts?secret=$(grep -E '^CRON_SECRET=' /pfad/zu/zeitplan/.env | cut -d= -f2-)" > /dev/null`.
+  Auf diesem Server übernimmt das `~/scripts/zeitplan-cron.sh`; jeder erfolgreiche Lauf meldet sich bei einem
+  Push-Monitor in Uptime Kuma (`~/scripts/kuma-push.sh`), der Alarm schlägt, wenn die Meldungen ausbleiben.
 
 ## Umgebungsvariablen
 

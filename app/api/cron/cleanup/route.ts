@@ -1,6 +1,6 @@
+import { safeEqual } from 'suite-kit'
 import { NextResponse } from 'next/server'
 import { prisma } from '../../../lib/prisma'
-import { safeEqual } from '../../../lib/permissions'
 import { endIfOver } from '../../../lib/live/store'
 
 // Suite-weit einheitliche Fristen (siehe suite-kit README "Betrieb"), damit die

@@ -1,18 +1,9 @@
 import type { NextConfig } from "next";
+import { BASE_RULE, EMBEDDABLE, NO_FRAMING, NO_REFERRER, NOT_STORED, PRIVATE_PAGE, SECRET_URL_PAGE, SERVICE_WORKER } from "suite-kit/web";
 
-// Seiten, die nie in einem fremden iFrame auftauchen dürfen (Clickjacking): alles außer der
-// Gästeansicht bzw. Reihen-Übersicht /<slug> - auch die Tafel /<slug>/tafel und der Polling-Endpunkt.
-const NO_FRAMING = [
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
-];
-
-// Seiten, die weder in Suchmaschinen noch in Caches landen sollen.
-const NOT_STORED = [
-  { key: "X-Robots-Tag", value: "noindex, nofollow" },
-  { key: "Cache-Control", value: "no-store" },
-];
-const PRIVATE_PAGE = [...NO_FRAMING, ...NOT_STORED];
+// Header-Bausteine aus suite-kit (docs/KONVENTIONEN.md, "Sicherheits-Header"); hier stehen nur die Pfade dieses Tools.
+// Einbetten verboten außer für die Gästeansicht bzw. Reihen-Übersicht /<slug> - auch die Tafel /<slug>/tafel und der
+// Polling-Endpunkt nicht.
 
 // Einzige Ausnahme im Verwaltungsbereich: die Live-Steuerung /admin/events/<id>/live darf in der Sitzungsleitung des
 // Abstimmungstools erscheinen (Idee L7, LIVE_EMBED_ORIGINS). Ihre Framing-Header setzt proxy.ts zur Laufzeit - ohne
@@ -24,8 +15,7 @@ const LIVE = "admin/events/[^/]+/live/?$";
 // dort kein Ziel (Erinnerungen für Gäste, Idee L12, lassen sich eingebettet nicht einschalten - Browser fragen in
 // fremden iFrames nicht nach Mitteilungen, die Seite verweist auf einen neuen Tab). Fest im Code statt per Env: Die Regeln werden beim Build festgeschrieben, eine
 // Env-Variable im laufenden Container würde nicht greifen. Wer nur bestimmte Seiten einbetten lassen
-// will, ersetzt `*` durch deren Origin(s) und baut neu.
-const EMBEDDABLE = [{ key: "Content-Security-Policy", value: "frame-ancestors *" }];
+// will, ersetzt EMBEDDABLE (`frame-ancestors *`) durch eine Regel mit deren Origin(s) und baut neu.
 
 const nextConfig: NextConfig = {
   // REIHENFOLGE IST WICHTIG: Passen mehrere Regeln auf denselben Pfad und setzen denselben
@@ -50,18 +40,8 @@ const nextConfig: NextConfig = {
   // da nirgends fremder Inhalt als HTML ausgegeben wird (React maskiert alles).
   async headers() {
     return [
-      {
-        // 1. Allgemein.
-        source: "/:path*",
-        headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-          // Nur für diesen Host (ohne includeSubDomains), damit andere Subdomains der
-          // Suite davon unberührt bleiben. Wirkt nur über HTTPS.
-          { key: "Strict-Transport-Security", value: "max-age=31536000" },
-        ],
-      },
+      // 1. Allgemein.
+      BASE_RULE,
 
       // 2. Sichere Voreinstellung für alles außer /<slug>.
       { source: "/", headers: NO_FRAMING },
@@ -69,9 +49,9 @@ const nextConfig: NextConfig = {
 
       // Die Tafel eines geschützten Events trägt ihren Schlüssel in der URL (/<slug>/tafel?k=...) - er darf
       // nicht per Referer weitergegeben werden (wie beim Reset-Link).
-      { source: "/:slug/tafel", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+      { source: "/:slug/tafel", headers: NO_REFERRER },
       // Team-Link für Dienstleister (Idee L18, /<slug>/team?k=...): interne Notizen - kein Referer, kein Cache, kein Index.
-      { source: "/:slug/team", headers: [...PRIVATE_PAGE, { key: "Referrer-Policy", value: "no-referrer" }] },
+      { source: "/:slug/team", headers: SECRET_URL_PAGE },
 
       // 3. Gästeansicht und Reihen-Übersicht (app/[slug]) sind einbettbar.
       { source: "/:slug", headers: EMBEDDABLE },
@@ -89,20 +69,20 @@ const nextConfig: NextConfig = {
         // Einstieg aus rsvp-app (/rsvp/<eventId>?t=...) und dessen Fehlerseite /rsvp: Der signierte Link steht
         // in der URL - kein Referer, kein Cache, nicht einbettbar. `/rsvp/:path*` umfasst auch `/rsvp`.
         source: "/rsvp/:path*",
-        headers: [...PRIVATE_PAGE, { key: "Referrer-Policy", value: "no-referrer" }],
+        headers: SECRET_URL_PAGE,
       },
       {
         // Der Einmal-Link steht in der URL - er darf weder per Referer weitergegeben
         // noch zwischengespeichert werden.
         source: "/reset-password",
-        headers: [...PRIVATE_PAGE, { key: "Referrer-Policy", value: "no-referrer" }],
+        headers: SECRET_URL_PAGE,
       },
 
       {
         // 5. Die Föderations-Endpunkte (app/api/suite/*) tragen Einmal-Werte (Login-Bestätigung, state)
         //    in der URL. Überschreibt die Referrer-Policy der allgemeinen Regel.
         source: "/api/suite/:path*",
-        headers: [{ key: "Referrer-Policy", value: "no-referrer" }],
+        headers: NO_REFERRER,
       },
 
       {
@@ -111,11 +91,7 @@ const nextConfig: NextConfig = {
         //    Ressourcen derselben Herkunft. Steht NACH Regel 3 (/:slug passt auch auf /sw.js) und
         //    ersetzt deren CSP.
         source: "/sw.js",
-        headers: [
-          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
-          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
-          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'; frame-ancestors 'none'" },
-        ],
+        headers: SERVICE_WORKER,
       },
     ];
   },

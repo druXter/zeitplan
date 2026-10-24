@@ -1,5 +1,4 @@
 // app/lib/permissions.ts
-import { timingSafeEqual } from 'node:crypto'
 import type { CurrentUser } from './auth'
 
 /** Events anlegen dürfen Admins und Creator, nicht Moderator*innen (siehe prisma/schema.prisma, enum Role). */
@@ -77,9 +76,3 @@ export function canEditItem(
   return canEditPlan(level, event) && seesItemContent(item, isSecretViewer)
 }
 
-/** Konstantzeitvergleich für Tokens - `===` würde über die Antwortzeit verraten, wie viele Zeichen stimmen. */
-export function safeEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a)
-  const bb = Buffer.from(b)
-  return ab.length === bb.length && timingSafeEqual(ab, bb)
-}

@@ -1,6 +1,6 @@
 // app/lib/guest/tokens.ts
+import { safeEqual } from 'suite-kit'
 import { createHmac, randomInt } from 'node:crypto'
-import { safeEqual } from '../permissions'
 
 /**
  * Zugangscode und Tafel-Link für geschützte Events (docs/KONZEPT.md Abschnitt 6), Aufbau wie

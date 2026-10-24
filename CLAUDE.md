@@ -56,7 +56,11 @@ löschen, sonst schreibt `next dev` seinen Block direkt in diese Datei.
 
 ## Sicherheitsregeln (nicht verhandelbar)
 
-Alle Regeln aus dem suite-kit-README und wie in Seating umgesetzt. Zusätzlich:
+Alle Regeln aus dem suite-kit-README und wie in Seating umgesetzt.
+Regeln für alle Tools (Betrieb, Header, Anbindungen, Ausgaben, Tests): `../suite-kit/docs/KONVENTIONEN.md`. Gemeinsame
+Helfer kommen aus suite-kit statt aus einer eigenen Kopie: `escapeHtml`, `csvResponse`/`toCsv`, `readLimitedText` und
+die Header-Bausteine aus `suite-kit/web`, `safeEqual` und `signLinkMessage`/`verifyLinkMessage` aus `suite-kit`.
+Zusätzlich:
 
 * **TEAM- und SECRET-Punkte sowie interne Notizen erscheinen nie** in Gästeansicht, Tafel, deren JSON oder HTML.
   E2E-Test dafür wie "keine Namen im HTML" in Seating.

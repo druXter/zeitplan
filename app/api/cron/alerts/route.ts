@@ -1,5 +1,5 @@
+import { safeEqual } from 'suite-kit'
 import { NextResponse } from 'next/server'
-import { safeEqual } from '../../../lib/permissions'
 import { runAlerts } from '../../../lib/alerts/send'
 import { runGuestAlerts } from '../../../lib/guest-alerts/send'
 

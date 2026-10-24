@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { readLimitedText } from 'suite-kit/web'
 import { prisma } from '../../lib/prisma'
 import { endRsvpSessions } from '../../lib/guest/session'
 import { linkedTo, rsvpSecret, timelineOrigin, verifyMessage } from '../../lib/rsvp/token'
@@ -18,10 +19,9 @@ const MAX_BODY = 5_000
 export async function POST(request: Request) {
   const secret = rsvpSecret()
   if (!secret) return NextResponse.json({ error: 'not configured' }, { status: 404 })
-  const length = Number(request.headers.get('content-length') ?? 0)
-  if (length > MAX_BODY) return NextResponse.json({ error: 'too large' }, { status: 413 })
-  const body = (await request.text()).slice(0, MAX_BODY + 1)
-  if (body.length > MAX_BODY) return NextResponse.json({ error: 'too large' }, { status: 413 })
+  // Begrenzt schon beim Lesen - `(await request.text()).slice(...)` hätte den ganzen Body erst in den Speicher geholt.
+  const body = await readLimitedText(request, MAX_BODY)
+  if (body === null) return NextResponse.json({ error: 'too large' }, { status: 413 })
 
   const message = verifyMessage(body, 'rsvp-change', { secret, audience: timelineOrigin() })
   if (!message) return NextResponse.json({ error: 'invalid signature' }, { status: 401 })

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '../../../../../lib/auth'
 import { loadEventForUser } from '../../../../../lib/events/store'
-import { toCsv } from '../../../../../lib/csv'
+import { csvResponse } from 'suite-kit/web'
 import { placeByTime, reviewTable } from '../../../../../lib/review/review'
 import { decisionNames, describeProtocolEntry, loadProtocol, type ProtocolEntry } from '../../../../../lib/rsvp/protocol'
 import { loadReview } from '../../../../../lib/review/store'
@@ -40,11 +40,5 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  return new NextResponse(toCsv(table.header, table.rows), {
-    headers: {
-      'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="rueckblick-${event.slug}.csv"`,
-      'Cache-Control': 'no-store'
-    }
-  })
+  return csvResponse([table.header, ...table.rows], `rueckblick-${event.slug}.csv`)
 }

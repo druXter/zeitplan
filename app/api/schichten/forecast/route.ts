@@ -1,5 +1,6 @@
 // app/api/schichten/forecast/route.ts
 import { NextResponse } from 'next/server'
+import { readLimitedText } from 'suite-kit/web'
 import { prisma } from '../../../lib/prisma'
 import { createForecastResponse, linkedShiftsEventId, shiftsOrigin, shiftsSecret, timelineOrigin, verifyForecastRequest } from '../../../lib/shifts/token'
 import { forecastForShifts } from '../../../lib/shifts/forecast'
@@ -18,8 +19,8 @@ export async function POST(request: Request) {
   const audience = shiftsOrigin()
   if (!secret || !audience) return new NextResponse('not configured', { status: 404 })
 
-  const body = await request.text()
-  if (body.length > MAX_BODY) return new NextResponse('too large', { status: 413 })
+  const body = await readLimitedText(request, MAX_BODY)
+  if (body === null) return new NextResponse('too large', { status: 413 })
   const message = verifyForecastRequest(body, { secret, audience: timelineOrigin() })
   if (!message) return new NextResponse('invalid message', { status: 401 })
 

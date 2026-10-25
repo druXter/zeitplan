@@ -99,6 +99,13 @@ export default function DatenschutzPage() {
           <p className="mt-2">
             Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (die von dir angestoßene Anmeldung).
           </p>
+          <p className="mt-2">
+            <strong>Event aus rsvp-app anlegen (optional):</strong> Klickst du in rsvp-app bei einem Termin auf
+            „Im Zeitplan anlegen“, schickt rsvp-app uns eine signierte Nachricht mit <strong>Titel und Datum des
+            Termins, dessen Kennung und der Kennung deines Kontos in rsvp-app</strong>. Wir legen damit ein Event für das
+            Konto an, das hier mit deinem rsvp-app-Konto verknüpft ist, und speichern die Kennung des Termins als
+            Verknüpfung. Ohne verknüpftes Konto legen wir nichts an. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO.
+          </p>
         </div>
 
         <div>

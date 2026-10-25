@@ -15,12 +15,18 @@ export const EMPTY_PLAN: MaterializedPlan = { places: [], tracks: [{ key: 'ablau
  * Geheime Punkte sieht danach nur das anlegende Konto - eine Kontenliste steht in keiner Datei, und Freigaben
  * werden nicht mitkopiert.
  *
+ * Mit `rsvpEventId` (Anlegen aus rsvp-app) gleich verknüpft und mit Zugang „nur mit Zusage“.
+ *
  * Wirft SlugTakenError, wenn die Adresse (auch als Reihe) vergeben ist.
  */
-export async function createEventFromPlan(ownerId: string, fields: EventFields, options: EventOptions, plan: MaterializedPlan): Promise<string> {
+export async function createEventFromPlan(
+  ownerId: string, fields: EventFields, options: EventOptions, plan: MaterializedPlan, rsvpEventId: string | null = null
+): Promise<string> {
   return prisma.$transaction(async tx => {
     if (await slugTaken(fields.slug, {}, tx)) throw new SlugTakenError()
-    const event = await tx.event.create({ data: { ...fields, ...options, status: 'DRAFT', ownerId } })
+    // Aus rsvp-app angelegt (app/lib/rsvp/create.ts): gleich mit dem Termin verknüpft, Zugang nur mit Zusage
+    const link = rsvpEventId ? { access: 'RSVP' as const, rsvpLink: { rsvpEventId } } : {}
+    const event = await tx.event.create({ data: { ...fields, ...options, ...link, status: 'DRAFT', ownerId } })
 
     const trackIds = new Map<string, string>()
     for (const track of plan.tracks) {

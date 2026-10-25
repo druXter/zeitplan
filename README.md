@@ -312,6 +312,15 @@ Eigener Vertrag nach dem Muster von Seating (`app/lib/rsvp/token.ts`), mit **eig
 * **Verknüpfen:** In Zeitplan unter „Zugang für Gäste“ „Nur mit Zusage in rsvp-app“ wählen und die id des Termins in
   rsvp-app eintragen; dort beim Termin den angezeigten Zeitplan-Link (`<Zeitplan>/rsvp/<Event-id>`) eintragen. Die
   Verknüpfung gilt erst, wenn beide Seiten die andere eingetragen haben (gespeichert in `Event.rsvpLink`).
+* **Aus rsvp-app anlegen** (Idee Q1, `app/lib/rsvp/create.ts`, Route `POST /api/rsvp-create`, Vertrag in suite-kit
+  `src/linked-create.ts`): „Im Zeitplan anlegen“ beim Termin in rsvp-app legt hier ein Event als Entwurf an – Titel und
+  Tag des Termins, eine Spur „Ablauf“, Zugang „nur mit Zusage“, schon verknüpft; rsvp-app trägt den Link selbst ein.
+  Es gehört dem Konto, das hier über den Konten-Verbund mit dem rsvp-app-Konto verknüpft ist (`ExternalIdentity` mit
+  rsvp-app als Anbieter, oder `toolUserId`, wenn sich das Konto in rsvp-app über Zeitplan anmeldet) – nie über die
+  E-Mail, Moderator\*innen nicht. Ohne Verknüpfung entsteht nichts, rsvp-app zeigt den Anmelde-Link (mit
+  `autoProvision` entsteht das Konto beim ersten Anmelden). Eine Wiederholung liefert dasselbe Event (`linked`), ein
+  fremdes bleibt fremd (`taken`). Nachrichten (`event-create-status`, `event-create`) höchstens eine Minute gültig,
+  gleiches Secret wie oben.
 * **Einstieg:** „Zeitplan“ bei der Zusage in rsvp-app erzeugt bei jedem Klick **frisch** einen kurz gültigen Link
   (`typ: "timeline-link"`) und leitet zu `/rsvp/<Event-id>?t=…` weiter. Zeitplan prüft Signatur, Art, Empfänger,
   Frist und Verknüpfung und legt erst dann eine Gast-Sitzung mit `rsvpId` an (Cookie wie beim Zugangscode, nur als

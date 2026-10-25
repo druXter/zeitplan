@@ -142,7 +142,10 @@ Team-Link), **Ablauf**, **Live**, **Team-Ansicht**, **Rückblick** und – für 
   Reihen teilen sich dabei einen Namensraum.
 * **Datum:** der Tag, an dem der Ablauf beginnt – gespeichert als Beginn dieses Tages in der Zeitzone des Events
   (vorerst immer Europe/Berlin) als UTC-Zeitpunkt. Uhrzeiten stehen nur an den Programmpunkten, ebenfalls als absolute
-  Zeitpunkte – nie als „HH:MM“ (Mitternacht, Zeitumstellung). Ein neues Datum verschiebt alle Punkte um dieselbe Zahl
+  Zeitpunkte – nie als „HH:MM“ (Mitternacht, Zeitumstellung). Eine Uhrzeit aus der doppelten Stunde im Herbst
+  (02:00–03:00) gilt beim Eingeben als die spätere (Winterzeit); ein gespeicherter Punkt behält beim Speichern seinen
+  Beginn, solange das Feld unverändert ist – sonst rutschte ein Punkt um 02:24 Sommerzeit still eine Stunde nach hinten
+  (behoben 25.10.2026). Ein neues Datum verschiebt alle Punkte um dieselbe Zahl
   von Kalendertagen, die Uhrzeiten bleiben (nicht, solange das Event live ist).
 * **Status:** Entwurf ↔ veröffentlicht, archivieren. „Live“ und „Beendet“ setzt die Live-Steuerung; einige Stunden nach
   dem letzten Punkt endet ein Event automatisch.

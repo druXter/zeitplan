@@ -68,7 +68,8 @@ export async function saveItem(_previous: ItemFormState, formData: FormData): Pr
         timezone: event.timezone,
         trackIds: tracks.map(track => track.id),
         itemIds: items.filter(item => item.id !== itemId).map(item => item.id),
-        viewerIds: accounts.map(account => account.id)
+        viewerIds: accounts.map(account => account.id),
+        currentStart: existing?.plannedStart ?? null
       })
       if (!parsed.ok) return { errors: parsed.errors }
       const fields = parsed.fields

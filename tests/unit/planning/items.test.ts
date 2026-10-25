@@ -33,6 +33,23 @@ describe('parseItemForm', () => {
     })
   })
 
+  it('doppelte Stunde der Zeitumstellung: unveränderter Beginn bleibt, neu eingegeben gilt die Winterzeit', () => {
+    const dst = { ...ctx, eventDate: zonedDateToUtc('2026-10-25')! }
+    const summer = new Date('2026-10-25T00:24:00Z') // 02:24 Sommerzeit, das erste 02:24
+    const winter = new Date('2026-10-25T01:24:00Z') // 02:24 Winterzeit, das zweite
+    const start = { ...valid, start: '2026-10-25T02:24' }
+    const fields = (currentStart: Date | null) => {
+      const parsed = parseItemForm(form(start), { ...dst, currentStart })
+      return parsed.ok ? parsed.fields.plannedStart : null
+    }
+    expect(fields(summer)).toEqual(summer)
+    expect(fields(winter)).toEqual(winter)
+    expect(fields(null)).toEqual(winter)
+    // Geändert: neu gelesen, auch wenn der alte Beginn in der doppelten Stunde lag
+    const moved = parseItemForm(form({ ...start, start: '2026-10-25T02:30' }), { ...dst, currentStart: summer })
+    expect(moved.ok && moved.fields.plannedStart).toEqual(new Date('2026-10-25T01:30:00Z'))
+  })
+
   it('Gäste erinnern (Idee L12) nur an öffentlichen Punkten', () => {
     const marked = parseItemForm(form({ ...valid, guestAlert: 'on' }), ctx)
     expect(marked.ok && marked.fields.guestAlert).toBe(true)

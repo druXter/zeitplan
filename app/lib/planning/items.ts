@@ -1,7 +1,7 @@
 import type { ItemStatus, ItemVisibility } from '@prisma/client'
 import { seesItemContent } from '../permissions'
 import { cleanText, isValidVisibility, PLAN_LIMITS, SECRET_PLACEHOLDER, startRange } from './rules'
-import { zonedInputToUtc } from '../timezone'
+import { utcToZonedInput, zonedInputToUtc } from '../timezone'
 
 /**
  * Ein Programmpunkt, wie ihn ein Konto in Planung und Team-Ansicht bekommt - schon nach der SECRET-Regel
@@ -89,6 +89,8 @@ export type ItemFormContext = {
   itemIds: string[]
   /** Konten, die für die SECRET-Liste und als Zuständige infrage kommen (mit Zugriff aufs Event). */
   viewerIds: string[]
+  /** Bisheriger Beginn beim Ändern eines Punkts - bleibt, solange das Feld unverändert ist (siehe parseItemForm). */
+  currentStart?: Date | null
 }
 
 export type ParsedItemForm = { ok: true; fields: ItemFields } | { ok: false; errors: string[] }
@@ -135,7 +137,12 @@ export function parseItemForm(formData: FormData, ctx: ItemFormContext): ParsedI
   if (!ctx.trackIds.includes(trackId)) errors.push('Spur: Bitte wähle eine Spur.')
   if (!isValidVisibility(visibility)) errors.push('Sichtbarkeit: Bitte wähle eine Sichtbarkeit.')
 
-  const plannedStart = zonedInputToUtc(startInput, ctx.timezone)
+  // Unverändertes Feld = unveränderter Beginn. Sonst rutschte ein Punkt in der doppelten Stunde der Herbst-
+  // Zeitumstellung (02:00-03:00 Sommerzeit) beim Speichern um eine Stunde nach hinten: Das Feld zeigt nur "02:24",
+  // und zonedInputToUtc liest eine doppelte Uhrzeit als die spätere (Winterzeit).
+  const plannedStart = ctx.currentStart && utcToZonedInput(ctx.currentStart, ctx.timezone) === startInput
+    ? ctx.currentStart
+    : zonedInputToUtc(startInput, ctx.timezone)
   const range = startRange(ctx.eventDate)
   if (!plannedStart) errors.push('Beginn: Bitte gib Datum und Uhrzeit ein.')
   else if (plannedStart < range.from || plannedStart >= range.until) {

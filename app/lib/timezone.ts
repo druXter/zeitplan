@@ -25,7 +25,8 @@ function offsetAt(utcMs: number, timeZone: string): number {
  * UTC-Zeitpunkt. Null bei ungültiger Eingabe (Format oder Datum wie 31.02.).
  *
  * Zeitumstellung: Eine Uhrzeit, die es nicht gibt (Frühjahr, 02:30), rutscht eine Stunde nach
- * vorn (03:30 Sommerzeit); eine doppelte (Herbst, 02:30) gilt als die spätere (Winterzeit).
+ * vorn (03:30 Sommerzeit); eine doppelte (Herbst, 02:30) gilt als die spätere (Winterzeit). Formulare, die einen
+ * gespeicherten Zeitpunkt nur anzeigen, behalten ihn, solange das Feld unverändert ist (parseItemForm).
  */
 export function zonedInputToUtc(value: string, timeZone: string = DEFAULT_TIMEZONE): Date | null {
   const match = LOCAL_PATTERN.exec(value)

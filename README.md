@@ -344,7 +344,8 @@ Eigener Vertrag nach dem Muster von Seating (`app/lib/rsvp/token.ts`), mit **eig
   `<RSVP_APP_BASE_URL>/api/timeline/protocol`, 5 Sekunden Zeitlimit) und bekommt signiert zurück, was der Termin dort
   **einzeln** freigibt: Kommen und Gehen mit Namen und Uhrzeit (Häkchen „Kommen und Gehen im Zeitplan-Rückblick zeigen“)
   und die Beschlüsse der verknüpften Sitzung im Abstimmungstool (Häkchen „Beschlüsse der Sitzung im Zeitplan-Rückblick
-  zeigen“; Ergebnis, Abstimmende, Anwesende, beschlussfähig, Namen nur bei namentlichen Abstimmungen). Der Rückblick
+  zeigen“; Ergebnis, Abstimmende, Anwesende, beschlussfähig, angenommen/abgelehnt nach der Mehrheitsregel, falls die
+  Abstimmung eine hat, Namen nur bei namentlichen Abstimmungen). Der Rückblick
   zeigt jeden Eintrag beim Punkt, der zu der Zeit lief (Beschlüsse zum Zeitpunkt des Schließens), den Rest unter
   „Außerhalb der Punkte“; die CSV bekommt eine Spalte „Anwesenheit und Beschlüsse“. **Gespeichert wird davon nichts** –
   Namen von Gästen stehen weiterhin nie in der Datenbank. Dafür braucht es die Verknüpfung (Termin-id hier, Zeitplan-Link
@@ -437,7 +438,9 @@ Helfer\*innen und Schichtleitung dort die neue Zeit; ändert sich der Plan, vers
   wann kam und ging, und die Beschlüsse der Sitzung beim jeweiligen Punkt (siehe „Anbindung an rsvp-app“).
 * **Einbetten:** Die Gästeansicht (und die Reihen-Übersicht) lässt sich per iFrame in eine andere Website einbinden,
   z. B. `<iframe src="https://zeitplan.deine-domain.de/<adresse>" width="100%" height="800"></iframe>`. Impressum und
-  Datenschutz öffnen dann in einem neuen Tab. Tafel und Verwaltung sind nicht einbettbar. Nur bestimmte Websites
+  Datenschutz öffnen dann in einem neuen Tab. Eingebettet meldet die Seite ihre Höhe per `postMessage` (`EmbedHeight`
+  aus suite-kit in `app/[slug]/layout.tsx`, Idee Q10) - die Startseite passt das iFrame daran an. Tafel und Verwaltung
+  sind nicht einbettbar. Nur bestimmte Websites
   zulassen: in `next.config.ts` `frame-ancestors *` durch deren Origins ersetzen und neu bauen.
 * **Live-Steuerung in der Sitzungsleitung des Abstimmungstools** (Idee L7): `/admin/events/<id>/live` darf in den
   Seiten aus `LIVE_EMBED_ORIGINS` als iFrame erscheinen (z. B. `https://vote.deine-domain.de`), sonst nirgends. Die
@@ -660,6 +663,22 @@ Push-Abos von Gästen (einen Tag nach dem Event) sowie gesendete Vorwarnungen un
 Für die Vorwarnung fürs Team und die Erinnerungen für Gäste kommt ein zweiter Aufruf **jede Minute** dazu:
 `GET …/api/cron/alerts?secret=<CRON_SECRET>` (siehe „Vorwarnung fürs Team“).
 
+## Auskunft und Löschung zu einer Adresse
+
+Auf dem Server, ohne Endpunkt im Netz (Idee Q8, Regeln in `suite-kit/docs/KONVENTIONEN.md` „Datenschutz“):
+
+```bash
+docker compose exec -T zeitplan node auskunft.js anna@example.org                   # alles zur Adresse als JSON
+docker compose exec -T zeitplan node auskunft.js anna@example.org --loeschen        # Probe: was würde gelöscht
+docker compose exec -T zeitplan node auskunft.js anna@example.org --loeschen --ja   # löschen
+```
+
+Für alle Tools auf einmal: `suite-kit/scripts/auskunft.sh <adresse> [--loeschen [--ja]]` (je Tool eine Datei in
+`~/auskunft/`). Gefunden wird ohne Groß-/Kleinschreibung; Tokens, Hashes und Push-Schlüssel stehen nie in der Ausgabe.
+Verwaltungskonten löscht das Skript nie (daran hängen Inhalte), es nennt sie in den Hinweisen.
+
+Zeitplan kennt Adressen nur von Verwaltungskonten (Gäste bleiben ohne Namen und Adresse) - die Auskunft zeigt das Konto, gelöscht wird nichts.
+
 ## Setup
 
 ```bash
@@ -693,6 +712,9 @@ npm run test:load   # Lasttest: 200 pollende Gäste gegen eine eigene Instanz (v
 npm run build
 npm run lint
 ```
+
+**Barrierefreiheit** (Idee Q11): `tests/e2e/a11y.spec.ts` prüft die wichtigsten Seiten für Gäste und Verwaltung mit
+axe (`@axe-core/playwright`) nach WCAG 2.1 A/AA, hell und dunkel; jeder Befund lässt den Test scheitern. `tests/e2e/auskunft.spec.ts` prüft `auskunft.js`.
 
 Der Prognose-Kern hat für jede Regel eigene Unit-Tests, das Beispiel aus dem Konzept als Tabellentest, Mitternacht
 und die Zeitumstellung am 25.10.2026, Zusammenführung zweier Spuren, Zyklen (auch solche, die erst mit der Reihenfolge

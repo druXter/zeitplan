@@ -35,6 +35,13 @@ describe('readProtocol', () => {
     expect(describeProtocolEntry(protocol.entries[2])).toBe('Dora geht')
   })
 
+  it('Ergebnis nach der Mehrheitsregel (L33) kommt ans Ende der Zeile; zu lang: ungültig', () => {
+    const protocol = read(message({ decisions: [{ ...decision, verdict: 'angenommen (einfache Mehrheit: 2 Ja, 1 Nein)' }] }))
+    if (protocol?.state !== 'ok') throw new Error('erwartet ok')
+    expect(describeProtocolEntry(protocol.entries[1])).toBe('Beschluss „Antrag 1“: Ja 2 · Nein 1 (3 abgestimmt · 4 anwesend · beschlussfähig · namentlich) – angenommen (einfache Mehrheit: 2 Ja, 1 Nein)')
+    expect(read(message({ decisions: [{ ...decision, verdict: 'x'.repeat(301) }] }))).toBeNull()
+  })
+
   it('geheime Abstimmung: Namen werden verworfen, auch wenn sie mitkämen', () => {
     const protocol = read(message({ decisions: [{ ...decision, secret: true }] }))
     if (protocol?.state !== 'ok') throw new Error('erwartet ok')

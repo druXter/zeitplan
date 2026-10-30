@@ -37,7 +37,9 @@ const PROTOCOL = z.object({
     voters: count,
     present: count.nullable(),
     quorumMet: z.boolean().nullable(),
-    options: z.array(z.object({ label: z.string().max(500), votes: count, names: z.array(z.string().max(200)).max(2000).optional() })).max(100)
+    options: z.array(z.object({ label: z.string().max(500), votes: count, names: z.array(z.string().max(200)).max(2000).optional() })).max(100),
+    // Ergebnis nach der Mehrheitsregel aus dem Abstimmungstool (Idee L33), z.B. "angenommen (einfache Mehrheit: 5 Ja, 4 Nein)"
+    verdict: z.string().max(300).optional()
   })).max(200).nullable(),
   decisionsState: z.enum(['ok', 'off', 'unreachable'])
 })
@@ -47,7 +49,7 @@ export type ProtocolEntry =
   | { kind: 'presence'; at: Date; name: string; change: PresenceChange }
   | {
       kind: 'decision'; at: Date; title: string; secret: boolean; voters: number; present: number | null; quorumMet: boolean | null
-      options: { label: string; votes: number; names?: string[] }[]
+      options: { label: string; votes: number; names?: string[] }[]; verdict?: string
     }
 
 export type Protocol =
@@ -72,6 +74,7 @@ export function readProtocol(token: string, expected: { timelineEventId: string;
     ...(message.decisions ?? []).map(d => ({
       kind: 'decision' as const, at: new Date(d.closedAt),
       title: d.title, secret: d.secret, voters: d.voters, present: d.present, quorumMet: d.quorumMet,
+      ...(d.verdict !== undefined ? { verdict: d.verdict } : {}),
       // Geheime Abstimmungen nie mit Namen - auch wenn welche kämen
       options: d.options.map(o => (d.secret ? { label: o.label, votes: o.votes } : o))
     }))
@@ -113,7 +116,7 @@ export function describeProtocolEntry(entry: ProtocolEntry): string {
     entry.quorumMet === false && 'nicht beschlussfähig',
     entry.secret ? 'geheim' : 'namentlich'
   ].filter(Boolean).join(' · ')
-  return `Beschluss „${entry.title}“: ${entry.options.map(o => `${o.label} ${o.votes}`).join(' · ')} (${facts})`
+  return `Beschluss „${entry.title}“: ${entry.options.map(o => `${o.label} ${o.votes}`).join(' · ')} (${facts})${entry.verdict ? ` – ${entry.verdict}` : ''}`
 }
 
 /** Namen einer namentlichen Abstimmung je Option ("Ja: Anna, Ben; Nein: Cem") - leer bei geheimen. */

@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { requireUser } from '../../../../lib/auth'
-import { formString } from '../../../../lib/form'
+import { formString, formText } from '../../../../lib/form'
 import { loadEventForUser } from '../../../../lib/events/store'
 import { canAddRemoveItems, seesItemContent } from '../../../../lib/permissions'
 import {
@@ -241,7 +241,7 @@ export async function announce(formData: FormData) {
   let text = ''
   let until: Date | null = null
   if (!clear) {
-    text = cleanText(formString(formData, 'text', ANNOUNCEMENT_LIMITS.textMax * 2))
+    text = cleanText(formText(formData, 'text', ANNOUNCEMENT_LIMITS.textMax * 2))
     const duration = formInt(formData, 'durationMin')
     const parsed = announcementUntil(now, duration)
     if (!text || text.length > ANNOUNCEMENT_LIMITS.textMax || parsed === undefined) back({ error: 'announcement' })

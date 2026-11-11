@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 import { prisma } from '../../lib/prisma'
 import { requireUser } from '../../lib/auth'
-import { formString } from '../../lib/form'
+import { formString, formText } from '../../lib/form'
 import { loadEventForUser } from '../../lib/events/store'
 import { cleanText, PLAN_LIMITS } from '../../lib/planning/rules'
 import { loadPlan } from '../../lib/planning/store'
@@ -27,7 +27,7 @@ export async function saveResultNote(formData: FormData) {
     redirect(`/admin/events/${event.id}/rueckblick?${new URLSearchParams(params)}#item-${itemId}`)
   }
 
-  const note = cleanText(formString(formData, 'note', PLAN_LIMITS.noteMax * 2), true)
+  const note = cleanText(formText(formData, 'note', PLAN_LIMITS.noteMax * 2), true)
   if (note.length > PLAN_LIMITS.noteMax) back({ noteError: 'long' })
   const previous = cleanText(formString(formData, 'previous', PLAN_LIMITS.noteMax * 2), true)
 

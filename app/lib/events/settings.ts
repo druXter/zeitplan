@@ -1,6 +1,6 @@
 // app/lib/events/settings.ts
 import type { EventStatus, GuestAlertMode } from '@prisma/client'
-import { formString } from '../form'
+import { formString, formText } from '../form'
 import { validateSlug } from '../slugs'
 import { DEFAULT_TIMEZONE, zonedDateToUtc } from '../timezone'
 
@@ -29,7 +29,7 @@ export function parseEventForm(formData: FormData): ParsedEventForm {
   const errors: string[] = []
   const title = formString(formData, 'title', TITLE_MAX_LENGTH + 1)
   const slug = formString(formData, 'slug', 100)
-  const description = formString(formData, 'description', DESCRIPTION_MAX_LENGTH + 1)
+  const description = formText(formData, 'description', DESCRIPTION_MAX_LENGTH + 1)
   const timezone = DEFAULT_TIMEZONE
   const date = zonedDateToUtc(formString(formData, 'date', 20), timezone)
 

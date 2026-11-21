@@ -321,8 +321,10 @@ Eigener Vertrag nach dem Muster von Seating (`app/lib/rsvp/token.ts`), mit **eig
   Es gehört dem Konto, das hier über den Konten-Verbund mit dem rsvp-app-Konto verknüpft ist (`ExternalIdentity` mit
   rsvp-app als Anbieter, oder `toolUserId`, wenn sich das Konto in rsvp-app über Zeitplan anmeldet) – nie über die
   E-Mail, Moderator\*innen nicht. Ohne Verknüpfung entsteht nichts, rsvp-app zeigt den Anmelde-Link (mit
-  `autoProvision` entsteht das Konto beim ersten Anmelden). Eine Wiederholung liefert dasselbe Event (`linked`), ein
-  fremdes bleibt fremd (`taken`). Nachrichten (`event-create-status`, `event-create`) höchstens eine Minute gültig,
+  `autoProvision` entsteht das Konto beim ersten Anmelden). Eine Wiederholung liefert dasselbe Event (`linked`, mit
+  Titel – rsvp-app übernimmt es erst nach Bestätigung). Zurück kommt nur ein **eigenes** Event, auch für Admins; ein
+  fremdes blockiert (`taken`) nur, wenn es aus rsvp-app angelegt wurde – eine bloß eingetragene Kennung sperrt keinen
+  fremden Termin (wie Wichteln W-02). Nachrichten (`event-create-status`, `event-create`) höchstens eine Minute gültig,
   gleiches Secret wie oben.
 * **Einstieg:** „Zeitplan“ bei der Zusage in rsvp-app erzeugt bei jedem Klick **frisch** einen kurz gültigen Link
   (`typ: "timeline-link"`) und leitet zu `/rsvp/<Event-id>?t=…` weiter. Zeitplan prüft Signatur, Art, Empfänger,

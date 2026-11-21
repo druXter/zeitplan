@@ -24,8 +24,8 @@ export async function createEventFromPlan(
 ): Promise<string> {
   return prisma.$transaction(async tx => {
     if (await slugTaken(fields.slug, {}, tx)) throw new SlugTakenError()
-    // Aus rsvp-app angelegt (app/lib/rsvp/create.ts): gleich mit dem Termin verknüpft, Zugang nur mit Zusage
-    const link = rsvpEventId ? { access: 'RSVP' as const, rsvpLink: { rsvpEventId } } : {}
+    // Aus rsvp-app angelegt (app/lib/rsvp/create.ts): gleich mit dem Termin verknüpft (als bestätigt), Zugang nur mit Zusage
+    const link = rsvpEventId ? { access: 'RSVP' as const, rsvpLink: { rsvpEventId, createdFromRsvp: true } } : {}
     const event = await tx.event.create({ data: { ...fields, ...options, ...link, status: 'DRAFT', ownerId } })
 
     const trackIds = new Map<string, string>()

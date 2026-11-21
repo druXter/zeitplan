@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import { LINKED_CREATE, LINKED_CREATE_STATUS, signLinkedCreate, signLinkMessage, type LinkedCreateMessage } from 'suite-kit'
-import { BASE_URL, createAccount, prisma } from './helpers'
+import { BASE_URL, createAccount, createEventRecord, prisma } from './helpers'
 import { RSVP_ORIGIN, TEST_RSVP_TIMELINE_SECRET } from './rsvp-server'
 
 // Anlegen aus rsvp-app (Idee Q1, app/lib/rsvp/create.ts): nur mit gültiger Nachricht, nur für ein per Verbund
@@ -42,7 +42,7 @@ test('angelegt als Entwurf, verknüpft, auf dem Tag des Termins; Wiederholung li
 
   // Wiederholt (Doppelklick, Neuladen): dasselbe Event, kein zweites
   const again = await send(request, { kind: LINKED_CREATE, request: req, title: 'Winterball 2026', startsAt: new Date('2026-12-05T22:30:00Z') })
-  expect(again.body).toMatchObject({ status: 'linked', eventId: event.id })
+  expect(again.body).toMatchObject({ status: 'linked', eventId: event.id, title: 'Winterball 2026' })
   expect((await send(request, { kind: LINKED_CREATE_STATUS, request: req })).body).toMatchObject({ status: 'linked', eventId: event.id })
   expect(await prisma.event.count({ where: { title: 'Winterball 2026', ownerId: user.id } })).toBe(1)
 
@@ -78,4 +78,35 @@ test('falsches Secret, falscher Empfänger, andere Nachrichtenart, zu großer Bo
   expect(await prisma.event.count({ where: { title: 'Angriff' } })).toBe(0)
   // Positivkontrolle
   expect((await send(request, message)).body.status).toBe('created')
+})
+
+test('ein fremdes Event, das selbst die Kennung des Termins trägt, wird nicht übernommen und blockiert nicht (wie Wichteln W-02)', async ({ request }) => {
+  // Mallory trägt an einem eigenen Event die Kennung eines FREMDEN Termins ein (rsvp-app weiß davon nichts).
+  const mallory = await createAccount('CREATOR')
+  const trap = await createEventRecord(mallory.id, { title: 'Falle' })
+  const victimTermin = cuid('rsvpevent')
+  await prisma.event.update({ where: { id: trap.id }, data: { rsvpLink: { rsvpEventId: victimTermin } } })
+
+  // Die Besitzerin des Termins - hier sogar Admin - fragt aus rsvp-app an: Mallorys Event kommt nicht zurück, und
+  // anlegen geht trotzdem.
+  const admin = await linkedAccount('ADMIN')
+  const req = { rsvpEventId: victimTermin, rsvpUserId: admin.rsvpUserId, toolUserId: null }
+  expect((await send(request, { kind: LINKED_CREATE_STATUS, request: req })).body).toEqual({ status: 'ready' })
+  const created = await send(request, { kind: LINKED_CREATE, request: req, title: 'Sommerfest', startsAt: new Date() })
+  expect(created.body).toMatchObject({ status: 'created', title: 'Sommerfest' })
+  expect(created.body.eventId).not.toBe(trap.id)
+  // Gegenprobe: das eigene kommt bei einer Wiederholung zurück, nicht Mallorys
+  expect((await send(request, { kind: LINKED_CREATE_STATUS, request: req })).body).toMatchObject({ status: 'linked', eventId: created.body.eventId, title: 'Sommerfest' })
+
+  // Ein Konto ohne eigenes Event zum Termin: eine unbestätigte fremde Verknüpfung blockiert nicht, eine bestätigte schon.
+  const other = await linkedAccount()
+  const otherTermin = cuid('rsvpevent')
+  await prisma.event.update({ where: { id: trap.id }, data: { rsvpLink: { rsvpEventId: otherTermin } } })
+  const otherReq = { rsvpEventId: otherTermin, rsvpUserId: other.rsvpUserId, toolUserId: null }
+  expect((await send(request, { kind: LINKED_CREATE_STATUS, request: otherReq })).body).toEqual({ status: 'ready' })
+  // Bestätigt ist ein aus rsvp-app angelegtes Event - das blockiert für andere Konten.
+  await prisma.event.update({ where: { id: trap.id }, data: { rsvpLink: { rsvpEventId: otherTermin, createdFromRsvp: true } } })
+  expect((await send(request, { kind: LINKED_CREATE_STATUS, request: otherReq })).body).toEqual({ status: 'taken' })
+  expect((await send(request, { kind: LINKED_CREATE, request: otherReq, title: 'Zweites', startsAt: new Date() })).body).toEqual({ status: 'taken' })
+  expect(await prisma.event.count({ where: { title: 'Zweites' } })).toBe(0)
 })

@@ -32,14 +32,26 @@ async function resolveOwner(request: LinkedCreateRequest): Promise<Owner | null>
   return userId ? prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true } }) : null
 }
 
-/** Ein Event, das schon mit diesem Termin verknüpft ist (z.B. nach einer Wiederholung). */
-async function linkedEvent(rsvpEventId: string) {
-  const events = await prisma.event.findMany({ where: { rsvpLink: { not: Prisma.DbNull } }, select: { id: true, ownerId: true, rsvpLink: true } })
-  return events.find(event => linkedRsvpEventId(event.rsvpLink) === rsvpEventId) ?? null
+/**
+ * Events, die die Kennung dieses Termins tragen. Eintragen kann sie jedes Konto in den Zugangs-Einstellungen - das
+ * allein heißt nicht, dass rsvp-app zugestimmt hat. Als bestätigt gilt nur ein Event, das hier aus rsvp-app angelegt
+ * wurde (createdFromRsvp). Eine von Hand eingetragene Verknüpfung, die rsvp-app übernommen hat, fragt ohnehin nie
+ * hier an: rsvp-app bietet das Anlegen nur an, solange am Termin kein Zeitplan-Link steht.
+ */
+async function linkedEvents(rsvpEventId: string) {
+  const events = await prisma.event.findMany({ where: { rsvpLink: { not: Prisma.DbNull } }, select: { id: true, title: true, ownerId: true, rsvpLink: true } })
+  return events
+    .filter(event => linkedRsvpEventId(event.rsvpLink) === rsvpEventId)
+    .map(event => ({ id: event.id, title: event.title, ownerId: event.ownerId, confirmed: createdFromRsvp(event.rsvpLink) }))
 }
 
-function created(status: 'created' | 'linked', eventId: string): LinkedCreateResult {
-  return { status, eventId, linkUrl: timelineLinkFor(eventId), adminUrl: `${timelineOrigin()}/admin/events/${eventId}` }
+function createdFromRsvp(rsvpLink: unknown): boolean {
+  return typeof rsvpLink === 'object' && rsvpLink !== null && (rsvpLink as Record<string, unknown>).createdFromRsvp === true
+}
+
+/** Mit Titel (suite-kit v0.16.0): rsvp-app zeigt ihn, bevor die Verwaltung ein vorhandenes Event übernimmt. */
+function created(status: 'created' | 'linked', eventId: string, title: string): LinkedCreateResult {
+  return { status, eventId, linkUrl: timelineLinkFor(eventId), adminUrl: `${timelineOrigin()}/admin/events/${eventId}`, title }
 }
 
 /** Darf angelegt werden? Gleiche Prüfungen wie beim Anlegen, ohne etwas zu ändern. */
@@ -47,9 +59,14 @@ export async function checkLinkedCreate(request: LinkedCreateRequest): Promise<L
   const owner = await resolveOwner(request)
   if (!owner) return { status: 'no-account', loginUrl: `${timelineOrigin()}/login` }
   if (owner.role === 'MODERATOR') return { status: 'no-permission' }
-  const existing = await linkedEvent(request.rsvpEventId)
-  if (!existing) return { status: 'ready' }
-  return owner.role === 'ADMIN' || existing.ownerId === owner.id ? created('linked', existing.id) : { status: 'taken' }
+  const existing = await linkedEvents(request.rsvpEventId)
+  // Nur ein eigenes Event wird übernommen - auch für Admins: rsvp-app trägt den gelieferten Link am Termin ein, und
+  // jede Zusage bekommt darüber Zugang zum Event (auch zu einem fremden mit Zugang „nur mit Zusage“).
+  const own = existing.find(event => event.ownerId === owner.id)
+  if (own) return created('linked', own.id, own.title)
+  // Ein fremdes blockiert nur, wenn es bestätigt ist - sonst könnte jedes Konto das Anlegen für beliebige Termine
+  // sperren, indem es deren Kennung einträgt.
+  return existing.some(event => event.confirmed) ? { status: 'taken' } : { status: 'ready' }
 }
 
 export async function performLinkedCreate(request: LinkedCreateRequest, title: string, startsAt: Date): Promise<LinkedCreateResult> {
@@ -65,7 +82,8 @@ export async function performLinkedCreate(request: LinkedCreateRequest, title: s
     const slug = linkedCreateSlug(title, randomBytes(3).toString('hex'), 60)
     if (validateSlug(slug)) continue
     try {
-      return created('created', await createEventFromPlan(owner.id, { ...fields, slug }, DEFAULT_EVENT_OPTIONS, EMPTY_PLAN, request.rsvpEventId))
+      const eventId = await createEventFromPlan(owner.id, { ...fields, slug }, DEFAULT_EVENT_OPTIONS, EMPTY_PLAN, request.rsvpEventId)
+      return created('created', eventId, fields.title)
     } catch (error) {
       if (!(error instanceof SlugTakenError)) throw error
     }

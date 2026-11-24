@@ -567,6 +567,12 @@ Uhrzeit und Ort, genau so, wie sie in der Gästeansicht stehen. Antippen öffnet
 
 Übernommen aus Seating (Referenzimplementierung der Suite, siehe README von `suite-kit`):
 
+* **Gemeinsame Regeln der Suite:** `clientIp` (`app/lib/throttle.ts`) und `normalizeEmail` (`app/lib/form.ts`) sind nur
+  noch Aufrufe von `clientIpFrom` und `normalizeEmail` aus `suite-kit/web` (seit v0.17.0). „Pro IP“ heißt damit bei IPv6
+  pro /64 (ein Anschluss, nicht eine von 2^64 Adressen), und eine E-Mail-Adresse ist genau eine nackte Adresse –
+  Schreibweisen wie `<a@b.de>` oder `a@b.de;`, die der Mailversand an dasselbe Postfach zustellt, werden abgelehnt.
+  `tests/unit/suite-rules.test.ts` lässt die Regelsammlung `suite-kit/rules` gegen diese Funktionen laufen: Kommt aus
+  dem Audit eines anderen Tools eine Regel dazu, wird sie hier nach dem Update von suite-kit von selbst rot.
 * **Passwörter:** scrypt (`node:crypto`, N=2^15, r=8, p=3) mit eingebetteten Parametern; alte Hashes werden beim
   nächsten Login automatisch erneuert. Mindestens 10 Zeichen, keine Zeichenklassen-Regeln, Abgleich gegen naheliegende
   Fälle – serverseitig geprüft, nicht nur per `minLength` im Browser.
@@ -696,7 +702,7 @@ Es gibt keinen `migrations`-Ordner – wie in den anderen Tools der Suite aussch
 ## Tests
 
 ```bash
-npm test            # Unit-Tests (vitest): Passwort, Drossel-IP und -Regeln, Formular-Helfer, Slugs (inkl. Test auf
+npm test            # Unit-Tests (vitest): gemeinsame Regeln der Suite (suite-kit/rules), Passwort, Drossel-IP und -Regeln, Formular-Helfer, Slugs (inkl. Test auf
                     # fehlende Routen), Cron-Secret, Zeitzonen (Zeitumstellung, Eventtag, Verschieben), Rechte,
                     # Event-Formular und -Einstellungen, Reihen, Prognose-Kern (tests/unit/schedule), Planung
                     # (tests/unit/planning: Punkt-Formular, SECRET-Filter, Reihenfolge, Export/Import, Vorlage),

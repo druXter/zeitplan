@@ -1,6 +1,7 @@
 // app/lib/throttle.ts
 import { createHash } from 'node:crypto'
 import { headers } from 'next/headers'
+import { clientIpFrom } from 'suite-kit/web'
 import { prisma } from './prisma'
 
 /**
@@ -44,15 +45,12 @@ function keyOf(rule: Pick<ThrottleRule, 'scope' | 'identifier'>): string {
  * die er sieht, hinten an - der Wert ganz links kann vom Client frei erfunden sein.
  * Deshalb zählt der Eintrag von rechts (TRUST_PROXY_HOPS, Standard 1 = ein Proxy wie
  * nginx-proxy). 0 ignoriert den Header komplett (direkter Zugriff ohne Proxy).
+ *
+ * Die Rechnung selbst kommt aus suite-kit (clientIpFrom, seit v0.17.0) statt aus einer eigenen Kopie: IPv6 zählt als
+ * /64 - ein Anschluss hat 2^64 Adressen, jede einzeln hätte eigene Zähler. Geprüft in tests/unit/suite-rules.test.ts.
  */
 export async function clientIp(): Promise<string> {
-  const hops = Number.parseInt(process.env.TRUST_PROXY_HOPS ?? '1', 10)
-  if (!Number.isInteger(hops) || hops < 1) return 'unknown'
-
-  const forwarded = (await headers()).get('x-forwarded-for')
-  if (!forwarded) return 'unknown'
-  const parts = forwarded.split(',').map(p => p.trim()).filter(Boolean)
-  return parts[parts.length - hops] ?? 'unknown'
+  return clientIpFrom((await headers()).get('x-forwarded-for'), process.env.TRUST_PROXY_HOPS)
 }
 
 /**

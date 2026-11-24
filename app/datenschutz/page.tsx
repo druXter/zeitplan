@@ -227,7 +227,7 @@ export default function DatenschutzPage() {
             Um das Erraten von Passwörtern und das massenhafte Auslösen von Mails zu verhindern, zählen wir
             fehlgeschlagene Anmeldeversuche, Passwort-Reset-Anfragen, falsch eingegebene Zugangscodes und das Einschalten
             von Erinnerungen für Gäste. Dazu wird
-            deine <strong>IP-Adresse</strong> ausgelesen und – zusammen mit der eingegebenen E-Mail-Adresse bzw. der
+            deine <strong>IP-Adresse</strong> (bei IPv6 nur der vordere Teil, der deinen Anschluss kennzeichnet) ausgelesen und – zusammen mit der eingegebenen E-Mail-Adresse bzw. der
             Veranstaltung – <strong>nur als nicht umkehrbarer Hash</strong> für ein kurzes Zeitfenster (15 Minuten bzw.
             1 Stunde) gespeichert; veraltete Zähler werden nach spätestens
             24 Stunden entfernt. Rechtsgrundlage ist unser berechtigtes Interesse an der Sicherheit der Anwendung (Art. 6
